@@ -38,7 +38,7 @@ void VulkanCommandBuffer::endRecording()
 {
 	if (!m_isRecording)
 	{
-		Logger::print("Tried to end recording, but command buffer (ID:" + std::to_string(m_id) + ") is not recording", Logger::Levels::WARN);
+		Logger::print("Tried to end recording, but command buffer (ID:" + std::to_string(m_id) + ") is not recording", Logger::LevelBits::WARN);
         return;
 	}
 
@@ -79,7 +79,7 @@ void VulkanCommandBuffer::submit(const VulkanQueue& queue, const std::vector<std
 {
 	if (m_isRecording)
 	{
-        Logger::print("Tried to submit command buffer (ID:" + std::to_string(m_id) + ") while it is still recording, forcefully ending recording", Logger::Levels::WARN);
+        Logger::print("Tried to submit command buffer (ID:" + std::to_string(m_id) + ") while it is still recording, forcefully ending recording", Logger::LevelBits::WARN);
 		endRecording();
 	}
 
@@ -275,7 +275,7 @@ void VulkanCommandBuffer::free()
     if (m_vkHandle != VK_NULL_HANDLE)
     {
         vkFreeCommandBuffers(VulkanContext::getDevice(m_device).m_vkHandle, VulkanContext::getDevice(m_device).getCommandPool(m_familyIndex, m_threadID, m_isSecondary), 1, &m_vkHandle);
-        Logger::print("Freed command buffer (ID:" + std::to_string(m_id) + ")", Logger::Levels::INFO);
+        Logger::print("Freed command buffer (ID:" + std::to_string(m_id) + ")", Logger::LevelBits::INFO);
         m_vkHandle = VK_NULL_HANDLE;
     }
 }

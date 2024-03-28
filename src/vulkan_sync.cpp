@@ -22,7 +22,7 @@ void VulkanFence::wait()
 
         if (result == VK_TIMEOUT)
         {
-            Logger::print("Fence (ID: " + std::to_string(m_id) + ") wait timed out", Logger::Levels::WARN);
+            Logger::print("Fence (ID: " + std::to_string(m_id) + ") wait timed out", Logger::LevelBits::WARN);
             return;
         }
         throw std::runtime_error("Failed to wait for fence (ID: " + std::to_string(m_id) + "), error: " + string_VkResult(result));
@@ -34,7 +34,7 @@ void VulkanFence::wait()
 void VulkanFence::free()
 {
 	vkDestroyFence(VulkanContext::getDevice(m_device).m_vkHandle, m_vkHandle, nullptr);
-    Logger::print("Freed fence (ID: " + std::to_string(m_id) + ")", Logger::Levels::INFO);
+    Logger::print("Freed fence (ID: " + std::to_string(m_id) + ")", Logger::LevelBits::INFO);
 	m_vkHandle = VK_NULL_HANDLE;
 }
 
@@ -63,7 +63,7 @@ void VulkanSemaphore::free()
 	if (m_vkHandle != VK_NULL_HANDLE)
 	{
 		vkDestroySemaphore(VulkanContext::getDevice(m_device).m_vkHandle, m_vkHandle, nullptr);
-        Logger::print("Freed semaphore (ID: " + std::to_string(m_id) + ")", Logger::Levels::INFO);
+        Logger::print("Freed semaphore (ID: " + std::to_string(m_id) + ")", Logger::LevelBits::INFO);
 		m_vkHandle = VK_NULL_HANDLE;
 	}
 }

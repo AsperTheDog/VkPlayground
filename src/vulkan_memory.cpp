@@ -141,7 +141,7 @@ MemoryChunk::MemoryBlock MemoryChunk::allocate(const VkDeviceSize newSize, const
 		m_unallocatedData[best + newSize] = (bestSize - bestAlignOffset) - newSize;
 	}
 
-	Logger::print("Allocated block of size " + VulkanMemoryAllocator::compactBytes(newSize) + " at offset " + std::to_string(best) + " of memory type " + std::to_string(m_memoryType), Logger::Levels::INFO);
+	Logger::print("Allocated block of size " + VulkanMemoryAllocator::compactBytes(newSize) + " at offset " + std::to_string(best) + " of memory type " + std::to_string(m_memoryType), Logger::LevelBits::INFO);
 
 	if (m_biggestChunk == best)
 	{
@@ -163,7 +163,7 @@ void MemoryChunk::deallocate(const MemoryBlock& block)
 		throw std::runtime_error("Tried to deallocate block from chunk " + std::to_string(block.chunk) + " in chunk " + std::to_string(m_id));
 
 	m_unallocatedData[block.offset] = block.size;
-	Logger::print("Deallocated block from chunk " + std::to_string(block.chunk) + " of size " + VulkanMemoryAllocator::compactBytes(block.size) + " at offset " + std::to_string(block.offset) + " of memory type " + std::to_string(m_memoryType), Logger::Levels::INFO);
+	Logger::print("Deallocated block from chunk " + std::to_string(block.chunk) + " of size " + VulkanMemoryAllocator::compactBytes(block.size) + " at offset " + std::to_string(block.offset) + " of memory type " + std::to_string(m_memoryType), Logger::LevelBits::INFO);
 
 	m_unallocatedSize += block.size;
 
@@ -195,11 +195,11 @@ void MemoryChunk::defragment()
 {
 	if (m_unallocatedSize == m_size)
 	{
-		Logger::print("No need to defragment empty memory chunk (ID: " + std::to_string(m_id) + ")", Logger::Levels::INFO);
+		Logger::print("No need to defragment empty memory chunk (ID: " + std::to_string(m_id) + ")", Logger::LevelBits::INFO);
 		return;
 	}
 	Logger::pushContext("Memory defragmentation");
-	Logger::print("Defragmenting memory chunk (ID: " + std::to_string(m_id) + ")", Logger::Levels::INFO);
+	Logger::print("Defragmenting memory chunk (ID: " + std::to_string(m_id) + ")", Logger::LevelBits::INFO);
 	uint32_t mergeCount = 0;
 	for (auto it = m_unallocatedData.begin(); it != m_unallocatedData.end();)
 	{
@@ -215,7 +215,7 @@ void MemoryChunk::defragment()
 			if (next->first == m_biggestChunk || it->second > m_unallocatedData[m_biggestChunk])
 				m_biggestChunk = it->first;
 
-			Logger::print("  Merged blocks at offsets " + std::to_string(it->first) + " and " + std::to_string(next->first) + ", new size: " + VulkanMemoryAllocator::compactBytes(it->second), Logger::Levels::INFO);
+			Logger::print("  Merged blocks at offsets " + std::to_string(it->first) + " and " + std::to_string(next->first) + ", new size: " + VulkanMemoryAllocator::compactBytes(it->second), Logger::LevelBits::INFO);
 			mergeCount++;
 
 			m_unallocatedData.erase(next);
@@ -226,7 +226,7 @@ void MemoryChunk::defragment()
 			++it;
 		}
 	}
-	Logger::print("  Defragmented " + std::to_string(mergeCount) + " blocks", Logger::Levels::INFO);
+	Logger::print("  Defragmented " + std::to_string(mergeCount) + " blocks", Logger::LevelBits::INFO);
 	Logger::popContext();
 }
 
@@ -241,7 +241,7 @@ void VulkanMemoryAllocator::free()
 	for (const MemoryChunk& memoryBlock : m_memoryChunks)
 	{
 		vkFreeMemory(VulkanContext::getDevice(m_device).m_vkHandle, memoryBlock.m_memory, nullptr);
-        Logger::print("Freed memory chunk (ID: " + std::to_string(memoryBlock.getID()) + ")", Logger::Levels::INFO);
+        Logger::print("Freed memory chunk (ID: " + std::to_string(memoryBlock.getID()) + ")", Logger::LevelBits::INFO);
 	}
 	m_memoryChunks.clear();
 }
@@ -278,7 +278,7 @@ MemoryChunk::MemoryBlock VulkanMemoryAllocator::allocate(const VkDeviceSize size
 	}
 
 	m_memoryChunks.push_back(MemoryChunk(chunkSize, memoryType, memory));
-	Logger::print("Allocated chunk (ID: " + std::to_string(m_memoryChunks.back().getID()) + ") of size " + compactBytes(chunkSize) + " of memory type " + std::to_string(memoryType), Logger::Levels::INFO);
+	Logger::print("Allocated chunk (ID: " + std::to_string(m_memoryChunks.back().getID()) + ") of size " + compactBytes(chunkSize) + " of memory type " + std::to_string(memoryType), Logger::LevelBits::INFO);
 	return m_memoryChunks.back().allocate(size, alignment);
 }
 
@@ -336,19 +336,19 @@ void VulkanMemoryAllocator::deallocate(const MemoryChunk::MemoryBlock& block)
 	{
 		vkFreeMemory(VulkanContext::getDevice(m_device).m_vkHandle, m_memoryChunks[chunkIndex].m_memory, nullptr);
 		m_memoryChunks.erase(m_memoryChunks.begin() + chunkIndex);
-		Logger::print("Freed empty chunk (ID: " + std::to_string(block.chunk) + ")", Logger::Levels::INFO);
+		Logger::print("Freed empty chunk (ID: " + std::to_string(block.chunk) + ")", Logger::LevelBits::INFO);
 	}
 }
 
 void VulkanMemoryAllocator::hideMemoryType(const uint32_t type)
 {
-	Logger::print("Hiding memory type " + std::to_string(type), Logger::Levels::INFO);
+	Logger::print("Hiding memory type " + std::to_string(type), Logger::LevelBits::INFO);
 	m_hiddenTypes.insert(type);
 }
 
 void VulkanMemoryAllocator::unhideMemoryType(const uint32_t type)
 {
-	Logger::print("Unhiding memory type " + std::to_string(type), Logger::Levels::INFO);
+	Logger::print("Unhiding memory type " + std::to_string(type), Logger::LevelBits::INFO);
 	m_hiddenTypes.erase(type);
 }
 
@@ -397,6 +397,6 @@ uint32_t VulkanMemoryAllocator::getChunkMemoryType(const uint32_t chunk) const
 		}
 	}
 
-    Logger::print("Chunk search failed out of " + std::to_string(m_memoryChunks.size()) + " chunks", Logger::Levels::DEBUG);
+    Logger::print("Chunk search failed out of " + std::to_string(m_memoryChunks.size()) + " chunks", Logger::LevelBits::DEBUG);
 	throw std::runtime_error("Chunk (ID:" + std::to_string(chunk) + ") not found");
 }

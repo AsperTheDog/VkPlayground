@@ -83,7 +83,7 @@ VkImageView VulkanImage::createImageView(const VkFormat format, const VkImageAsp
 void VulkanImage::freeImageView(const VkImageView imageView)
 {
 	vkDestroyImageView(VulkanContext::getDevice(m_device).m_vkHandle, imageView, nullptr);
-    Logger::print("Freed image view " + std::to_string(m_id), Logger::Levels::INFO);
+    Logger::print("Freed image view " + std::to_string(m_id), Logger::LevelBits::INFO);
 	std::erase(m_imageViews, imageView);
 }
 
@@ -134,7 +134,7 @@ void VulkanImage::transitionLayout(const VkImageLayout layout, const VkImageAspe
 
 	queue.waitIdle();
 	device.freeCommandBuffer(commandBuffer, threadID);
-    Logger::print(std::string("Transitioned image layout to ") + string_VkImageLayout(layout) + " on image " + std::to_string(m_id), Logger::Levels::DEBUG);
+    Logger::print(std::string("Transitioned image layout to ") + string_VkImageLayout(layout) + " on image " + std::to_string(m_id), Logger::LevelBits::DEBUG);
 }
 
 VulkanImage::VulkanImage(const uint32_t device, const VkImage vkHandle, const VkExtent3D size, const VkImageType type, const VkImageLayout layout)
@@ -155,7 +155,7 @@ void VulkanImage::setBoundMemory(const MemoryChunk::MemoryBlock& memoryRegion)
 	{
 	    throw std::runtime_error("Failed to bind memory to image (ID: " + std::to_string(m_id) + "), error: " + string_VkResult(ret));
 	}
-    Logger::print("Bound memory to image " + std::to_string(m_id) + " with size " + std::to_string(m_memoryRegion.size) + " and offset " + std::to_string(m_memoryRegion.offset), Logger::Levels::INFO);
+    Logger::print("Bound memory to image " + std::to_string(m_id) + " with size " + std::to_string(m_memoryRegion.size) + " and offset " + std::to_string(m_memoryRegion.offset), Logger::LevelBits::INFO);
 }
 
 void VulkanImage::free()
@@ -166,7 +166,7 @@ void VulkanImage::free()
 	{
 		vkDestroyImageView(device.m_vkHandle, imageView, nullptr);
 	}
-	Logger::print("Freed image (ID: " + std::to_string(m_id) + ") with " + std::to_string(m_imageViews.size()) + " image views", Logger::Levels::INFO);
+	Logger::print("Freed image (ID: " + std::to_string(m_id) + ") with " + std::to_string(m_imageViews.size()) + " image views", Logger::LevelBits::INFO);
 	Logger::pushContext("Image memory free");
 	m_imageViews.clear();
 

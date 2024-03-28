@@ -73,7 +73,7 @@ void VulkanDevice::initializeCommandPool(const QueueFamily& family, const uint32
 		{
 			throw std::runtime_error(std::string("Failed to create main command pool for thread " + std::to_string(threadID) + ", error: ") + string_VkResult(ret));
 		}
-		Logger::print("Created main command pool for thread " + std::to_string(threadID) + " and family " + std::to_string(family.index), Logger::Levels::INFO);
+		Logger::print("Created main command pool for thread " + std::to_string(threadID) + " and family " + std::to_string(family.index), Logger::LevelBits::INFO);
 
 		if (createSecondary)
 		{
@@ -81,7 +81,7 @@ void VulkanDevice::initializeCommandPool(const QueueFamily& family, const uint32
 			{
 				throw std::runtime_error(std::string("Failed to create secondary command pool for thread " + std::to_string(threadID) + ", error: ") + string_VkResult(ret));
 			}
-			Logger::print("Created secondary command pool for thread " + std::to_string(threadID) + " and family " + std::to_string(family.index), Logger::Levels::INFO);
+			Logger::print("Created secondary command pool for thread " + std::to_string(threadID) + " and family " + std::to_string(family.index), Logger::LevelBits::INFO);
 		}
 	}
 }
@@ -109,7 +109,7 @@ uint32_t VulkanDevice::createCommandBuffer(const QueueFamily& family, const uint
 	{
 		throw std::runtime_error(std::string("Failed to allocate command buffer in thread + " + std::to_string(threadID) + ", error:") + string_VkResult(ret));
 	}
-	Logger::print("Allocated command buffer for thread " + std::to_string(threadID) + " and family " + std::to_string(family.index), Logger::Levels::INFO);
+	Logger::print("Allocated command buffer for thread " + std::to_string(threadID) + " and family " + std::to_string(family.index), Logger::LevelBits::INFO);
 
 	if (!m_commandBuffers.contains(threadID))
 	{
@@ -135,7 +135,7 @@ uint32_t VulkanDevice::createOneTimeCommandBuffer(uint32_t threadID)
 	{
 		throw std::runtime_error(std::string("Failed to allocate one time command buffer in thread + " + std::to_string(threadID) + ", error:") + string_VkResult(ret));
 	}
-	Logger::print("Allocated one time command buffer for thread " + std::to_string(threadID), Logger::Levels::INFO);
+	Logger::print("Allocated one time command buffer for thread " + std::to_string(threadID), Logger::LevelBits::INFO);
 
 	if (!m_commandBuffers.contains(threadID))
 	{
@@ -151,7 +151,7 @@ uint32_t VulkanDevice::getOrCreateCommandBuffer(const QueueFamily& family, const
 	for (const VulkanCommandBuffer& buffer : m_commandBuffers[threadID])
 		if (buffer.m_familyIndex == family.index && buffer.m_threadID == threadID && buffer.m_isSecondary == isSecondary)
 		{
-            Logger::print("Reusing command buffer for thread " + std::to_string(threadID) + " and family " + std::to_string(family.index), Logger::Levels::DEBUG);
+            Logger::print("Reusing command buffer for thread " + std::to_string(threadID) + " and family " + std::to_string(family.index), Logger::LevelBits::DEBUG);
 		    return buffer.getID();
 		}
 
@@ -164,7 +164,7 @@ VulkanCommandBuffer& VulkanDevice::getCommandBuffer(const uint32_t id, const uin
 		if (buffer.m_id == id)
 			return buffer;
 
-    Logger::print("Command buffer search failed out of " + std::to_string(m_commandBuffers.size()) + " command buffers", Logger::Levels::DEBUG);
+    Logger::print("Command buffer search failed out of " + std::to_string(m_commandBuffers.size()) + " command buffers", Logger::LevelBits::DEBUG);
 	throw std::runtime_error("Command buffer (ID:" + std::to_string(id) + ") not found");
 }
 
@@ -209,7 +209,7 @@ uint32_t VulkanDevice::createFramebuffer(const VkExtent3D size, const VulkanRend
 	}
 
 	m_framebuffers.push_back({m_id, framebuffer});
-	Logger::print("Created framebuffer (ID:" + std::to_string(m_framebuffers.back().getID()) + ")", Logger::Levels::INFO);
+	Logger::print("Created framebuffer (ID:" + std::to_string(m_framebuffers.back().getID()) + ")", Logger::LevelBits::INFO);
 	return m_framebuffers.back().getID();
 }
 
@@ -223,7 +223,7 @@ VulkanFramebuffer& VulkanDevice::getFramebuffer(const uint32_t id)
 		}
 	}
     
-    Logger::print("Framebuffer search failed out of " + std::to_string(m_framebuffers.size()) + " framebuffers", Logger::Levels::DEBUG);
+    Logger::print("Framebuffer search failed out of " + std::to_string(m_framebuffers.size()) + " framebuffers", Logger::LevelBits::DEBUG);
 	throw std::runtime_error("Framebuffer (ID:" + std::to_string(id) + ") not found");
 }
 
@@ -267,7 +267,7 @@ uint32_t VulkanDevice::createBuffer(const VkDeviceSize size, const VkBufferUsage
 	}
 
 	m_buffers.push_back({m_id, buffer, size});
-	Logger::print("Created buffer (ID:" + std::to_string(m_buffers.back().getID()) + ") with size " + VulkanMemoryAllocator::compactBytes(m_buffers.back().getSize()), Logger::Levels::INFO);
+	Logger::print("Created buffer (ID:" + std::to_string(m_buffers.back().getID()) + ") with size " + VulkanMemoryAllocator::compactBytes(m_buffers.back().getSize()), Logger::LevelBits::INFO);
 	return m_buffers.back().getID();
 }
 
@@ -281,7 +281,7 @@ VulkanBuffer& VulkanDevice::getBuffer(const uint32_t id)
 		}
 	}
 
-    Logger::print("Buffer search failed out of " + std::to_string(m_buffers.size()) + " buffers", Logger::Levels::DEBUG);
+    Logger::print("Buffer search failed out of " + std::to_string(m_buffers.size()) + " buffers", Logger::LevelBits::DEBUG);
 	throw std::runtime_error("Buffer (ID:" + std::to_string(id) + ") not found");
 }
 
@@ -333,7 +333,7 @@ uint32_t VulkanDevice::createImage(const VkImageType type, const VkFormat format
 	}
 
 	m_images.push_back({m_id, image, extent, type, VK_IMAGE_LAYOUT_UNDEFINED});
-	Logger::print("Created image (ID:" + std::to_string(m_images.back().getID()) + ")", Logger::Levels::INFO);
+	Logger::print("Created image (ID:" + std::to_string(m_images.back().getID()) + ")", Logger::LevelBits::INFO);
 	return m_images.back().getID();
 }
 
@@ -347,7 +347,7 @@ VulkanImage& VulkanDevice::getImage(const uint32_t id)
 		}
 	}
 
-    Logger::print("Image search failed out of " + std::to_string(m_images.size()) + " images", Logger::Levels::DEBUG);
+    Logger::print("Image search failed out of " + std::to_string(m_images.size()) + " images", Logger::LevelBits::DEBUG);
 	throw std::runtime_error("Image (ID:" + std::to_string(id) + ") not found");
 }
 
@@ -393,18 +393,18 @@ void VulkanDevice::configureStagingBuffer(const VkDeviceSize size, const QueueSe
 		const VkDeviceSize heapSize = m_physicalDevice.getMemoryProperties().memoryHeaps[heapIndex].size;
 		if (heapSize < size * 0.8)
 		{
-            Logger::print("Staging buffer size is " + VulkanMemoryAllocator::compactBytes(size) + ", but special staging memory heap size is " + VulkanMemoryAllocator::compactBytes(heapSize) + " for memory type " + std::to_string(memoryType.value()) + ", allocating in host memory", Logger::Levels::DEBUG);
+            Logger::print("Staging buffer size is " + VulkanMemoryAllocator::compactBytes(size) + ", but special staging memory heap size is " + VulkanMemoryAllocator::compactBytes(heapSize) + " for memory type " + std::to_string(memoryType.value()) + ", allocating in host memory", Logger::LevelBits::DEBUG);
 			stagingBuffer.allocateFromFlags({VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VK_MEMORY_PROPERTY_HOST_CACHED_BIT, true});
 			return;
 		}
-        Logger::print("Staging buffer size is " + VulkanMemoryAllocator::compactBytes(size) + ", allocating in special staging memory type " + std::to_string(memoryType.value()), Logger::Levels::DEBUG);
+        Logger::print("Staging buffer size is " + VulkanMemoryAllocator::compactBytes(size) + ", allocating in special staging memory type " + std::to_string(memoryType.value()), Logger::LevelBits::DEBUG);
 		stagingBuffer.allocateFromIndex(memoryType.value());
 		if (!forceAllowStagingMemory)
 			m_memoryAllocator.hideMemoryType(memoryType.value());
 	}
 	else
 	{
-        Logger::print("Staging buffer size is " + VulkanMemoryAllocator::compactBytes(size) + ", but no suitable special staging memory type found, allocating in host memory", Logger::Levels::DEBUG);
+        Logger::print("Staging buffer size is " + VulkanMemoryAllocator::compactBytes(size) + ", but no suitable special staging memory type found, allocating in host memory", Logger::LevelBits::DEBUG);
 		stagingBuffer.allocateFromFlags({VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VK_MEMORY_PROPERTY_HOST_CACHED_BIT, true});
 	}
 }
@@ -454,7 +454,7 @@ void VulkanDevice::dumpStagingBuffer(const uint32_t buffer, const std::vector<Vk
 
 	if (stagingBuffer.isMemoryMapped())
 	{
-        Logger::print("Automatically unmapping staging buffer before dumping into buffer (ID: " + std::to_string(buffer) + ")", Logger::Levels::DEBUG);
+        Logger::print("Automatically unmapping staging buffer before dumping into buffer (ID: " + std::to_string(buffer) + ")", Logger::LevelBits::DEBUG);
 		stagingBuffer.unmap();
 	}
 
@@ -466,7 +466,7 @@ void VulkanDevice::dumpStagingBuffer(const uint32_t buffer, const std::vector<Vk
 	commandBuffer.endRecording();
 	const VulkanQueue queue = getQueue(m_stagingBufferInfo.queue);
 	commandBuffer.submit(queue, {}, {});
-    Logger::print("Submitted staging buffer data to buffer (ID: " + std::to_string(buffer) + "), total size: " + VulkanMemoryAllocator::compactBytes(stagingBuffer.getSize()), Logger::Levels::DEBUG);
+    Logger::print("Submitted staging buffer data to buffer (ID: " + std::to_string(buffer) + "), total size: " + VulkanMemoryAllocator::compactBytes(stagingBuffer.getSize()), Logger::LevelBits::DEBUG);
 
 	queue.waitIdle();
 	freeCommandBuffer(commandBuffer, threadID);
@@ -518,7 +518,7 @@ uint32_t VulkanDevice::createRenderPass(const VulkanRenderPassBuilder& builder, 
 	}
 
 	m_renderPasses.push_back({m_id, renderPass});
-	Logger::print("Created renderpass (ID: " + std::to_string(m_renderPasses.back().getID()) + ") with " + std::to_string(builder.m_attachments.size()) + " attachment(s) and " + std::to_string(builder.m_subpasses.size()) + " subpass(es)", Logger::Levels::INFO);
+	Logger::print("Created renderpass (ID: " + std::to_string(m_renderPasses.back().getID()) + ") with " + std::to_string(builder.m_attachments.size()) + " attachment(s) and " + std::to_string(builder.m_subpasses.size()) + " subpass(es)", Logger::LevelBits::INFO);
 	
 	return m_renderPasses.back().getID();
 }
@@ -532,7 +532,7 @@ VulkanRenderPass& VulkanDevice::getRenderPass(const uint32_t id)
 			return renderPass;
 		}
 	}
-    Logger::print("Render pass search failed out of " + std::to_string(m_renderPasses.size()) + " render passes", Logger::Levels::DEBUG);
+    Logger::print("Render pass search failed out of " + std::to_string(m_renderPasses.size()) + " render passes", Logger::LevelBits::DEBUG);
 	throw std::runtime_error("Render pass (ID: " + std::to_string(id) + ") not found");
 }
 
@@ -581,7 +581,7 @@ uint32_t VulkanDevice::createPipelineLayout(const std::vector<uint32_t>& descrip
 	}
 
 	m_pipelineLayouts.push_back({m_id, layout});
-	Logger::print("Created pipeline layout (ID: " + std::to_string(m_pipelineLayouts.back().getID()) + ")", Logger::Levels::INFO);
+	Logger::print("Created pipeline layout (ID: " + std::to_string(m_pipelineLayouts.back().getID()) + ")", Logger::LevelBits::INFO);
 	return m_pipelineLayouts.back().getID();
 }
 
@@ -594,7 +594,7 @@ VulkanPipelineLayout& VulkanDevice::getPipelineLayout(const uint32_t id)
 			return layout;
 		}
 	}
-    Logger::print("Pipeline layout search failed out of " + std::to_string(m_pipelineLayouts.size()) + " pipeline layouts", Logger::Levels::DEBUG);
+    Logger::print("Pipeline layout search failed out of " + std::to_string(m_pipelineLayouts.size()) + " pipeline layouts", Logger::LevelBits::DEBUG);
 	throw std::runtime_error("Pipeline layout (ID: " + std::to_string(id) + ") not found");
 }
 
@@ -630,7 +630,7 @@ VulkanPipeline& VulkanDevice::getPipeline(const uint32_t id)
 			return pipeline;
 		}
 	}
-    Logger::print("Pipeline search failed out of " + std::to_string(m_pipelines.size()) + " pipelines", Logger::Levels::DEBUG);
+    Logger::print("Pipeline search failed out of " + std::to_string(m_pipelines.size()) + " pipelines", Logger::LevelBits::DEBUG);
 	throw std::runtime_error("Pipeline (ID: " + std::to_string(id) + ") not found");
 }
 
@@ -668,7 +668,7 @@ uint32_t VulkanDevice::createDescriptorPool(const std::vector<VkDescriptorPoolSi
 	}
 
 	m_descriptorPools.push_back({m_id, descriptorPool, flags});
-	Logger::print("Created descriptor pool (ID: " + std::to_string(m_descriptorPools.back().getID()) + ")", Logger::Levels::INFO);
+	Logger::print("Created descriptor pool (ID: " + std::to_string(m_descriptorPools.back().getID()) + ")", Logger::LevelBits::INFO);
 	return m_descriptorPools.back().getID();
 }
 
@@ -681,7 +681,7 @@ VulkanDescriptorPool& VulkanDevice::getDescriptorPool(const uint32_t id)
 			return descriptorPool;
 		}
 	}
-    Logger::print("Descriptor pool search failed out of " + std::to_string(m_descriptorPools.size()) + " descriptor pools", Logger::Levels::DEBUG);
+    Logger::print("Descriptor pool search failed out of " + std::to_string(m_descriptorPools.size()) + " descriptor pools", Logger::LevelBits::DEBUG);
 	throw std::runtime_error("Descriptor pool (ID: " + std::to_string(id) + ") not found");
 }
 
@@ -718,7 +718,7 @@ uint32_t VulkanDevice::createDescriptorSetLayout(const std::vector<VkDescriptorS
 	}
 
 	m_descriptorSetLayouts.push_back({m_id, descriptorSetLayout});
-	Logger::print("Created descriptor set layout (ID: " + std::to_string(m_descriptorSetLayouts.back().getID()) + ")", Logger::Levels::INFO);
+	Logger::print("Created descriptor set layout (ID: " + std::to_string(m_descriptorSetLayouts.back().getID()) + ")", Logger::LevelBits::INFO);
 	return m_descriptorSetLayouts.back().getID();
 
 }
@@ -732,7 +732,7 @@ VulkanDescriptorSetLayout& VulkanDevice::getDescriptorSetLayout(const uint32_t i
 			return layout;
 		}
 	}
-    Logger::print("Descriptor set layout search failed out of " + std::to_string(m_descriptorSetLayouts.size()) + " descriptor set layouts", Logger::Levels::DEBUG);
+    Logger::print("Descriptor set layout search failed out of " + std::to_string(m_descriptorSetLayouts.size()) + " descriptor set layouts", Logger::LevelBits::DEBUG);
 	throw std::runtime_error("Descriptor set layout (ID: " + std::to_string(id) + ")  not found");
 }
 
@@ -772,7 +772,7 @@ uint32_t VulkanDevice::createDescriptorSet(const uint32_t pool, const uint32_t l
 	}
 
 	m_descriptorSets.push_back({m_id, pool, descriptorSet});
-	Logger::print("Created descriptor set (ID: " + std::to_string(m_descriptorSets.back().getID()) + ")", Logger::Levels::INFO);
+	Logger::print("Created descriptor set (ID: " + std::to_string(m_descriptorSets.back().getID()) + ")", Logger::LevelBits::INFO);
 	return m_descriptorSets.back().getID();
 }
 
@@ -798,7 +798,7 @@ std::vector<uint32_t> VulkanDevice::createDescriptorSets(const uint32_t pool, co
 	{
 		m_descriptorSets.push_back({m_id, pool, descriptorSet});
 		ids.push_back(m_descriptorSets.back().getID());
-        Logger::print("Created descriptor set (ID: " + std::to_string(m_descriptorSets.back().getID()) + ") in batch", Logger::Levels::INFO);
+        Logger::print("Created descriptor set (ID: " + std::to_string(m_descriptorSets.back().getID()) + ") in batch", Logger::LevelBits::INFO);
 	}
 	return ids;
 }
@@ -812,7 +812,7 @@ VulkanDescriptorSet& VulkanDevice::getDescriptorSet(const uint32_t id)
 			return descriptorSet;
 		}
 	}
-    Logger::print("Descriptor set search failed out of " + std::to_string(m_descriptorSets.size()) + " descriptor sets", Logger::Levels::DEBUG);
+    Logger::print("Descriptor set search failed out of " + std::to_string(m_descriptorSets.size()) + " descriptor sets", Logger::LevelBits::DEBUG);
 	throw std::runtime_error("Descriptor set (ID: " + std::to_string(id) + ") not found");
 }
 
@@ -843,7 +843,7 @@ VulkanSemaphore& VulkanDevice::getSemaphore(const uint32_t id)
 			return semaphore;
 		}
 	}
-    Logger::print("Semaphore search failed out of " + std::to_string(m_semaphores.size()) + " semaphores", Logger::Levels::DEBUG);
+    Logger::print("Semaphore search failed out of " + std::to_string(m_semaphores.size()) + " semaphores", Logger::LevelBits::DEBUG);
 	throw std::runtime_error("Semaphore (ID:" + std::to_string(id) + ") not found");
 }
 
@@ -875,7 +875,7 @@ uint32_t VulkanDevice::createShader(const std::string& filename, const VkShaderS
 #endif
 	if (result.code.empty())
 	{
-        Logger::print("Failed to load shader: " + result.error, Logger::Levels::ERR);
+        Logger::print("Failed to load shader: " + result.error, Logger::LevelBits::ERR);
 		throw std::runtime_error("Failed to create shader module");
 	}
 
@@ -890,7 +890,7 @@ uint32_t VulkanDevice::createShader(const std::string& filename, const VkShaderS
 	}
 
 	m_shaders.push_back({m_id, shader, stage});
-	Logger::print("Created shader (ID: " + std::to_string(m_shaders.back().getID()) + ") and stage " + string_VkShaderStageFlagBits(stage), Logger::Levels::INFO);
+	Logger::print("Created shader (ID: " + std::to_string(m_shaders.back().getID()) + ") and stage " + string_VkShaderStageFlagBits(stage), Logger::LevelBits::INFO);
 	return m_shaders.back().getID();
 }
 
@@ -903,7 +903,7 @@ VulkanShader& VulkanDevice::getShader(const uint32_t id)
 			return shader;
 		}
 	}
-    Logger::print("Shader search failed out of " + std::to_string(m_shaders.size()) + " shaders", Logger::Levels::DEBUG);
+    Logger::print("Shader search failed out of " + std::to_string(m_shaders.size()) + " shaders", Logger::LevelBits::DEBUG);
 	throw std::runtime_error("Shader (ID:" + std::to_string(id) + ") not found");
 }
 
@@ -979,7 +979,7 @@ uint32_t VulkanDevice::createSemaphore()
 	}
 
 	m_semaphores.push_back({m_id, semaphore});
-	Logger::print("Created semaphore (ID: " + std::to_string(m_semaphores.back().getID()) + ")", Logger::Levels::INFO);
+	Logger::print("Created semaphore (ID: " + std::to_string(m_semaphores.back().getID()) + ")", Logger::LevelBits::INFO);
 	return m_semaphores.back().getID();
 }
 
@@ -996,7 +996,7 @@ uint32_t VulkanDevice::createFence(const bool signaled)
 	}
 
 	m_fences.push_back({m_id, fence, signaled});
-	Logger::print("Created fence (ID: " + std::to_string(m_fences.back().getID()) + ")", Logger::Levels::INFO);
+	Logger::print("Created fence (ID: " + std::to_string(m_fences.back().getID()) + ")", Logger::LevelBits::INFO);
 	return m_fences.back().getID();
 }
 
@@ -1009,7 +1009,7 @@ VulkanFence& VulkanDevice::getFence(const uint32_t id)
 			return fence;
 		}
 	}
-    Logger::print("Fence search failed out of " + std::to_string(m_fences.size()) + " fences", Logger::Levels::DEBUG);
+    Logger::print("Fence search failed out of " + std::to_string(m_fences.size()) + " fences", Logger::LevelBits::DEBUG);
 	throw std::runtime_error("Fence (ID:" + std::to_string(id) + ") not found");
 }
 
@@ -1069,7 +1069,7 @@ uint32_t VulkanDevice::createPipeline(const VulkanPipelineBuilder& builder, cons
 	}
 
 	m_pipelines.push_back({*this, pipeline, pipelineLayout, renderPass, subpass});
-	Logger::print("Created pipeline (ID: " + std::to_string(m_pipelines.back().getID()) + ")", Logger::Levels::INFO);
+	Logger::print("Created pipeline (ID: " + std::to_string(m_pipelines.back().getID()) + ")", Logger::LevelBits::INFO);
 	return m_pipelines.back().getID();
 }
 
@@ -1146,7 +1146,7 @@ void VulkanDevice::free()
 	m_fences.clear();
 
 	vkDestroyDevice(m_vkHandle, nullptr);
-    Logger::print("Freed device (ID: " + std::to_string(m_id) + ")", Logger::Levels::INFO);
+    Logger::print("Freed device (ID: " + std::to_string(m_id) + ")", Logger::LevelBits::INFO);
 	m_vkHandle = VK_NULL_HANDLE;
 }
 
@@ -1159,7 +1159,7 @@ VkDeviceMemory VulkanDevice::getMemoryHandle(const uint32_t chunkID) const
 			return chunk.m_memory;
 		}
 	}
-    Logger::print("Memory chunk search failed out of " + std::to_string(m_memoryAllocator.m_memoryChunks.size()) + " memory chunks", Logger::Levels::DEBUG);
+    Logger::print("Memory chunk search failed out of " + std::to_string(m_memoryAllocator.m_memoryChunks.size()) + " memory chunks", Logger::LevelBits::DEBUG);
 	throw std::runtime_error("Memory chunk (ID: " + std::to_string(chunkID) + ") not found");
 }
 

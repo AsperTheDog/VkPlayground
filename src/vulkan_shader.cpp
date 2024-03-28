@@ -40,7 +40,7 @@ void VulkanShader::free()
 	if (m_vkHandle != VK_NULL_HANDLE)
 	{
 		vkDestroyShaderModule(VulkanContext::getDevice(m_device).m_vkHandle, m_vkHandle, nullptr);
-        Logger::print("Freed shader module (ID: " + std::to_string(m_id) + ")", Logger::Levels::INFO);
+        Logger::print("Freed shader module (ID: " + std::to_string(m_id) + ")", Logger::LevelBits::INFO);
 		m_vkHandle = VK_NULL_HANDLE;
 	}
 }

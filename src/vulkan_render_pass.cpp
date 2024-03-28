@@ -44,10 +44,10 @@ VulkanRenderPassBuilder& VulkanRenderPassBuilder::addSubpass(const VkPipelineBin
 	}
 
 	if (depthCount > 1)
-		Logger::print("Only 1 depth stencil attachment allowed in a subpass, received " + std::to_string(depthCount) + " instead", Logger::Levels::WARN);
+		Logger::print("Only 1 depth stencil attachment allowed in a subpass, received " + std::to_string(depthCount) + " instead", Logger::LevelBits::WARN);
 
 	if ((flags & VK_SUBPASS_DESCRIPTION_SHADER_RESOLVE_BIT_QCOM) == 0 && !subpass.resolveAttachments.empty() && subpass.resolveAttachments.size() != subpass.colorAttachments.size())
-		Logger::print("Number of resolve attachments must be equal to the number of color attachments", Logger::Levels::WARN);
+		Logger::print("Number of resolve attachments must be equal to the number of color attachments", Logger::LevelBits::WARN);
 
 	m_subpasses.push_back(subpass);
 
@@ -81,7 +81,7 @@ VkRenderPass VulkanRenderPass::operator*() const
 
 void VulkanRenderPass::free()
 {
-	Logger::print("Freeing render pass (ID: " + std::to_string(m_id) + ")", Logger::Levels::INFO);
+	Logger::print("Freeing render pass (ID: " + std::to_string(m_id) + ")", Logger::LevelBits::INFO);
 	vkDestroyRenderPass(VulkanContext::getDevice(m_device).m_vkHandle, m_vkHandle, nullptr);
 	m_vkHandle = VK_NULL_HANDLE;
 }

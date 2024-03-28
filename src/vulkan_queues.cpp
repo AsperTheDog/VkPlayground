@@ -115,14 +115,14 @@ QueueSelection QueueFamilySelector::getOrAddQueue(const QueueFamily& family, con
         return addQueue(family, priority);
 	}
 	m_selections[family.index].priorities[0] = std::max(m_selections[family.index].priorities[0], priority);
-    Logger::print("Queue family " + std::to_string(family.index) + " already has a queue, setting priority to " + std::to_string(m_selections[family.index].priorities[0]), Logger::Levels::DEBUG);
+    Logger::print("Queue family " + std::to_string(family.index) + " already has a queue, setting priority to " + std::to_string(m_selections[family.index].priorities[0]), Logger::LevelBits::DEBUG);
 	return {family.index, 0};
 }
 
 QueueSelection QueueFamilySelector::addQueue(const QueueFamily& family, const float priority)
 {
 	m_selections[family.index].priorities.push_back(priority);
-    Logger::print("Added queue to family " + std::to_string(family.index) + " with priority " + std::to_string(priority), Logger::Levels::DEBUG);
+    Logger::print("Added queue to family " + std::to_string(family.index) + " with priority " + std::to_string(priority), Logger::LevelBits::DEBUG);
 	return {family.index, static_cast<uint32_t>(m_selections[family.index].priorities.size() - 1)};
 }
 

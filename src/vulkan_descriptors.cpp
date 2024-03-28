@@ -16,7 +16,7 @@ void VulkanDescriptorPool::free()
 	if (m_vkHandle != VK_NULL_HANDLE)
 	{
 		const bool canDescrsBeFreed = (m_flags & VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT) != 0;
-		Logger::print("Freeing descriptor pool (ID: " + std::to_string(m_id) + ")" + (canDescrsBeFreed ? "" : " alongside all associated descriptor sets"), Logger::Levels::INFO);
+		Logger::print("Freeing descriptor pool (ID: " + std::to_string(m_id) + ")" + (canDescrsBeFreed ? "" : " alongside all associated descriptor sets"), Logger::LevelBits::INFO);
 		vkDestroyDescriptorPool(VulkanContext::getDevice(m_device).m_vkHandle, m_vkHandle, nullptr);
 		m_vkHandle = VK_NULL_HANDLE;
 	}
@@ -37,7 +37,7 @@ void VulkanDescriptorSetLayout::free()
 {
 	if (m_vkHandle != VK_NULL_HANDLE)
 	{
-		Logger::print("Freeing descriptor set layout (ID: " + std::to_string(m_id) + ")", Logger::Levels::INFO);
+		Logger::print("Freeing descriptor set layout (ID: " + std::to_string(m_id) + ")", Logger::LevelBits::INFO);
 		vkDestroyDescriptorSetLayout(VulkanContext::getDevice(m_device).m_vkHandle, m_vkHandle, nullptr);
 		m_vkHandle = VK_NULL_HANDLE;
 	}
@@ -56,8 +56,8 @@ VkDescriptorSet VulkanDescriptorSet::operator*() const
 
 void VulkanDescriptorSet::updateDescriptorSet(const VkWriteDescriptorSet& writeDescriptorSet) const
 {
-    Logger::print("Updating descriptor set (ID: " + std::to_string(m_id) + ")", Logger::Levels::INFO);
-    Logger::print(std::string("  Update info: descriptor type: ") + string_VkDescriptorType(writeDescriptorSet.descriptorType), Logger::Levels::DEBUG);
+    Logger::print("Updating descriptor set (ID: " + std::to_string(m_id) + ")", Logger::LevelBits::INFO);
+    Logger::print(std::string("  Update info: descriptor type: ") + string_VkDescriptorType(writeDescriptorSet.descriptorType), Logger::LevelBits::DEBUG);
 	vkUpdateDescriptorSets(VulkanContext::getDevice(m_device).m_vkHandle, 1, &writeDescriptorSet, 0, nullptr);
 }
 
@@ -66,7 +66,7 @@ void VulkanDescriptorSet::free()
 	if (m_vkHandle != VK_NULL_HANDLE)
 	{
 		if (!m_canBeFreed) return;
-		Logger::print("Freeing descriptor set (ID: " + std::to_string(m_id) + ")", Logger::Levels::INFO);
+		Logger::print("Freeing descriptor set (ID: " + std::to_string(m_id) + ")", Logger::LevelBits::INFO);
 		vkFreeDescriptorSets(VulkanContext::getDevice(m_device).m_vkHandle, VulkanContext::getDevice(m_device).getDescriptorPool(m_pool).m_vkHandle, 1, &m_vkHandle);
 		m_vkHandle = VK_NULL_HANDLE;
 	}
