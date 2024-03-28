@@ -10,10 +10,12 @@ class Logger
 public:
     enum LevelBits
     {
+        NONE = 0,
         DEBUG = 1,
         INFO = 2,
         WARN = 4,
-        ERR = 8
+        ERR = 8,
+        ALL = DEBUG | INFO | WARN | ERR
     };
 
     static void setEnabled(bool enabled);
