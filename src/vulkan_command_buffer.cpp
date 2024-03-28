@@ -20,7 +20,7 @@ void VulkanCommandBuffer::beginRecording(const VkCommandBufferUsageFlags flags)
 #ifdef _DEBUG
 	if (m_isRecording)
 	{
-		Logger::print("Tried to begin recording, but command buffer (ID:" + std::to_string(m_id) + ") is already recording", Logger::Levels::WARN);
+		Logger::print("Tried to begin recording, but command buffer (ID:" + std::to_string(m_id) + ") is already recording", Logger::LevelBits::WARN);
         return;
 	}
 #endif
