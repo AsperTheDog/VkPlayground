@@ -3,10 +3,12 @@
 #include <vector>
 #include <sstream>
 
+typedef uint8_t LoggerLevels;
+
 class Logger
 {
 public:
-    enum Levels
+    enum LevelBits
     {
         DEBUG = 1,
         INFO = 2,
@@ -14,12 +16,15 @@ public:
         ERR = 8
     };
 
+    static void setEnabled(bool enabled);
+    static void setLevels(LoggerLevels levels);
+
 	static void setRootContext(std::string_view context);
 
 	static void pushContext(std::string_view context);
 	static void popContext();
 
-	static void print(std::string_view message, Levels level);
+	static void print(std::string_view message, LevelBits level);
 
 private:
 
@@ -27,10 +32,20 @@ private:
 	inline static std::string m_rootContext = "ROOT";
 
     inline static bool m_enabled = true;
-    inline static uint8_t m_levels = Levels::INFO | Levels::WARN | Levels::ERR;
+    inline static LoggerLevels m_levels = LevelBits::INFO | LevelBits::WARN | LevelBits::ERR;
 
 	Logger() = default;
 };
+
+inline void Logger::setEnabled(const bool enabled)
+{
+    m_enabled = enabled;
+}
+
+inline void Logger::setLevels(const LoggerLevels levels)
+{
+    m_levels = levels;
+}
 
 inline void Logger::setRootContext(const std::string_view context)
 {
@@ -49,23 +64,23 @@ inline void Logger::popContext()
 	m_contexts.pop_back();
 }
 
-inline void Logger::print(const std::string_view message, const Levels level)
+inline void Logger::print(const std::string_view message, const LevelBits level)
 {
     if (!m_enabled || (m_levels & level) == 0) return;
 
     std::string levelStr;
     switch (level)
     {
-        case Levels::DEBUG:
+        case LevelBits::DEBUG:
             levelStr = "DEBUG";
             break;
-        case Levels::INFO:
+        case LevelBits::INFO:
             levelStr = "INFO";
             break;
-        case Levels::WARN:
+        case LevelBits::WARN:
             levelStr = "WARNING";
             break;
-        case Levels::ERR:
+        case LevelBits::ERR:
             levelStr = "ERROR";
             break;
     }
