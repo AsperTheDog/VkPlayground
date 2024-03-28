@@ -141,7 +141,7 @@ MemoryChunk::MemoryBlock MemoryChunk::allocate(const VkDeviceSize newSize, const
 		m_unallocatedData[best + newSize] = (bestSize - bestAlignOffset) - newSize;
 	}
 
-	Logger::print("Allocated block of size " + std::to_string(newSize) + " at offset " + std::to_string(best) + " of memory type " + std::to_string(m_memoryType), Logger::Levels::INFO);
+	Logger::print("Allocated block of size " + VulkanMemoryAllocator::compactBytes(newSize) + " at offset " + std::to_string(best) + " of memory type " + std::to_string(m_memoryType), Logger::Levels::INFO);
 
 	if (m_biggestChunk == best)
 	{

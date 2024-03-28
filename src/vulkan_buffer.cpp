@@ -88,7 +88,7 @@ void VulkanBuffer::unmap()
 VulkanBuffer::VulkanBuffer(const uint32_t device, const VkBuffer vkHandle, const VkDeviceSize size)
 	: m_vkHandle(vkHandle), m_size(size), m_device(device)
 {
-	Logger::print("Created buffer (ID:" + std::to_string(m_id) + ") with size " + std::to_string(m_size), Logger::Levels::INFO);
+	
 }
 
 void VulkanBuffer::setBoundMemory(const MemoryChunk::MemoryBlock& memoryRegion)
