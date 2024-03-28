@@ -100,6 +100,8 @@ void VulkanContext::init(const uint32_t vulkanApiVersion, const bool enableValid
 		throw std::runtime_error(std::string("Failed to create Vulkan instance, error:") + string_VkResult(ret));
 	}
 
+	Logger::print("Created vulkan context", Logger::LevelBits::INFO);
+
     if (m_validationLayersEnabled)
         setupDebugMessenger();
 }
