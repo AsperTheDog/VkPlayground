@@ -85,6 +85,8 @@ inline void Logger::print(const std::string_view message, const LevelBits level)
         case LevelBits::ERR:
             levelStr = "ERROR";
             break;
+        default: 
+            levelStr = "UNKNOWN";
     }
 
 	std::stringstream context;
