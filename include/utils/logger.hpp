@@ -77,11 +77,11 @@ inline void Logger::print(const std::string_view message, const Levels level)
 		{
 			context << "  ";
 		}
-		context << "[" << m_contexts.back() << "|" << levelStr << "]: ";
+		context << "[" << m_contexts.back() << " | " << levelStr << "]: ";
 	}
 	else
 	{
-		context << "[" << m_rootContext << "|" << levelStr << "]: ";
+		context << "[" << m_rootContext << " | " << levelStr << "]: ";
 	}
 
 	std::cout << context.str() << message << '\n';

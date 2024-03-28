@@ -163,7 +163,7 @@ void MemoryChunk::deallocate(const MemoryBlock& block)
 		throw std::runtime_error("Tried to deallocate block from chunk " + std::to_string(block.chunk) + " in chunk " + std::to_string(m_id));
 
 	m_unallocatedData[block.offset] = block.size;
-	Logger::print("Deallocated block of size " + std::to_string(block.size) + " at offset " + std::to_string(block.offset) + " of memory type " + std::to_string(m_memoryType), Logger::Levels::INFO);
+	Logger::print("Deallocated block from chunk " + std::to_string(block.chunk) + " of size " + VulkanMemoryAllocator::compactBytes(block.size) + " at offset " + std::to_string(block.offset) + " of memory type " + std::to_string(m_memoryType), Logger::Levels::INFO);
 
 	m_unallocatedSize += block.size;
 
@@ -215,7 +215,7 @@ void MemoryChunk::defragment()
 			if (next->first == m_biggestChunk || it->second > m_unallocatedData[m_biggestChunk])
 				m_biggestChunk = it->first;
 
-			Logger::print("  Merged blocks at offsets " + std::to_string(it->first) + " and " + std::to_string(next->first) + ", new size: " + std::to_string(it->second), Logger::Levels::INFO);
+			Logger::print("  Merged blocks at offsets " + std::to_string(it->first) + " and " + std::to_string(next->first) + ", new size: " + VulkanMemoryAllocator::compactBytes(it->second), Logger::Levels::INFO);
 			mergeCount++;
 
 			m_unallocatedData.erase(next);
@@ -278,7 +278,7 @@ MemoryChunk::MemoryBlock VulkanMemoryAllocator::allocate(const VkDeviceSize size
 	}
 
 	m_memoryChunks.push_back(MemoryChunk(chunkSize, memoryType, memory));
-	Logger::print("Allocated chunk of size " + compactBytes(chunkSize) + " of memory type " + std::to_string(memoryType) + " (ID: " + std::to_string(m_memoryChunks.back().getID()) + ")", Logger::Levels::INFO);
+	Logger::print("Allocated chunk (ID: " + std::to_string(m_memoryChunks.back().getID()) + ") of size " + compactBytes(chunkSize) + " of memory type " + std::to_string(memoryType), Logger::Levels::INFO);
 	return m_memoryChunks.back().allocate(size, alignment);
 }
 
@@ -328,7 +328,7 @@ void VulkanMemoryAllocator::deallocate(const MemoryChunk::MemoryBlock& block)
 
 	if (chunkIndex == m_memoryChunks.size())
 	{
-		throw std::runtime_error("Block does not belong to any chunk!");
+		throw std::runtime_error("Tried to deallocate block but owner chunk (ID: " + std::to_string(block.chunk) + ") was not found");
 	}
 
 	m_memoryChunks[chunkIndex].deallocate(block);
