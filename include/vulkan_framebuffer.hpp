@@ -1,10 +1,10 @@
 #pragma once
-#include "vulkan_base.hpp"
-#include <vulkan/vulkan_core.h>
+#include "utils/identifiable.hpp"
+#include <vulkan/vulkan.h>
 
 class VulkanDevice;
 
-class VulkanFramebuffer : public VulkanBase
+class VulkanFramebuffer : public Identifiable
 {
 public:
 	VkFramebuffer operator*() const;

@@ -1,14 +1,14 @@
 #pragma once
 #include <string>
 #include <vector>
-#include <vulkan/vulkan_core.h>
+#include <vulkan/vulkan.h>
 #include <shaderc/shaderc.hpp>
 
-#include "vulkan_base.hpp"
+#include "utils/identifiable.hpp"
 
 class VulkanDevice;
 
-class VulkanShader : public VulkanBase
+class VulkanShader : public Identifiable
 {
 public:
 	static [[nodiscard]] shaderc_shader_kind getKindFromStage(VkShaderStageFlagBits stage);

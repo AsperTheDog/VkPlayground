@@ -18,52 +18,63 @@ std::vector<const char*> validationLayers = {
 bool g_assertOnError = false;
 
 VkResult CreateDebugUtilsMessengerEXT(const VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger) {
-    const PFN_vkCreateDebugUtilsMessengerEXT func = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT"));
-    if (func != nullptr) {
-        return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
-    }
-    return VK_ERROR_EXTENSION_NOT_PRESENT;
+	const PFN_vkCreateDebugUtilsMessengerEXT func = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT"));
+	if (func != nullptr) {
+		return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
+	}
+	return VK_ERROR_EXTENSION_NOT_PRESENT;
 }
 
 void DestroyDebugUtilsMessengerEXT(const VkInstance instance, const VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator) {
-    const PFN_vkDestroyDebugUtilsMessengerEXT func = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT"));
-    if (func != nullptr) {
-        func(instance, debugMessenger, pAllocator);
-    }
+	const PFN_vkDestroyDebugUtilsMessengerEXT func = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT"));
+	if (func != nullptr) {
+		func(instance, debugMessenger, pAllocator);
+	}
 }
 
 VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(const VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
-    std::cerr << "validation layer: " << pCallbackData->pMessage << '\n';
+	std::cerr << "validation layer: " << pCallbackData->pMessage << '\n';
 
-    assert(!g_assertOnError || (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) == 0);
+	assert(!g_assertOnError || (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) == 0);
 
-    return VK_FALSE;
+	return VK_FALSE;
 }
 
 void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo) {
-    createInfo = {};
-    createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-    createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-    createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-    createInfo.pfnUserCallback = debugCallback;
+	createInfo = {};
+	createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+	createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+	createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+	createInfo.pfnUserCallback = debugCallback;
 }
 
 void VulkanContext::setupDebugMessenger() {
-    if (!m_validationLayersEnabled) return;
+	if (!m_validationLayersEnabled) return;
 
-    VkDebugUtilsMessengerCreateInfoEXT createInfo;
-    populateDebugMessengerCreateInfo(createInfo);
+	VkDebugUtilsMessengerCreateInfoEXT createInfo;
+	populateDebugMessengerCreateInfo(createInfo);
 
-    if (const VkResult ret = CreateDebugUtilsMessengerEXT(m_vkHandle, &createInfo, nullptr, &m_debugMessenger); ret != VK_SUCCESS) {
-        throw std::runtime_error(std::string("Failed to set up debug messenger, error: ") + string_VkResult(ret));
-    }
-    Logger::print("Created debug messenger for vulkan context", Logger::LevelBits::INFO);
+	if (const VkResult ret = CreateDebugUtilsMessengerEXT(m_vkHandle, &createInfo, nullptr, &m_debugMessenger); ret != VK_SUCCESS) {
+		throw std::runtime_error(std::string("Failed to set up debug messenger, error: ") + string_VkResult(ret));
+	}
+	Logger::print("Created debug messenger for vulkan context", Logger::LevelBits::INFO);
 }
 
 void VulkanContext::init(const uint32_t vulkanApiVersion, const bool enableValidationLayers, const bool assertOnError, std::vector<const char*> extensions)
 {
-    g_assertOnError = assertOnError;
+	g_assertOnError = assertOnError;
 	m_validationLayersEnabled = enableValidationLayers;
+
+#ifdef _DEBUG
+	if (enableValidationLayers && !checkValidationLayerSupport())
+	{
+		throw std::runtime_error("Validation layers requested, but not available");
+	}
+	if (!areExtensionsSupported(extensions))
+	{
+		throw std::runtime_error("One or more requested instance extensions are not supported");
+	}
+#endif
 
 	VkApplicationInfo appInfo{};
 	appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -77,16 +88,16 @@ void VulkanContext::init(const uint32_t vulkanApiVersion, const bool enableValid
 	instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 	instanceCreateInfo.pApplicationInfo = &appInfo;
 
-    VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
+	VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
 	if (enableValidationLayers)
 	{
 		instanceCreateInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
 		instanceCreateInfo.ppEnabledLayerNames = validationLayers.data();
 
-        extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+		extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
-        populateDebugMessengerCreateInfo(debugCreateInfo);
-	    instanceCreateInfo.pNext = &debugCreateInfo;
+		populateDebugMessengerCreateInfo(debugCreateInfo);
+		instanceCreateInfo.pNext = &debugCreateInfo;
 	}
 	else
 	{
@@ -102,8 +113,8 @@ void VulkanContext::init(const uint32_t vulkanApiVersion, const bool enableValid
 
 	Logger::print("Created vulkan context", Logger::LevelBits::INFO);
 
-    if (m_validationLayersEnabled)
-        setupDebugMessenger();
+	if (m_validationLayersEnabled)
+		setupDebugMessenger();
 }
 
 std::vector<VulkanGPU> VulkanContext::getGPUs()
@@ -170,7 +181,7 @@ uint32_t VulkanContext::createDevice(const VulkanGPU gpu, const QueueFamilySelec
 		throw std::runtime_error(std::string("Failed to create logical device, error: ") + string_VkResult(ret));
 	}
 
-	m_devices.push_back({gpu, device});
+	m_devices.push_back({ gpu, device });
 	return m_devices.back().getID();
 }
 
@@ -184,7 +195,7 @@ VulkanDevice& VulkanContext::getDevice(const uint32_t index)
 		}
 	}
 
-    Logger::print("Device search failed out of " + std::to_string(m_devices.size()) + " devices", Logger::LevelBits::DEBUG);
+	Logger::print("Device search failed out of " + std::to_string(m_devices.size()) + " devices", Logger::LevelBits::DEBUG);
 	throw std::runtime_error("Device (ID:" + std::to_string(index) + ") not found");
 }
 
@@ -194,7 +205,7 @@ void VulkanContext::freeDevice(const uint32_t index)
 	{
 		if (it->getID() == index)
 		{
-            it->free();
+			it->free();
 			m_devices.erase(it);
 			break;
 		}
@@ -214,18 +225,70 @@ void VulkanContext::free()
 	}
 	m_devices.clear();
 
-    if (m_validationLayersEnabled)
-    {
-        DestroyDebugUtilsMessengerEXT(m_vkHandle, m_debugMessenger, nullptr);
-        Logger::print("Destroyed debug messenger", Logger::LevelBits::DEBUG);
-    }
+	if (m_validationLayersEnabled)
+	{
+		DestroyDebugUtilsMessengerEXT(m_vkHandle, m_debugMessenger, nullptr);
+		Logger::print("Destroyed debug messenger", Logger::LevelBits::DEBUG);
+	}
 
 	vkDestroyInstance(m_vkHandle, nullptr);
-    Logger::print("Destroyed vulkan context", Logger::LevelBits::INFO);
+	Logger::print("Destroyed vulkan context", Logger::LevelBits::INFO);
 	m_vkHandle = VK_NULL_HANDLE;
 }
 
 VkInstance VulkanContext::getHandle()
 {
 	return m_vkHandle;
+}
+
+bool VulkanContext::checkValidationLayerSupport()
+{
+	uint32_t layerCount;
+	vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+	std::vector<VkLayerProperties> availableLayers(layerCount);
+	vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
+
+	for (const char* layerName : validationLayers)
+	{
+		bool layerFound = false;
+		for (const VkLayerProperties& layerProperties : availableLayers)
+		{
+			if (strcmp(layerName, layerProperties.layerName) == 0)
+			{
+				layerFound = true;
+				break;
+			}
+		}
+		if (!layerFound)
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+bool VulkanContext::areExtensionsSupported(const std::vector<const char*>& extensions)
+{
+	uint32_t extensionCount;
+	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+	std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, availableExtensions.data());
+
+	for (const char* extensionName : extensions)
+	{
+		bool extensionFound = false;
+		for (const VkExtensionProperties& extensionProperties : availableExtensions)
+		{
+			if (strcmp(extensionName, extensionProperties.extensionName) == 0)
+			{
+				extensionFound = true;
+				break;
+			}
+		}
+		if (!extensionFound)
+		{
+			return false;
+		}
+	}
+	return true;
 }

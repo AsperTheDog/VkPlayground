@@ -1,8 +1,8 @@
 #pragma once
 #include <vector>
-#include <vulkan/vulkan_core.h>
+#include <vulkan/vulkan.h>
 
-#include "vulkan_base.hpp"
+#include "utils/identifiable.hpp"
 
 
 class VulkanBuffer;
@@ -11,7 +11,7 @@ class VulkanFence;
 class VulkanRenderPass;
 class VulkanDevice;
 
-class VulkanCommandBuffer : public VulkanBase
+class VulkanCommandBuffer : public Identifiable
 {
 public:
 	void beginRecording(VkCommandBufferUsageFlags flags = 0);

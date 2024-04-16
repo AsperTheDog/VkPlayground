@@ -1,5 +1,5 @@
 #pragma once
-#include <vulkan/vulkan_core.h>
+#include <vulkan/vulkan.h>
 #include <vector>
 
 #include "vulkan_device.hpp"
@@ -7,7 +7,7 @@
 
 class VulkanGPU;
 
-class VulkanContext : public VulkanBase
+class VulkanContext : public Identifiable
 {
 public:
 	static void init(uint32_t vulkanApiVersion, bool enableValidationLayers, bool assertOnError, std::vector<const char*> extensions);
@@ -24,6 +24,8 @@ public:
 	static VkInstance getHandle();
 
 private:
+	static bool checkValidationLayerSupport();
+	static bool areExtensionsSupported(const std::vector<const char*>& extensions);
     static void setupDebugMessenger();
 
 	inline static VkInstance m_vkHandle = VK_NULL_HANDLE;

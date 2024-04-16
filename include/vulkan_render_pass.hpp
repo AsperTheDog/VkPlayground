@@ -1,8 +1,8 @@
 #pragma once
 #include <vector>
-#include <vulkan/vulkan_core.h>
+#include <vulkan/vulkan.h>
 
-#include "vulkan_base.hpp"
+#include "utils/identifiable.hpp"
 
 class VulkanDevice;
 
@@ -52,7 +52,7 @@ private:
 	friend class VulkanDevice;
 };
 
-class VulkanRenderPass : public VulkanBase
+class VulkanRenderPass : public Identifiable
 {
 public:
 	VkRenderPass operator*() const;

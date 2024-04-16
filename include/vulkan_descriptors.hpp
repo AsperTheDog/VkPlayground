@@ -1,12 +1,12 @@
 #pragma once
-#include <vulkan/vulkan_core.h>
+#include <vulkan/vulkan.h>
 
-#include "vulkan_base.hpp"
+#include "utils/identifiable.hpp"
 
 
 class VulkanDevice;
 
-class VulkanDescriptorPool : public VulkanBase
+class VulkanDescriptorPool : public Identifiable
 {
 public:
 	[[nodiscard]] VkDescriptorPool operator*() const;
@@ -25,7 +25,7 @@ private:
 	friend class VulkanDescriptorSet;
 };
 
-class VulkanDescriptorSetLayout : public VulkanBase
+class VulkanDescriptorSetLayout : public Identifiable
 {
 public:
 	[[nodiscard]] VkDescriptorSetLayout operator*() const;
@@ -42,7 +42,7 @@ private:
 	friend class VulkanDevice;
 };
 
-class VulkanDescriptorSet : public VulkanBase
+class VulkanDescriptorSet : public Identifiable
 {
 public:
 	[[nodiscard]] VkDescriptorSet operator*() const;

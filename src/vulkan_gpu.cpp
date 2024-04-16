@@ -81,6 +81,15 @@ VkSurfaceFormatKHR VulkanGPU::getClosestFormat(const VkSurfaceKHR& surface, cons
 	return formats[0];
 }
 
+VkSurfaceFormatKHR VulkanGPU::getFirstFormat(const VkSurfaceKHR& surface) const
+{
+	uint32_t formatCount;
+	vkGetPhysicalDeviceSurfaceFormatsKHR(m_vkHandle, surface, &formatCount, nullptr);
+	std::vector<VkSurfaceFormatKHR> formats(formatCount);
+	vkGetPhysicalDeviceSurfaceFormatsKHR(m_vkHandle, surface, &formatCount, formats.data());
+	return formats[0];
+}
+
 VkFormatProperties VulkanGPU::getFormatProperties(const VkFormat format) const
 {
 	VkFormatProperties formatProperties;

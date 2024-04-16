@@ -5,9 +5,9 @@
 #include <set>
 #include <string>
 #include <vector>
-#include <vulkan/vulkan_core.h>
+#include <vulkan/vulkan.h>
 
-#include "vulkan_base.hpp"
+#include "utils/identifiable.hpp"
 
 class VulkanGPU;
 class VulkanDevice;
@@ -37,7 +37,7 @@ private:
 	friend class VulkanMemoryAllocator;
 };
 
-class MemoryChunk : public VulkanBase
+class MemoryChunk : public Identifiable
 {
 public:
 	struct MemoryBlock

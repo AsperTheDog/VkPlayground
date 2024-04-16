@@ -1,6 +1,6 @@
 #pragma once
 #include <vector>
-#include <vulkan/vulkan_core.h>
+#include <vulkan/vulkan.h>
 
 class SDLWindow;
 class VulkanContext;
@@ -19,9 +19,13 @@ public:
 	[[nodiscard]] GPUQueueStructure getQueueFamilies() const;
 
 	[[nodiscard]] bool isFormatSupported(VkSurfaceKHR surface, VkSurfaceFormatKHR format) const;
-	[[nodiscard]] VkSurfaceFormatKHR getClosestFormat(const VkSurfaceKHR& surface, const VkSurfaceFormatKHR format) const;
+	[[nodiscard]] VkSurfaceFormatKHR getClosestFormat(const VkSurfaceKHR& surface, VkSurfaceFormatKHR format) const;
+	[[nodiscard]] VkSurfaceFormatKHR getFirstFormat(const VkSurfaceKHR& surface) const;
 	[[nodiscard]] VkFormatProperties getFormatProperties(VkFormat format) const;
-	[[nodiscard]] VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, const VkImageTiling tiling, const VkFormatFeatureFlags features) const;
+	[[nodiscard]] VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const;
+
+	[[nodiscard]] VkPhysicalDevice getHandle() const;
+	[[nodiscard]]
 
 	VkPhysicalDevice operator*() const;
 

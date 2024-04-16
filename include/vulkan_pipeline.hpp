@@ -1,9 +1,9 @@
 #pragma once
 #include <string>
 #include <vector>
-#include <vulkan/vulkan_core.h>
+#include <vulkan/vulkan.h>
 
-#include "vulkan_base.hpp"
+#include "utils/identifiable.hpp"
 #include "vulkan_binding.hpp"
 
 class VulkanDevice;
@@ -73,7 +73,7 @@ private:
 	friend class VulkanDevice;
 };
 
-class VulkanPipeline : public VulkanBase
+class VulkanPipeline : public Identifiable
 {
 public:
 	[[nodiscard]] uint32_t getLayout() const;
@@ -100,7 +100,7 @@ private:
 	friend class VulkanCommandBuffer;
 };
 
-class VulkanPipelineLayout : public VulkanBase
+class VulkanPipelineLayout : public Identifiable
 {
 public:
 	VkPipelineLayout operator*() const;

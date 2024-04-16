@@ -1,12 +1,12 @@
 #pragma once
-#include <vulkan/vulkan_core.h>
+#include <vulkan/vulkan.h>
 
 #include "vulkan_memory.hpp"
-#include "vulkan_base.hpp"
+#include "utils/identifiable.hpp"
 
 class VulkanDevice;
 
-class VulkanBuffer : public VulkanBase
+class VulkanBuffer : public Identifiable
 {
 public:
 	[[nodiscard]] VkMemoryRequirements getMemoryRequirements() const;

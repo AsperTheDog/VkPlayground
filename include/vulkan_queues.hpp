@@ -2,7 +2,7 @@
 #include <optional>
 #include <string>
 #include <vector>
-#include <vulkan/vulkan_core.h>
+#include <vulkan/vulkan.h>
 
 #include "vulkan_gpu.hpp"
 

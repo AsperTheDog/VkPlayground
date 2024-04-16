@@ -1,11 +1,11 @@
 #pragma once
-#include <vulkan/vulkan_core.h>
+#include <vulkan/vulkan.h>
 
-#include "vulkan_base.hpp"
+#include "utils/identifiable.hpp"
 
 class VulkanDevice;
 
-class VulkanFence : public VulkanBase
+class VulkanFence : public Identifiable
 {
 public:
 
@@ -32,7 +32,7 @@ private:
 	friend class VulkanCommandBuffer;
 };
 
-class VulkanSemaphore : public VulkanBase
+class VulkanSemaphore : public Identifiable
 {
 public:
 	VkSemaphore operator*() const;

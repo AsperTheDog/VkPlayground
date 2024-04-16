@@ -1,12 +1,12 @@
 #pragma once
-#include <vulkan/vulkan_core.h>
+#include <vulkan/vulkan.h>
 
-#include "vulkan_base.hpp"
+#include "utils/identifiable.hpp"
 #include "vulkan_memory.hpp"
 
 class VulkanDevice;
 
-class VulkanImage : public VulkanBase
+class VulkanImage : public Identifiable
 {
 public:
 	[[nodiscard]] VkMemoryRequirements getMemoryRequirements() const;
@@ -17,8 +17,7 @@ public:
 	VkImageView createImageView(VkFormat format, VkImageAspectFlags aspectFlags);
 	void freeImageView(VkImageView imageView);
 
-	void transitionLayout(const VkImageLayout layout, const VkImageAspectFlags aspectFlags, const uint32_t srcQueueFamily, const uint32_t
-	                      dstQueueFamily, uint32_t threadID);
+	void transitionLayout(VkImageLayout layout, VkImageAspectFlags aspectFlags, uint32_t srcQueueFamily, uint32_t dstQueueFamily, uint32_t threadID);
 
 	[[nodiscard]] VkExtent3D getSize() const;
 

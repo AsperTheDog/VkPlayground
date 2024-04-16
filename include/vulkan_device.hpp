@@ -1,9 +1,9 @@
 #pragma once
 #include <map>
 #include <unordered_map>
-#include <vulkan/vulkan_core.h>
+#include <vulkan/vulkan.h>
 
-#include "vulkan_base.hpp"
+#include "utils/identifiable.hpp"
 #include "vulkan_queues.hpp"
 #include "vulkan_gpu.hpp"
 #include "vulkan_memory.hpp"
@@ -16,9 +16,10 @@
 #include "vulkan_shader.hpp"
 #include "vulkan_command_buffer.hpp"
 #include "vulkan_descriptors.hpp"
+#include "vulkan_swapchain.hpp"
 
 
-class VulkanDevice : public VulkanBase
+class VulkanDevice : public Identifiable
 {
 public:
 
@@ -99,6 +100,12 @@ public:
 	void freeDescriptorSet(uint32_t id);
 	void freeDescriptorSet(const VulkanDescriptorSet& descriptorSet);
 
+	uint32_t createSwapchain(VkSurfaceKHR surface, VkExtent2D extent, VkSurfaceFormatKHR desiredFormat, uint32_t oldSwapchain = UINT32_MAX);
+	VulkanSwapchain& getSwapchain(uint32_t id);
+	[[nodiscard]] const VulkanSwapchain& getSwapchain(uint32_t id) const;
+	void freeSwapchain(uint32_t id);
+	void freeSwapchain(const VulkanSwapchain& swapchain);
+
 	uint32_t createSemaphore();
 	VulkanSemaphore& getSemaphore(uint32_t id);
     [[nodiscard]] const VulkanSemaphore& getSemaphore(uint32_t id) const;
@@ -169,6 +176,7 @@ private:
 	std::vector<VulkanDescriptorPool> m_descriptorPools;
 	std::vector<VulkanDescriptorSetLayout> m_descriptorSetLayouts;
 	std::vector<VulkanDescriptorSet> m_descriptorSets;
+	std::vector<VulkanSwapchain> m_swapchains;
 	std::vector<VulkanImage> m_images;
 	std::vector<VulkanSemaphore> m_semaphores;
 	std::vector<VulkanFence> m_fences;
@@ -177,7 +185,6 @@ private:
 	QueueSelection m_oneTimeQueue{UINT32_MAX, UINT32_MAX};
 
 	friend class VulkanContext;
-	friend class SDLWindow;
 	friend class VulkanGPU;
 
 	friend class VulkanResource;
@@ -195,4 +202,5 @@ private:
 	friend class VulkanDescriptorPool;
 	friend class VulkanDescriptorSetLayout;
 	friend class VulkanDescriptorSet;
+	friend class VulkanSwapchain;
 };
