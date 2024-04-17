@@ -117,6 +117,13 @@ void VulkanContext::init(const uint32_t vulkanApiVersion, const bool enableValid
 		setupDebugMessenger();
 }
 
+uint32_t VulkanContext::getGPUCount()
+{
+	uint32_t gpuCount = 0;
+	vkEnumeratePhysicalDevices(m_vkHandle, &gpuCount, nullptr);
+	return gpuCount;
+}
+
 std::vector<VulkanGPU> VulkanContext::getGPUs()
 {
 	uint32_t gpuCount = 0;

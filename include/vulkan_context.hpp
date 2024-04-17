@@ -12,6 +12,7 @@ class VulkanContext : public Identifiable
 public:
 	static void init(uint32_t vulkanApiVersion, bool enableValidationLayers, bool assertOnError, std::vector<const char*> extensions);
 
+	static [[nodiscard]] uint32_t getGPUCount();
 	static [[nodiscard]] std::vector<VulkanGPU> getGPUs();
 
 	static uint32_t createDevice(VulkanGPU gpu, const QueueFamilySelector& queues, const std::vector<const char*>& extensions, const VkPhysicalDeviceFeatures& features);

@@ -32,6 +32,16 @@ VkSurfaceCapabilitiesKHR VulkanGPU::getCapabilities(const VkSurfaceKHR& surface)
 	return capabilities;
 }
 
+std::vector<VkExtensionProperties> VulkanGPU::getSupportedExtensions() const
+{
+	std::vector<VkExtensionProperties> extensions;
+	uint32_t extensionCount;
+	vkEnumerateDeviceExtensionProperties(m_vkHandle, nullptr, &extensionCount, nullptr);
+	extensions.resize(extensionCount);
+	vkEnumerateDeviceExtensionProperties(m_vkHandle, nullptr, &extensionCount, extensions.data());
+	return extensions;
+}
+
 GPUQueueStructure VulkanGPU::getQueueFamilies() const
 {
 	return GPUQueueStructure(*this);

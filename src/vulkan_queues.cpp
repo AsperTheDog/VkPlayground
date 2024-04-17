@@ -16,9 +16,57 @@ QueueFamily GPUQueueStructure::getQueueFamily(const uint32_t index) const
 	return queueFamilies[index];
 }
 
+bool GPUQueueStructure::isQueueFlagSupported(const VkQueueFlagBits flag) const
+{
+	for (const QueueFamily& queueFamily : queueFamilies)
+	{
+		if (queueFamily.properties.queueFlags & flag)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+bool GPUQueueStructure::areQueueFlagsSupported(const VkQueueFlags flags, const bool singleQueue) const
+{
+	if (singleQueue)
+	{
+		for (const QueueFamily& queueFamily : queueFamilies)
+		{
+			if ((queueFamily.properties.queueFlags & flags) == flags)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	VkQueueFlags supportedFlags = 0;
+	for (const QueueFamily& queueFamily : queueFamilies)
+	{
+		supportedFlags |= queueFamily.properties.queueFlags;
+	}
+	return (supportedFlags & flags) == flags;
+}
+
+bool GPUQueueStructure::isPresentSupported(const VkSurfaceKHR surface) const
+{
+	for (const QueueFamily& queueFamily : queueFamilies)
+	{
+		VkBool32 presentSupport = false;
+		vkGetPhysicalDeviceSurfaceSupportKHR(gpu.m_vkHandle, queueFamily.index, surface, &presentSupport);
+		if (presentSupport)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 QueueFamily GPUQueueStructure::findQueueFamily(const VkQueueFlags flags, const bool exactMatch) const
 {
-	for (const auto& queueFamily : queueFamilies)
+	for (const QueueFamily& queueFamily : queueFamilies)
 	{
 		if (exactMatch)
 		{
@@ -32,12 +80,13 @@ QueueFamily GPUQueueStructure::findQueueFamily(const VkQueueFlags flags, const b
 			return queueFamily;
 		}
 	}
+
 	throw std::runtime_error("No queue family found with the flags " + string_VkQueueFlags(flags) + (exactMatch ? " exactly " : " ") + " in " + gpu.getProperties().deviceName);
 }
 
 QueueFamily GPUQueueStructure::findPresentQueueFamily(const VkSurfaceKHR surface) const
 {
-	for (const auto& queueFamily : queueFamilies)
+	for (const QueueFamily& queueFamily : queueFamilies)
 	{
 		VkBool32 presentSupport = false;
 		vkGetPhysicalDeviceSurfaceSupportKHR(gpu.m_vkHandle, queueFamily.index, surface, &presentSupport);
@@ -52,7 +101,7 @@ QueueFamily GPUQueueStructure::findPresentQueueFamily(const VkSurfaceKHR surface
 std::string GPUQueueStructure::toString() const
 {
 	std::string result;
-	for (const auto& queueFamily : queueFamilies)
+	for (const QueueFamily& queueFamily : queueFamilies)
 	{
 		result += "Queue Family " + std::to_string(queueFamily.index) + ":\n";
 		result += "  Queue Count: " + std::to_string(queueFamily.properties.queueCount) + "\n";
@@ -60,7 +109,7 @@ std::string GPUQueueStructure::toString() const
 		result += "  Timestamp Valid Bits: " + std::to_string(queueFamily.properties.timestampValidBits) + "\n";
 		result += "  Min Image Transfer Granularity: " + std::to_string(queueFamily.properties.minImageTransferGranularity.width) + ", " + std::to_string(queueFamily.properties.minImageTransferGranularity.height) + ", " + std::to_string(queueFamily.properties.minImageTransferGranularity.depth) + "\n";
 	}
-	return result;	
+	return result;
 }
 
 GPUQueueStructure::GPUQueueStructure(const VulkanGPU gpu)
@@ -77,7 +126,7 @@ GPUQueueStructure::GPUQueueStructure(const VulkanGPU gpu)
 }
 
 QueueFamily::QueueFamily(const VkQueueFamilyProperties& properties, const uint32_t index, const VulkanGPU gpu)
-: properties(properties), index(index), gpu(gpu)
+	: properties(properties), index(index), gpu(gpu)
 {
 
 }
@@ -112,18 +161,18 @@ QueueSelection QueueFamilySelector::getOrAddQueue(const QueueFamily& family, con
 {
 	if (m_selections[family.index].priorities.empty())
 	{
-        return addQueue(family, priority);
+		return addQueue(family, priority);
 	}
 	m_selections[family.index].priorities[0] = std::max(m_selections[family.index].priorities[0], priority);
-    Logger::print("Queue family " + std::to_string(family.index) + " already has a queue, setting priority to " + std::to_string(m_selections[family.index].priorities[0]), Logger::LevelBits::DEBUG);
-	return {family.index, 0};
+	Logger::print("Queue family " + std::to_string(family.index) + " already has a queue, setting priority to " + std::to_string(m_selections[family.index].priorities[0]), Logger::LevelBits::DEBUG);
+	return { family.index, 0 };
 }
 
 QueueSelection QueueFamilySelector::addQueue(const QueueFamily& family, const float priority)
 {
 	m_selections[family.index].priorities.push_back(priority);
-    Logger::print("Added queue to family " + std::to_string(family.index) + " with priority " + std::to_string(priority), Logger::LevelBits::DEBUG);
-	return {family.index, static_cast<uint32_t>(m_selections[family.index].priorities.size() - 1)};
+	Logger::print("Added queue to family " + std::to_string(family.index) + " with priority " + std::to_string(priority), Logger::LevelBits::DEBUG);
+	return { family.index, static_cast<uint32_t>(m_selections[family.index].priorities.size() - 1) };
 }
 
 std::optional<QueueFamily> QueueFamilySelector::getQueueFamilyByType(const QueueFamilyTypes type)

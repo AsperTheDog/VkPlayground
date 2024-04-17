@@ -15,6 +15,7 @@ public:
 	[[nodiscard]] VkPhysicalDeviceFeatures getFeatures() const;
 	[[nodiscard]] VkPhysicalDeviceMemoryProperties getMemoryProperties() const;
 	[[nodiscard]] VkSurfaceCapabilitiesKHR getCapabilities(const VkSurfaceKHR& surface) const;
+	[[nodiscard]] std::vector<VkExtensionProperties> getSupportedExtensions() const;
 
 	[[nodiscard]] GPUQueueStructure getQueueFamilies() const;
 
@@ -25,7 +26,6 @@ public:
 	[[nodiscard]] VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const;
 
 	[[nodiscard]] VkPhysicalDevice getHandle() const;
-	[[nodiscard]]
 
 	VkPhysicalDevice operator*() const;
 

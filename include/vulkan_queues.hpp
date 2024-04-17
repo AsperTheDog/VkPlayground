@@ -29,6 +29,10 @@ public:
 	[[nodiscard]] QueueFamily findPresentQueueFamily(VkSurfaceKHR surface) const;
 
 	[[nodiscard]] std::string toString() const;
+	
+	[[nodiscard]] bool areQueueFlagsSupported(VkQueueFlags flags, bool singleQueue = false) const;
+	[[nodiscard]] bool isQueueFlagSupported(VkQueueFlagBits flag) const;
+	[[nodiscard]] bool isPresentSupported(VkSurfaceKHR surface) const;
 
 private:
 	GPUQueueStructure() = default;
