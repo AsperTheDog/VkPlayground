@@ -13,10 +13,11 @@ enum QueueFamilyTypeBits
 	GRAPHICS = 1,
 	COMPUTE = 2,
 	PRESENT = 4,
-	SPARSE_BINDING = 8,
-	VIDEO_DECODE = 16,
-	OPTICAL_FLOW = 32,
-	PROTECTED = 64
+	TRANSFER = 8,
+	SPARSE_BINDING = 16,
+	VIDEO_DECODE = 32,
+	OPTICAL_FLOW = 64,
+	PROTECTED = 128
 };
 typedef uint8_t QueueFamilyTypes;
 
@@ -51,6 +52,8 @@ public:
 	VkQueueFamilyProperties properties;
 	uint32_t index;
 	VulkanGPU gpu;
+
+	bool isPresentSupported(VkSurfaceKHR surface) const;
 
 private:
 	QueueFamily(const VkQueueFamilyProperties& properties, uint32_t index, VulkanGPU gpu);
@@ -92,6 +95,8 @@ public:
 
 	[[nodiscard]] std::optional<QueueFamily> getQueueFamilyByType(QueueFamilyTypes type);
 	[[nodiscard]] std::vector<uint32_t> getUniqueIndices() const;
+
+	static QueueFamilyTypes getTypesFromFlags(VkQueueFlags flags);
 
 private:
 	struct QueueSelections

@@ -125,6 +125,13 @@ GPUQueueStructure::GPUQueueStructure(const VulkanGPU gpu)
 	}
 }
 
+bool QueueFamily::isPresentSupported(const VkSurfaceKHR surface) const
+{
+	VkBool32 presentSupport = false;
+	vkGetPhysicalDeviceSurfaceSupportKHR(*gpu, index, surface, &presentSupport);
+	return presentSupport;
+}
+
 QueueFamily::QueueFamily(const VkQueueFamilyProperties& properties, const uint32_t index, const VulkanGPU gpu)
 	: properties(properties), index(index), gpu(gpu)
 {
@@ -198,4 +205,16 @@ std::vector<uint32_t> QueueFamilySelector::getUniqueIndices() const
 		}
 	}
 	return indices;
+}
+
+QueueFamilyTypes QueueFamilySelector::getTypesFromFlags(const VkQueueFlags flags)
+{
+	QueueFamilyTypes types = 0;
+	if (flags & VK_QUEUE_GRAPHICS_BIT) types |= QueueFamilyTypeBits::GRAPHICS;
+	if (flags & VK_QUEUE_COMPUTE_BIT) types |= QueueFamilyTypeBits::COMPUTE;
+	if (flags & VK_QUEUE_TRANSFER_BIT) types |= QueueFamilyTypeBits::TRANSFER;
+	if (flags & VK_QUEUE_SPARSE_BINDING_BIT) types |= QueueFamilyTypeBits::SPARSE_BINDING;
+	if (flags & VK_QUEUE_PROTECTED_BIT) types |= QueueFamilyTypeBits::PROTECTED;
+	if (flags & VK_QUEUE_VIDEO_DECODE_BIT_KHR) types |= QueueFamilyTypeBits::VIDEO_DECODE;
+	return types;
 }

@@ -15,6 +15,13 @@ void VulkanSwapchain::free()
 {
 	if (m_vkHandle != VK_NULL_HANDLE)
 	{
+        for (const VkImageView imageView : m_imageViews)
+        {
+	        vkDestroyImageView(VulkanContext::getDevice(m_device).m_vkHandle, imageView, nullptr);
+		}
+        m_imageViews.clear();
+		m_images.clear();
+
 		vkDestroySwapchainKHR(VulkanContext::getDevice(m_device).m_vkHandle, m_vkHandle, nullptr);
         Logger::print("Freed Swapchain (ID: " + std::to_string(m_id) + ")", Logger::LevelBits::INFO);
 		m_vkHandle = VK_NULL_HANDLE;

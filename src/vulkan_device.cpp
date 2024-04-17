@@ -845,7 +845,7 @@ uint32_t VulkanDevice::createSwapchain(const VkSurfaceKHR surface, const VkExten
 	createInfo.surface = surface;
 	createInfo.minImageCount = capabilities.minImageCount + 1;
 	if (capabilities.maxImageCount > 0 && createInfo.minImageCount > capabilities.maxImageCount)
-    	createInfo.minImageCount = capabilities.maxImageCount;
+		createInfo.minImageCount = capabilities.maxImageCount;
 	createInfo.imageFormat = selectedFormat.format;
 	createInfo.imageColorSpace = selectedFormat.colorSpace;
 	createInfo.imageExtent = extent;
@@ -858,7 +858,7 @@ uint32_t VulkanDevice::createSwapchain(const VkSurfaceKHR surface, const VkExten
 	createInfo.clipped = VK_TRUE;
 	if (oldSwapchain != UINT32_MAX)
 		createInfo.oldSwapchain = *getSwapchain(oldSwapchain);
-	
+
 	VkSwapchainKHR swapchainHandle;
 	if (const VkResult ret = vkCreateSwapchainKHR(m_vkHandle, &createInfo, nullptr, &swapchainHandle); ret != VK_SUCCESS)
 	{
@@ -868,7 +868,7 @@ uint32_t VulkanDevice::createSwapchain(const VkSurfaceKHR surface, const VkExten
 	if (oldSwapchain != UINT32_MAX)
 		freeSwapchain(oldSwapchain);
 
-	m_swapchains.push_back({swapchainHandle, m_id, extent, selectedFormat});
+	m_swapchains.push_back({ swapchainHandle, m_id, extent, selectedFormat });
 	Logger::print("Created swapchain (ID: " + std::to_string(m_swapchains.back().getID()) + ")", Logger::LevelBits::INFO);
 	return m_swapchains.back().getID();
 }
@@ -893,10 +893,20 @@ const VulkanSwapchain& VulkanDevice::getSwapchain(const uint32_t id) const
 
 void VulkanDevice::freeSwapchain(uint32_t id)
 {
+	for (auto it = m_swapchains.begin(); it != m_swapchains.end(); ++it)
+	{
+		if (it->getID() == id)
+		{
+			it->free();
+			m_swapchains.erase(it);
+			break;
+		}
+	}
 }
 
 void VulkanDevice::freeSwapchain(const VulkanSwapchain& swapchain)
 {
+	freeSwapchain(swapchain.getID());
 }
 
 VulkanSemaphore& VulkanDevice::getSemaphore(const uint32_t id)
@@ -950,7 +960,8 @@ uint32_t VulkanDevice::createShader(const std::string& filename, const VkShaderS
 	createInfo.pCode = result.code.data();
 
 	VkShaderModule shader;
-	if (vkCreateShaderModule(m_vkHandle, &createInfo, nullptr, &shader) != VK_SUCCESS) {
+	if (vkCreateShaderModule(m_vkHandle, &createInfo, nullptr, &shader) != VK_SUCCESS)
+	{
 		throw std::runtime_error("failed to create shader module!");
 	}
 
