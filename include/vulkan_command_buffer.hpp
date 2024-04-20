@@ -5,6 +5,7 @@
 #include "utils/identifiable.hpp"
 
 
+class VulkanImage;
 class VulkanBuffer;
 class VulkanQueue;
 class VulkanFence;
@@ -23,16 +24,23 @@ public:
 	void cmdEndRenderPass() const;
 	void cmdBindPipeline(VkPipelineBindPoint bindPoint, uint32_t pipeline) const;
 	void cmdNextSubpass() const;
-	void cmdPipelineBarrier(VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask, VkDependencyFlags dependencyFlags, 
+	void cmdPipelineBarrier(
+		VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask, VkDependencyFlags dependencyFlags, 
 		const std::vector<VkMemoryBarrier>& memoryBarriers, 
 		const std::vector<VkBufferMemoryBarrier>& bufferMemoryBarriers, 
 		const std::vector<VkImageMemoryBarrier>& imageMemoryBarriers) const;
+	void cmdSimpleTransitionImageLayout(uint32_t image, VkImageLayout newLayout, VkImageAspectFlags aspectFlags, uint32_t srcQueueFamily = VK_QUEUE_FAMILY_IGNORED, uint32_t dstQueueFamily = VK_QUEUE_FAMILY_IGNORED) const;
+	void cmdSimpleAbsoluteBarrier() const;
 
 	void cmdBindVertexBuffer(uint32_t buffer, VkDeviceSize offset) const;
 	void cmdBindVertexBuffers(const std::vector<uint32_t>& bufferIDs, const std::vector<VkDeviceSize>& offsets) const;
 	void cmdBindIndexBuffer(uint32_t bufferID, VkDeviceSize offset, VkIndexType indexType) const;
 
 	void cmdCopyBuffer(uint32_t source, uint32_t destination, const std::vector<VkBufferCopy>& copyRegions) const;
+	void cmdBlitImage(uint32_t source, uint32_t destination, const std::vector<VkImageBlit>& regions, VkFilter filter) const;
+	void cmdSimpleBlitImage(uint32_t source, uint32_t destination, VkFilter filter) const;
+	void cmdSimpleBlitImage(const VulkanImage& source, const VulkanImage& destination, VkFilter filter) const;
+
 	void cmdPushConstant(uint32_t layout, VkShaderStageFlags stageFlags, uint32_t offset, uint32_t size, const void* pValues) const;
     void cmdBindDescriptorSet(VkPipelineBindPoint bindPoint, uint32_t layout, uint32_t descriptorSet) const;
 

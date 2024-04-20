@@ -868,7 +868,7 @@ uint32_t VulkanDevice::createSwapchain(const VkSurfaceKHR surface, const VkExten
 	if (oldSwapchain != UINT32_MAX)
 		freeSwapchain(oldSwapchain);
 
-	m_swapchains.push_back({ swapchainHandle, m_id, extent, selectedFormat });
+	m_swapchains.push_back({ swapchainHandle, m_id, extent, selectedFormat, createInfo.minImageCount });
 	Logger::print("Created swapchain (ID: " + std::to_string(m_swapchains.back().getID()) + ")", Logger::LevelBits::INFO);
 	return m_swapchains.back().getID();
 }

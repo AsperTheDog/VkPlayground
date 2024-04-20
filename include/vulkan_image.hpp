@@ -17,9 +17,11 @@ public:
 	VkImageView createImageView(VkFormat format, VkImageAspectFlags aspectFlags);
 	void freeImageView(VkImageView imageView);
 
-	void transitionLayout(VkImageLayout layout, VkImageAspectFlags aspectFlags, uint32_t srcQueueFamily, uint32_t dstQueueFamily, uint32_t threadID);
+	void transitionLayout(VkImageLayout layout, VkImageAspectFlags aspectFlags, uint32_t threadID);
 
 	[[nodiscard]] VkExtent3D getSize() const;
+	[[nodiscard]] VkImageType getType() const;
+	[[nodiscard]] VkImageLayout getLayout() const;
 
 	VkImage operator*() const;
 
@@ -42,5 +44,6 @@ private:
 
 	friend class VulkanDevice;
 	friend class VulkanCommandBuffer;
+	friend class VulkanSwapchain;
 };
 

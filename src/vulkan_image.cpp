@@ -36,6 +36,16 @@ VkExtent3D VulkanImage::getSize() const
 	return m_size;
 }
 
+VkImageType VulkanImage::getType() const
+{
+	return m_type;
+}
+
+VkImageLayout VulkanImage::getLayout() const
+{
+	return m_layout;
+}
+
 VkImage VulkanImage::operator*() const
 {
 	return m_vkHandle;
@@ -83,49 +93,16 @@ VkImageView VulkanImage::createImageView(const VkFormat format, const VkImageAsp
 void VulkanImage::freeImageView(const VkImageView imageView)
 {
 	vkDestroyImageView(VulkanContext::getDevice(m_device).m_vkHandle, imageView, nullptr);
-    Logger::print("Freed image view " + std::to_string(m_id), Logger::LevelBits::INFO);
+    Logger::print("Freed image view of image " + std::to_string(m_id), Logger::LevelBits::INFO);
 	std::erase(m_imageViews, imageView);
 }
 
-void VulkanImage::transitionLayout(const VkImageLayout layout, const VkImageAspectFlags aspectFlags, const uint32_t srcQueueFamily, const uint32_t dstQueueFamily, const uint32_t threadID)
+void VulkanImage::transitionLayout(const VkImageLayout layout, const VkImageAspectFlags aspectFlags, const uint32_t threadID)
 {
 	VulkanDevice& device = VulkanContext::getDevice(m_device);
 	VulkanCommandBuffer& commandBuffer = device.getCommandBuffer(device.createOneTimeCommandBuffer(threadID), threadID);
-
-	VkImageMemoryBarrier barrier{};
-	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    barrier.oldLayout = m_layout;
-    barrier.newLayout = layout;
-    barrier.srcQueueFamilyIndex = srcQueueFamily;
-    barrier.dstQueueFamilyIndex = dstQueueFamily;
-    barrier.image = m_vkHandle;
-    barrier.subresourceRange.aspectMask = aspectFlags;
-    barrier.subresourceRange.baseMipLevel = 0;
-    barrier.subresourceRange.levelCount = 1;
-    barrier.subresourceRange.baseArrayLayer = 0;
-    barrier.subresourceRange.layerCount = 1;
-
-    VkPipelineStageFlags sourceStage;
-    VkPipelineStageFlags destinationStage;
-
-	if (m_layout == VK_IMAGE_LAYOUT_UNDEFINED && layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
-        barrier.srcAccessMask = 0;
-        barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-
-        sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-        destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-    } else if (m_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
-        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-        sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-        destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    } else {
-        throw std::invalid_argument(std::string("unsupported layout transition: ") + string_VkImageLayout(layout));
-    }
-
 	commandBuffer.beginRecording(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-	commandBuffer.cmdPipelineBarrier(sourceStage, destinationStage, 0, {}, {}, { barrier });
+	commandBuffer.cmdSimpleTransitionImageLayout(m_id, layout, aspectFlags);
 	commandBuffer.endRecording();
 	const VulkanQueue queue = device.getQueue(device.m_oneTimeQueue);
 	commandBuffer.submit(queue, {}, {});
