@@ -57,7 +57,7 @@ void VulkanContext::setupDebugMessenger() {
 	if (const VkResult ret = CreateDebugUtilsMessengerEXT(m_vkHandle, &createInfo, nullptr, &m_debugMessenger); ret != VK_SUCCESS) {
 		throw std::runtime_error(std::string("Failed to set up debug messenger, error: ") + string_VkResult(ret));
 	}
-	Logger::print("Created debug messenger for vulkan context", Logger::LevelBits::INFO);
+	Logger::print("Created debug messenger for vulkan context", Logger::DEBUG);
 }
 
 void VulkanContext::init(const uint32_t vulkanApiVersion, const bool enableValidationLayers, const bool assertOnError, std::vector<const char*> extensions)
@@ -111,7 +111,7 @@ void VulkanContext::init(const uint32_t vulkanApiVersion, const bool enableValid
 		throw std::runtime_error(std::string("Failed to create Vulkan instance, error:") + string_VkResult(ret));
 	}
 
-	Logger::print("Created vulkan context", Logger::LevelBits::INFO);
+	Logger::print("Created vulkan context", Logger::DEBUG);
 
 	if (m_validationLayersEnabled)
 		setupDebugMessenger();
@@ -202,7 +202,7 @@ VulkanDevice& VulkanContext::getDevice(const uint32_t index)
 		}
 	}
 
-	Logger::print("Device search failed out of " + std::to_string(m_devices.size()) + " devices", Logger::LevelBits::DEBUG);
+	Logger::print("Device search failed out of " + std::to_string(m_devices.size()) + " devices", Logger::DEBUG);
 	throw std::runtime_error("Device (ID:" + std::to_string(index) + ") not found");
 }
 
@@ -235,11 +235,11 @@ void VulkanContext::free()
 	if (m_validationLayersEnabled)
 	{
 		DestroyDebugUtilsMessengerEXT(m_vkHandle, m_debugMessenger, nullptr);
-		Logger::print("Destroyed debug messenger", Logger::LevelBits::DEBUG);
+		Logger::print("Destroyed debug messenger", Logger::DEBUG);
 	}
 
 	vkDestroyInstance(m_vkHandle, nullptr);
-	Logger::print("Destroyed vulkan context", Logger::LevelBits::INFO);
+	Logger::print("Destroyed vulkan context", Logger::DEBUG);
 	m_vkHandle = VK_NULL_HANDLE;
 }
 

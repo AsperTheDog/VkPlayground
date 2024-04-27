@@ -116,7 +116,7 @@ void VulkanSwapchain::free()
 		VulkanContext::getDevice(m_device).freeSemaphore(m_imageAvailableSemaphore);
 
 		vkDestroySwapchainKHR(VulkanContext::getDevice(m_device).m_vkHandle, m_vkHandle, nullptr);
-        Logger::print("Freed Swapchain (ID: " + std::to_string(m_id) + ")", Logger::LevelBits::INFO);
+        Logger::print("Freed Swapchain (ID: " + std::to_string(m_id) + ")", Logger::DEBUG);
 		m_vkHandle = VK_NULL_HANDLE;
 	}
 }
@@ -138,7 +138,7 @@ VulkanSwapchain::VulkanSwapchain(const VkSwapchainKHR handle, const uint32_t dev
     for (auto& m_image : m_images)
     {
 		m_imageViews.push_back(m_image.createImageView(format.format, VK_IMAGE_ASPECT_COLOR_BIT));
-		Logger::print("Created swapchain image view", Logger::LevelBits::INFO);
+		Logger::print("Created swapchain image view", Logger::DEBUG);
     }
 
 	m_imageAvailableSemaphore = deviceObj.createSemaphore();

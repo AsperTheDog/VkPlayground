@@ -34,7 +34,7 @@ void VulkanFence::wait()
 void VulkanFence::free()
 {
 	vkDestroyFence(VulkanContext::getDevice(m_device).m_vkHandle, m_vkHandle, nullptr);
-    Logger::print("Freed fence (ID: " + std::to_string(m_id) + ")", Logger::LevelBits::INFO);
+    Logger::print("Freed fence (ID: " + std::to_string(m_id) + ")", Logger::DEBUG);
 	m_vkHandle = VK_NULL_HANDLE;
 }
 
@@ -63,7 +63,7 @@ void VulkanSemaphore::free()
 	if (m_vkHandle != VK_NULL_HANDLE)
 	{
 		vkDestroySemaphore(VulkanContext::getDevice(m_device).m_vkHandle, m_vkHandle, nullptr);
-        Logger::print("Freed semaphore (ID: " + std::to_string(m_id) + ")", Logger::LevelBits::INFO);
+        Logger::print("Freed semaphore (ID: " + std::to_string(m_id) + ")", Logger::DEBUG);
 		m_vkHandle = VK_NULL_HANDLE;
 	}
 }

@@ -26,7 +26,8 @@ void VulkanBuffer::allocateFromFlags(const VulkanMemoryAllocator::MemoryProperty
 {
 	Logger::pushContext("Buffer memory (from flags)");
 	const VkMemoryRequirements requirements = getMemoryRequirements();
-	setBoundMemory(VulkanContext::getDevice(m_device).m_memoryAllocator.searchAndAllocate(requirements.size, requirements.alignment, memoryProperties, requirements.memoryTypeBits));
+    m_size = requirements.size;
+    setBoundMemory(VulkanContext::getDevice(m_device).m_memoryAllocator.searchAndAllocate(requirements.size, requirements.alignment, memoryProperties, requirements.memoryTypeBits));
 	Logger::popContext();
 }
 
@@ -68,7 +69,7 @@ void* VulkanBuffer::map(const VkDeviceSize size, const VkDeviceSize offset)
 	    throw std::runtime_error("Failed to map buffer (ID:" + std::to_string(m_id) + ") memory! Error code: " + string_VkResult(ret));
 	}
 	m_mappedData = data;
-    Logger::print("Mapped buffer (ID:" + std::to_string(m_id) + ") memory with size " + std::to_string(size) + " and offset " + std::to_string(offset), Logger::LevelBits::DEBUG);
+    Logger::print("Mapped buffer (ID:" + std::to_string(m_id) + ") memory with size " + std::to_string(size) + " and offset " + std::to_string(offset), Logger::DEBUG);
 	return data;
 }
 
@@ -81,7 +82,7 @@ void VulkanBuffer::unmap()
     }
 
 	vkUnmapMemory(VulkanContext::getDevice(m_device).m_vkHandle, VulkanContext::getDevice(m_device).getMemoryHandle(m_memoryRegion.chunk));
-    Logger::print("Unmapped buffer (ID:" + std::to_string(m_id) + ") memory", Logger::LevelBits::DEBUG);
+    Logger::print("Unmapped buffer (ID:" + std::to_string(m_id) + ") memory", Logger::DEBUG);
 	m_mappedData = nullptr;
 }
 
@@ -99,7 +100,7 @@ void VulkanBuffer::setBoundMemory(const MemoryChunk::MemoryBlock& memoryRegion)
 	}
 	m_memoryRegion = memoryRegion;
 
-	Logger::print("Bound memory region to buffer (ID:" + std::to_string(m_id) + ") with size " + std::to_string(m_memoryRegion.size) + " and offset " + std::to_string(m_memoryRegion.offset) + " at chunk " + std::to_string(m_memoryRegion.chunk), Logger::LevelBits::INFO);
+	Logger::print("Bound memory region to buffer (ID:" + std::to_string(m_id) + ") with size " + std::to_string(m_memoryRegion.size) + " and offset " + std::to_string(m_memoryRegion.offset) + " at chunk " + std::to_string(m_memoryRegion.chunk), Logger::DEBUG);
 	if (const VkResult ret = vkBindBufferMemory(VulkanContext::getDevice(m_device).m_vkHandle, m_vkHandle, VulkanContext::getDevice(m_device).getMemoryHandle(m_memoryRegion.chunk), m_memoryRegion.offset); ret != VK_SUCCESS)
 	{
 	    throw std::runtime_error("Failed to bind buffer (ID:" + std::to_string(m_id) + ") memory! Error code: " + string_VkResult(ret));
@@ -109,7 +110,7 @@ void VulkanBuffer::setBoundMemory(const MemoryChunk::MemoryBlock& memoryRegion)
 void VulkanBuffer::free()
 {
 	vkDestroyBuffer(VulkanContext::getDevice(m_device).m_vkHandle, m_vkHandle, nullptr);
-	Logger::print("Freed buffer (ID:" + std::to_string(m_id) + ")", Logger::LevelBits::INFO);
+	Logger::print("Freed buffer (ID:" + std::to_string(m_id) + ")", Logger::DEBUG);
 	m_vkHandle = VK_NULL_HANDLE;
 
 	if (m_memoryRegion.size > 0)

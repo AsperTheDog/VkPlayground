@@ -410,7 +410,7 @@ void VulkanCommandBuffer::free()
 	if (m_vkHandle != VK_NULL_HANDLE)
 	{
 		vkFreeCommandBuffers(VulkanContext::getDevice(m_device).m_vkHandle, VulkanContext::getDevice(m_device).getCommandPool(m_familyIndex, m_threadID, m_isSecondary), 1, &m_vkHandle);
-		Logger::print("Freed command buffer (ID:" + std::to_string(m_id) + ")", Logger::LevelBits::INFO);
+		Logger::print("Freed command buffer (ID:" + std::to_string(m_id) + ")", Logger::DEBUG);
 		m_vkHandle = VK_NULL_HANDLE;
 	}
 }

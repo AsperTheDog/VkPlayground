@@ -237,7 +237,7 @@ void VulkanPipeline::free()
 	if (m_vkHandle != VK_NULL_HANDLE)
 	{
 		vkDestroyPipeline(m_device->m_vkHandle, m_vkHandle, nullptr);
-        Logger::print("Freed pipeline (ID: " + std::to_string(m_id) + ")", Logger::LevelBits::INFO);
+        Logger::print("Freed pipeline (ID: " + std::to_string(m_id) + ")", Logger::DEBUG);
 		m_vkHandle = VK_NULL_HANDLE;
 	}
 }
@@ -277,7 +277,7 @@ void VulkanPipelineLayout::free()
 	if (m_vkHandle != VK_NULL_HANDLE)
 	{
 		vkDestroyPipelineLayout(VulkanContext::getDevice(m_device).m_vkHandle, m_vkHandle, nullptr);
-        Logger::print("Freed pipeline layout (ID: " + std::to_string(m_id) + ")", Logger::LevelBits::INFO);
+        Logger::print("Freed pipeline layout (ID: " + std::to_string(m_id) + ")", Logger::DEBUG);
 		m_vkHandle = VK_NULL_HANDLE;
 	}
 }
