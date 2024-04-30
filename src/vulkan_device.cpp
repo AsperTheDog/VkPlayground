@@ -400,9 +400,17 @@ void VulkanDevice::configureStagingBuffer(const VkDeviceSize size, const QueueSe
 			return;
 		}
 		Logger::print("Staging buffer size is " + VulkanMemoryAllocator::compactBytes(size) + ", allocating in special staging memory type " + std::to_string(memoryType.value()), Logger::DEBUG);
-		stagingBuffer.allocateFromIndex(memoryType.value());
-		if (!forceAllowStagingMemory)
-			m_memoryAllocator.hideMemoryType(memoryType.value());
+        try
+        {
+	        stagingBuffer.allocateFromIndex(memoryType.value());
+		    if (!forceAllowStagingMemory)
+			    m_memoryAllocator.hideMemoryType(memoryType.value());
+        }
+        catch (const std::runtime_error&)
+        {
+            Logger::print("Failed to allocate staging buffer in special memory type " + std::to_string(memoryType.value()) + ", allocating in host memory", Logger::WARN);
+            stagingBuffer.allocateFromFlags({ VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VK_MEMORY_PROPERTY_HOST_CACHED_BIT, true });
+        }
 	}
 	else
 	{
@@ -977,13 +985,13 @@ void VulkanDevice::freeSemaphore(const VulkanSemaphore& semaphore)
 	freeSemaphore(semaphore.m_id);
 }
 
-uint32_t VulkanDevice::createShader(const std::string& filename, const VkShaderStageFlagBits stage, const std::vector<std::pair<std::string_view, std::string_view>>& replaceTags)
+uint32_t VulkanDevice::createShader(const std::string& filename, const VkShaderStageFlagBits stage, const std::vector<VulkanShader::MacroDef>& macros)
 {
-	const VulkanShader::Result result = VulkanShader::compileFile(filename, VulkanShader::getKindFromStage(stage), VulkanShader::readFile(filename, replaceTags),
+	const VulkanShader::Result result = VulkanShader::compileFile(filename, VulkanShader::getKindFromStage(stage), VulkanShader::readFile(filename),
 #ifdef _DEBUG
-		false);
+		false, macros);
 #else
-		true);
+		true, macros);
 #endif
 	if (result.code.empty())
 	{
