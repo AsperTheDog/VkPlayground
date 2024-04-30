@@ -69,7 +69,7 @@ void* VulkanBuffer::map(const VkDeviceSize size, const VkDeviceSize offset)
 	    throw std::runtime_error("Failed to map buffer (ID:" + std::to_string(m_id) + ") memory! Error code: " + string_VkResult(ret));
 	}
 	m_mappedData = data;
-    Logger::print("Mapped buffer (ID:" + std::to_string(m_id) + ") memory with size " + std::to_string(size) + " and offset " + std::to_string(offset), Logger::DEBUG);
+    Logger::print("Mapped buffer (ID:" + std::to_string(m_id) + ") memory with size " + VulkanMemoryAllocator::compactBytes(size) + " and offset " + std::to_string(offset), Logger::DEBUG);
 	return data;
 }
 

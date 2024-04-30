@@ -27,7 +27,7 @@ private:
 
 	VulkanShader(uint32_t device, VkShaderModule handle, VkShaderStageFlagBits stage);
 
-	static std::string readFile(std::string_view p_filename);
+	static std::string readFile(const std::string_view p_filename, const std::vector<std::pair<std::string_view, std::string_view>>& replaceTags);
 	static [[nodiscard]] Result compileFile(std::string_view p_source_name, shaderc_shader_kind p_kind, std::string_view p_source, bool p_optimize);
 
 	VkShaderModule m_vkHandle = VK_NULL_HANDLE;

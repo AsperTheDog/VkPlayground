@@ -50,11 +50,21 @@ VulkanShader::VulkanShader(const uint32_t device, const VkShaderModule handle, c
 {
 }
 
-std::string VulkanShader::readFile(const std::string_view p_filename)
+std::string VulkanShader::readFile(const std::string_view p_filename, const std::vector<std::pair<std::string_view, std::string_view>>& replaceTags)
 {
 	std::ifstream shaderFile(p_filename.data());
 	if (!shaderFile.is_open()) throw std::runtime_error("failed to open shader file " + std::string(p_filename));
 	std::string str((std::istreambuf_iterator(shaderFile)), std::istreambuf_iterator<char>());
+    for (const auto& [key, value] : replaceTags)
+    {
+        std::string tag = std::string("¿") + key.data() + "¿";
+        size_t pos = str.find(tag);
+        while (pos != std::string::npos)
+        {
+            str.replace(pos, tag.size(), value);
+            pos = str.find(tag);
+        }
+    }
 	return str;
 }
 

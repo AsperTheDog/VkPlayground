@@ -29,7 +29,7 @@ public:
 		const std::vector<VkMemoryBarrier>& memoryBarriers, 
 		const std::vector<VkBufferMemoryBarrier>& bufferMemoryBarriers, 
 		const std::vector<VkImageMemoryBarrier>& imageMemoryBarriers) const;
-	void cmdSimpleTransitionImageLayout(uint32_t image, VkImageLayout newLayout, VkImageAspectFlags aspectFlags, uint32_t srcQueueFamily = VK_QUEUE_FAMILY_IGNORED, uint32_t dstQueueFamily = VK_QUEUE_FAMILY_IGNORED) const;
+	void cmdSimpleTransitionImageLayout(uint32_t image, VkImageLayout newLayout, uint32_t srcQueueFamily = VK_QUEUE_FAMILY_IGNORED, uint32_t dstQueueFamily = VK_QUEUE_FAMILY_IGNORED) const;
 	void cmdSimpleAbsoluteBarrier() const;
 
 	void cmdBindVertexBuffer(uint32_t buffer, VkDeviceSize offset) const;
@@ -37,6 +37,7 @@ public:
 	void cmdBindIndexBuffer(uint32_t bufferID, VkDeviceSize offset, VkIndexType indexType) const;
 
 	void cmdCopyBuffer(uint32_t source, uint32_t destination, const std::vector<VkBufferCopy>& copyRegions) const;
+    void cmdCopyBufferToImage(uint32_t buffer, uint32_t image, VkImageLayout imageLayout, const std::vector<VkBufferImageCopy>& copyRegions);
 	void cmdBlitImage(uint32_t source, uint32_t destination, const std::vector<VkImageBlit>& regions, VkFilter filter) const;
 	void cmdSimpleBlitImage(uint32_t source, uint32_t destination, VkFilter filter) const;
 	void cmdSimpleBlitImage(const VulkanImage& source, const VulkanImage& destination, VkFilter filter) const;
@@ -53,14 +54,20 @@ public:
 	VkCommandBuffer operator*() const;
 
 private:
+    enum TypeFlagBits
+    {
+        SECONDARY = 1,
+        ONE_TIME = 2
+    };
+    typedef uint32_t TypeFlags;
     void free();
 
-	VulkanCommandBuffer(uint32_t device, VkCommandBuffer commandBuffer, bool isSecondary, uint32_t familyIndex, uint32_t threadID);
+	VulkanCommandBuffer(uint32_t device, VkCommandBuffer commandBuffer, TypeFlags flags, uint32_t familyIndex, uint32_t threadID);
 
 	VkCommandBuffer m_vkHandle = VK_NULL_HANDLE;
 
 	bool m_isRecording = false;
-	bool m_isSecondary = false;
+	TypeFlags m_flags = false;
 	uint32_t m_familyIndex = 0;
 	uint32_t m_threadID = 0;
 

@@ -29,7 +29,7 @@ public:
 	void initializeCommandPool(const QueueFamily& family, uint32_t threadID, bool secondary);
 	uint32_t createCommandBuffer(const QueueFamily& family, uint32_t threadID, bool isSecondary);
 	uint32_t createOneTimeCommandBuffer(uint32_t threadID);
-	uint32_t getOrCreateCommandBuffer(const QueueFamily& family, uint32_t threadID, bool isSecondary);
+	uint32_t getOrCreateCommandBuffer(const QueueFamily& family, const uint32_t threadID, const VulkanCommandBuffer::TypeFlags flags);
 	VulkanCommandBuffer& getCommandBuffer(uint32_t id, uint32_t threadID);
     [[nodiscard]] const VulkanCommandBuffer& getCommandBuffer(uint32_t id, uint32_t threadID) const;
 	void freeCommandBuffer(const VulkanCommandBuffer& commandBuffer, uint32_t threadID);
@@ -68,7 +68,8 @@ public:
 	void freePipelineLayout(uint32_t id);
 	void freePipelineLayout(const VulkanPipelineLayout& layout);
 
-	uint32_t createShader(const std::string& filename, VkShaderStageFlagBits stage);
+	uint32_t createShader(const std::string& filename, VkShaderStageFlagBits stage, const std::vector<std::pair<std::string_view, std::
+                                                                                                                string_view>>& replaceTags);
 	VulkanShader& getShader(uint32_t id);
     [[nodiscard]] const VulkanShader& getShader(uint32_t id) const;
 	void freeShader(uint32_t id);
@@ -99,6 +100,7 @@ public:
     [[nodiscard]] const VulkanDescriptorSet& getDescriptorSet(uint32_t id) const;
 	void freeDescriptorSet(uint32_t id);
 	void freeDescriptorSet(const VulkanDescriptorSet& descriptorSet);
+    void updateDescriptorSets(const std::vector<VkWriteDescriptorSet>& descriptorWrites) const;
 
 	uint32_t createSwapchain(VkSurfaceKHR surface, VkExtent2D extent, VkSurfaceFormatKHR desiredFormat, uint32_t oldSwapchain = UINT32_MAX);
 	VulkanSwapchain& getSwapchain(uint32_t id);
@@ -128,6 +130,7 @@ public:
 	void unmapStagingBuffer();
 	void dumpStagingBuffer(uint32_t buffer, VkDeviceSize size, VkDeviceSize offset, uint32_t threadID);
 	void dumpStagingBuffer(uint32_t buffer, const std::vector<VkBufferCopy>& regions, uint32_t threadID);
+    void dumpStagingBufferToImage(uint32_t image, VkExtent3D size, VkExtent3D offset, uint32_t threadID);
 
 	[[nodiscard]] VulkanQueue getQueue(const QueueSelection& queueSelection) const;
 	[[nodiscard]] VulkanGPU getGPU() const;
@@ -139,7 +142,7 @@ private:
 	void free();
 
 	[[nodiscard]] VkDeviceMemory getMemoryHandle(uint32_t chunk) const;
-    VkCommandPool getCommandPool(uint32_t uint32, uint32_t m_thread_id, bool secondary);
+    VkCommandPool getCommandPool(const uint32_t uint32, const uint32_t m_thread_id, VulkanCommandBuffer::TypeFlags flags);
 
 	VulkanDevice(VulkanGPU pDevice, VkDevice device);
 

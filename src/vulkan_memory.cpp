@@ -78,6 +78,11 @@ MemoryStructure::MemoryTypeData MemoryStructure::getTypeData(const uint32_t memo
     };
 }
 
+VkMemoryHeap MemoryStructure::getMemoryTypeHeap(const uint32_t memoryType) const
+{
+    return m_memoryProperties.memoryHeaps[m_memoryProperties.memoryTypes[memoryType].heapIndex];
+}
+
 MemoryStructure::MemoryStructure(const VulkanGPU gpu)
 {
 	vkGetPhysicalDeviceMemoryProperties(gpu.m_vkHandle, &m_memoryProperties);
@@ -96,7 +101,7 @@ uint32_t MemoryChunk::getMemoryType() const
 bool MemoryChunk::isEmpty() const
 {
 	VkDeviceSize freeSize = 0;
-	for (const auto& size : m_unallocatedData | std::views::values)
+	for (const VkDeviceSize& size : m_unallocatedData | std::views::values)
 	{
 		freeSize += size;
 	}
@@ -114,9 +119,7 @@ MemoryChunk::MemoryBlock MemoryChunk::allocate(const VkDeviceSize newSize, const
 	{
 		if (size < newSize) continue;
 
-		const VkDeviceSize alignedOffset = offset > 0 ? offset + (alignment - (offset % alignment)) : 0;
-		const VkDeviceSize offsetDifference = alignedOffset - offset;
-
+        const VkDeviceSize offsetDifference = offset % alignment == 0 ? 0 : alignment - offset % alignment;
 		if (size + offsetDifference < newSize) continue;
 
 		if (best == m_size || m_unallocatedData[best] > size)
@@ -141,15 +144,12 @@ MemoryChunk::MemoryBlock MemoryChunk::allocate(const VkDeviceSize newSize, const
 		m_unallocatedData[best + newSize] = (bestSize - bestAlignOffset) - newSize;
 	}
 
-	Logger::print("Allocated block of size " + VulkanMemoryAllocator::compactBytes(newSize) + " at offset " + std::to_string(best) + " of memory type " + std::to_string(m_memoryType), Logger::DEBUG);
+	Logger::print("Allocated block of size " + VulkanMemoryAllocator::compactBytes(newSize) + " at offset " + std::to_string(best) + " of memory type " + std::to_string(m_memoryType) + " from chunk " + std::to_string(m_id), Logger::DEBUG);
 
-	if (m_biggestChunk == best)
+	for (const auto& [offset, size] : m_unallocatedData)
 	{
-		for (const auto& [offset, size] : m_unallocatedData)
-		{
-			if (!m_unallocatedData.contains(m_biggestChunk) || size > m_unallocatedData[m_biggestChunk])
-				m_biggestChunk = offset;
-		}
+		if (!m_unallocatedData.contains(m_biggestChunk) || size > m_unallocatedData[m_biggestChunk])
+			m_biggestChunk = offset;
 	}
 
 	m_unallocatedSize -= newSize;
@@ -219,7 +219,6 @@ void MemoryChunk::defragment()
 			mergeCount++;
 
 			m_unallocatedData.erase(next);
-
 		}
 		else
 		{
@@ -251,7 +250,7 @@ MemoryChunk::MemoryBlock VulkanMemoryAllocator::allocate(const VkDeviceSize size
 	VkDeviceSize chunkSize = m_chunkSize;
 	if (size < m_chunkSize)
 	{
-		for (auto& memoryChunk : m_memoryChunks)
+		for (MemoryChunk& memoryChunk : m_memoryChunks)
 		{
 			if (memoryChunk.m_memoryType == memoryType)
 			{
@@ -264,7 +263,11 @@ MemoryChunk::MemoryBlock VulkanMemoryAllocator::allocate(const VkDeviceSize size
 	{
 		chunkSize = size;
 	}
-	
+
+    const VkDeviceSize heapSize = getMemoryStructure().getMemoryTypeHeap(memoryType).size;
+    if (chunkSize > heapSize * 0.8) chunkSize = heapSize * 0.8;
+    if (chunkSize < size) 
+        throw std::runtime_error("Allocation of size " + std::to_string(size) + " was requested for memory type " + std::to_string(memoryType) + " but the heap size is only " + std::to_string(heapSize) + " (Cannot allocate more than 80% of heap)");
 
 	VkMemoryAllocateInfo allocInfo{};
 	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -288,7 +291,7 @@ MemoryChunk::MemoryBlock VulkanMemoryAllocator::searchAndAllocate(const VkDevice
 	uint32_t bestType = 0;
 	VkDeviceSize bestSize = 0;
 	bool doesBestHaveUndesired = false;
-	for (const auto& type : memoryType)
+	for (const uint32_t& type : memoryType)
 	{
 		if (!includeHidden && m_hiddenTypes.contains(type))
 			continue;

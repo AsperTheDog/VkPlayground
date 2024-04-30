@@ -28,6 +28,7 @@ public:
 	[[nodiscard]] std::vector<uint32_t> getMemoryTypes(VkMemoryPropertyFlags properties, uint32_t typeFilter) const;
 	[[nodiscard]] bool doesMemoryContainProperties(uint32_t type, VkMemoryPropertyFlags property) const;
     [[nodiscard]] MemoryTypeData getTypeData(uint32_t memoryType) const;
+    [[nodiscard]] VkMemoryHeap getMemoryTypeHeap(uint32_t memoryType) const;
 
 private:
 	explicit MemoryStructure(VulkanGPU gpu);
@@ -107,7 +108,7 @@ public:
 private:
 	void free();
 
-	explicit VulkanMemoryAllocator(const VulkanDevice& device, VkDeviceSize defaultChunkSize = 20LL * 1024 * 1024);
+	explicit VulkanMemoryAllocator(const VulkanDevice& device, VkDeviceSize defaultChunkSize = 256LL * 1024 * 1024);
 
 	MemoryStructure m_memoryStructure;
 	VkDeviceSize m_chunkSize;

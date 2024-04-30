@@ -90,12 +90,14 @@ uint32_t VulkanDevice::createCommandBuffer(const QueueFamily& family, const uint
 {
 	initializeCommandPool(family, threadID, isSecondary);
 
+    VulkanCommandBuffer::TypeFlags type = 0;
 	VkCommandBufferAllocateInfo allocInfo{};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	if (isSecondary)
 	{
 		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
 		allocInfo.commandPool = m_threadCommandInfos[threadID].commandPools[family.index].secondaryPool;
+        type = VulkanCommandBuffer::TypeFlagBits::SECONDARY;
 	}
 	else
 	{
@@ -116,7 +118,7 @@ uint32_t VulkanDevice::createCommandBuffer(const QueueFamily& family, const uint
 		m_commandBuffers[threadID] = {};
 	}
 
-	m_commandBuffers[threadID].push_back({ m_id, commandBuffer, isSecondary, family.index, threadID });
+	m_commandBuffers[threadID].push_back({ m_id, commandBuffer, type, family.index, threadID });
 	return m_commandBuffers[threadID].back().getID();
 }
 
@@ -142,20 +144,20 @@ uint32_t VulkanDevice::createOneTimeCommandBuffer(uint32_t threadID)
 		m_commandBuffers[threadID] = {};
 	}
 
-	m_commandBuffers[threadID].push_back({ m_id, commandBuffer, false, m_oneTimeQueue.familyIndex, threadID });
+	m_commandBuffers[threadID].push_back({ m_id, commandBuffer, VulkanCommandBuffer::TypeFlagBits::ONE_TIME, m_oneTimeQueue.familyIndex, threadID });
 	return m_commandBuffers[threadID].back().getID();
 }
 
-uint32_t VulkanDevice::getOrCreateCommandBuffer(const QueueFamily& family, const uint32_t threadID, const bool isSecondary)
+uint32_t VulkanDevice::getOrCreateCommandBuffer(const QueueFamily& family, const uint32_t threadID, const VulkanCommandBuffer::TypeFlags flags)
 {
 	for (const VulkanCommandBuffer& buffer : m_commandBuffers[threadID])
-		if (buffer.m_familyIndex == family.index && buffer.m_threadID == threadID && buffer.m_isSecondary == isSecondary)
+		if (buffer.m_familyIndex == family.index && buffer.m_threadID == threadID && buffer.m_flags == flags)
 		{
 			Logger::print("Reusing command buffer for thread " + std::to_string(threadID) + " and family " + std::to_string(family.index), Logger::DEBUG);
 			return buffer.getID();
 		}
 
-	return createCommandBuffer(family, threadID, isSecondary);
+	return createCommandBuffer(family, threadID, (flags & VulkanCommandBuffer::TypeFlagBits::SECONDARY) != 0);
 }
 
 VulkanCommandBuffer& VulkanDevice::getCommandBuffer(const uint32_t id, const uint32_t threadID)
@@ -393,7 +395,7 @@ void VulkanDevice::configureStagingBuffer(const VkDeviceSize size, const QueueSe
 		const VkDeviceSize heapSize = m_physicalDevice.getMemoryProperties().memoryHeaps[heapIndex].size;
 		if (heapSize < size * 0.8)
 		{
-			Logger::print("Staging buffer size is " + VulkanMemoryAllocator::compactBytes(size) + ", but special staging memory heap size is " + VulkanMemoryAllocator::compactBytes(heapSize) + " for memory type " + std::to_string(memoryType.value()) + ", allocating in host memory", Logger::DEBUG);
+			Logger::print("Staging buffer size is " + VulkanMemoryAllocator::compactBytes(size) + ", but special staging memory heap size is " + VulkanMemoryAllocator::compactBytes(heapSize) + " for memory type " + std::to_string(memoryType.value()) + ", allocating in host memory", Logger::WARN);
 			stagingBuffer.allocateFromFlags({ VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VK_MEMORY_PROPERTY_HOST_CACHED_BIT, true });
 			return;
 		}
@@ -404,7 +406,7 @@ void VulkanDevice::configureStagingBuffer(const VkDeviceSize size, const QueueSe
 	}
 	else
 	{
-		Logger::print("Staging buffer size is " + VulkanMemoryAllocator::compactBytes(size) + ", but no suitable special staging memory type found, allocating in host memory", Logger::DEBUG);
+		Logger::print("Staging buffer size is " + VulkanMemoryAllocator::compactBytes(size) + ", but no suitable special staging memory type found, allocating in host memory", Logger::WARN);
 		stagingBuffer.allocateFromFlags({ VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VK_MEMORY_PROPERTY_HOST_CACHED_BIT, true });
 	}
 }
@@ -459,7 +461,7 @@ void VulkanDevice::dumpStagingBuffer(const uint32_t buffer, const std::vector<Vk
 	}
 
 	const QueueFamily transferQueueFamily = m_physicalDevice.getQueueFamilies().getQueueFamily(m_stagingBufferInfo.queue.familyIndex);
-	VulkanCommandBuffer& commandBuffer = getCommandBuffer(createCommandBuffer(transferQueueFamily, threadID, false), threadID);
+	VulkanCommandBuffer& commandBuffer = getCommandBuffer(createOneTimeCommandBuffer(threadID), threadID);
 
 	commandBuffer.beginRecording(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 	commandBuffer.cmdCopyBuffer(m_stagingBufferInfo.stagingBuffer, buffer, regions);
@@ -467,6 +469,35 @@ void VulkanDevice::dumpStagingBuffer(const uint32_t buffer, const std::vector<Vk
 	const VulkanQueue queue = getQueue(m_stagingBufferInfo.queue);
 	commandBuffer.submit(queue, {}, {});
 	Logger::print("Submitted staging buffer data to buffer (ID: " + std::to_string(buffer) + "), total size: " + VulkanMemoryAllocator::compactBytes(stagingBuffer.getSize()), Logger::DEBUG);
+
+	queue.waitIdle();
+	freeCommandBuffer(commandBuffer, threadID);
+}
+
+void VulkanDevice::dumpStagingBufferToImage(const uint32_t image, const VkExtent3D size, VkExtent3D offset, const uint32_t threadID)
+{
+    const VulkanBuffer& stagingBuffer = getBuffer(m_stagingBufferInfo.stagingBuffer);
+
+    VkBufferImageCopy region;
+    region.bufferOffset = 0;
+    region.bufferRowLength = 0;
+    region.bufferImageHeight = 0;
+    region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    region.imageSubresource.mipLevel = 0;
+    region.imageSubresource.baseArrayLayer = 0;
+    region.imageSubresource.layerCount = 1;
+    region.imageOffset = {0, 0, 0};
+    region.imageExtent = size;
+
+    const QueueFamily transferQueueFamily = m_physicalDevice.getQueueFamilies().getQueueFamily(m_stagingBufferInfo.queue.familyIndex);
+	VulkanCommandBuffer& commandBuffer = getCommandBuffer(createOneTimeCommandBuffer(threadID), threadID);
+
+	commandBuffer.beginRecording(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+	commandBuffer.cmdCopyBufferToImage(m_stagingBufferInfo.stagingBuffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, {region});
+	commandBuffer.endRecording();
+	const VulkanQueue queue = getQueue(m_stagingBufferInfo.queue);
+	commandBuffer.submit(queue, {}, {});
+	Logger::print("Submitted staging buffer data to image (ID: " + std::to_string(image) + "), total size: " + VulkanMemoryAllocator::compactBytes(stagingBuffer.getSize()), Logger::DEBUG);
 
 	queue.waitIdle();
 	freeCommandBuffer(commandBuffer, threadID);
@@ -834,6 +865,12 @@ void VulkanDevice::freeDescriptorSet(const VulkanDescriptorSet& descriptorSet)
 	freeDescriptorSet(descriptorSet.m_id);
 }
 
+void VulkanDevice::updateDescriptorSets(const std::vector<VkWriteDescriptorSet>& descriptorWrites) const
+{
+    Logger::print("Updating " + std::to_string(descriptorWrites.size()) + " descriptor sets directly from device (ID: " + std::to_string(m_id) + ")", Logger::DEBUG);
+    vkUpdateDescriptorSets(m_vkHandle, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
+}
+
 uint32_t VulkanDevice::createSwapchain(const VkSurfaceKHR surface, const VkExtent2D extent, const VkSurfaceFormatKHR desiredFormat, const uint32_t oldSwapchain)
 {
 	const VkSurfaceFormatKHR selectedFormat = m_physicalDevice.getClosestFormat(surface, desiredFormat);
@@ -940,9 +977,9 @@ void VulkanDevice::freeSemaphore(const VulkanSemaphore& semaphore)
 	freeSemaphore(semaphore.m_id);
 }
 
-uint32_t VulkanDevice::createShader(const std::string& filename, const VkShaderStageFlagBits stage)
+uint32_t VulkanDevice::createShader(const std::string& filename, const VkShaderStageFlagBits stage, const std::vector<std::pair<std::string_view, std::string_view>>& replaceTags)
 {
-	const VulkanShader::Result result = VulkanShader::compileFile(filename, VulkanShader::getKindFromStage(stage), VulkanShader::readFile(filename),
+	const VulkanShader::Result result = VulkanShader::compileFile(filename, VulkanShader::getKindFromStage(stage), VulkanShader::readFile(filename, replaceTags),
 #ifdef _DEBUG
 		false);
 #else
@@ -1165,6 +1202,8 @@ void VulkanDevice::free()
 			if (commandPoolInfo.secondaryPool != VK_NULL_HANDLE)
 				vkDestroyCommandPool(m_vkHandle, commandPoolInfo.secondaryPool, nullptr);
 		}
+        if (threadInfo.oneTimePool != VK_NULL_HANDLE)
+            vkDestroyCommandPool(m_vkHandle, threadInfo.oneTimePool, nullptr);
 	}
 
 	m_threadCommandInfos.clear();
@@ -1243,12 +1282,13 @@ VkDeviceMemory VulkanDevice::getMemoryHandle(const uint32_t chunkID) const
 	throw std::runtime_error("Memory chunk (ID: " + std::to_string(chunkID) + ") not found");
 }
 
-VkCommandPool VulkanDevice::getCommandPool(const uint32_t uint32, const uint32_t m_thread_id, const bool secondary)
+VkCommandPool VulkanDevice::getCommandPool(const uint32_t uint32, const uint32_t m_thread_id, const VulkanCommandBuffer::TypeFlags flags)
 {
-	if (!secondary)
-		return m_threadCommandInfos[m_thread_id].commandPools[uint32].pool;
-	else
+	if ((flags & VulkanCommandBuffer::TypeFlagBits::ONE_TIME) != 0)
+		return m_threadCommandInfos[m_thread_id].oneTimePool;
+	if ((flags & VulkanCommandBuffer::TypeFlagBits::SECONDARY) != 0)
 		return m_threadCommandInfos[m_thread_id].commandPools[uint32].secondaryPool;
+    return m_threadCommandInfos[m_thread_id].commandPools[uint32].pool;
 }
 
 VulkanDevice::VulkanDevice(const VulkanGPU pDevice, const VkDevice device)

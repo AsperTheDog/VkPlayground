@@ -97,12 +97,54 @@ void VulkanImage::freeImageView(const VkImageView imageView)
 	std::erase(m_imageViews, imageView);
 }
 
-void VulkanImage::transitionLayout(const VkImageLayout layout, const VkImageAspectFlags aspectFlags, const uint32_t threadID)
+VkSampler VulkanImage::createSampler(const VkFilter filter, const VkSamplerAddressMode samplerAddressMode)
+{
+    VkSamplerCreateInfo createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    createInfo.magFilter = filter;
+    createInfo.minFilter = filter;
+    createInfo.addressModeU = samplerAddressMode;
+    createInfo.addressModeV = samplerAddressMode;
+    createInfo.addressModeW = samplerAddressMode;
+    createInfo.anisotropyEnable = VK_FALSE;
+    createInfo.maxAnisotropy = 0;
+    createInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+    createInfo.unnormalizedCoordinates = VK_FALSE;
+    createInfo.compareEnable = VK_FALSE;
+    createInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+    createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    createInfo.mipLodBias = 0.0f;
+    createInfo.minLod = 0.0f;
+    createInfo.maxLod = 0.0f;
+
+    VkSampler sampler;
+    if (const VkResult ret = vkCreateSampler(VulkanContext::getDevice(m_device).m_vkHandle, &createInfo, nullptr, &sampler); ret != VK_SUCCESS)
+    {
+        throw std::runtime_error(std::string("Failed to create sampler, error: ") + string_VkResult(ret));
+    }
+
+    m_samplers.push_back(sampler);
+    return sampler;
+}
+
+void VulkanImage::freeSampler(const VkSampler sampler)
+{
+    if (std::ranges::find(m_samplers, sampler) == m_samplers.end())
+    {
+        Logger::print("Tried to free sampler that doesn't belong to image " + std::to_string(m_id), Logger::WARN);
+        return;
+    }
+    vkDestroySampler(VulkanContext::getDevice(m_device).m_vkHandle, sampler, nullptr);
+    Logger::print("Freed sampler of image " + std::to_string(m_id), Logger::DEBUG);
+    std::erase(m_samplers, sampler);
+}
+
+void VulkanImage::transitionLayout(const VkImageLayout layout, const uint32_t threadID)
 {
 	VulkanDevice& device = VulkanContext::getDevice(m_device);
 	VulkanCommandBuffer& commandBuffer = device.getCommandBuffer(device.createOneTimeCommandBuffer(threadID), threadID);
 	commandBuffer.beginRecording(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-	commandBuffer.cmdSimpleTransitionImageLayout(m_id, layout, aspectFlags);
+	commandBuffer.cmdSimpleTransitionImageLayout(m_id, layout);
 	commandBuffer.endRecording();
 	const VulkanQueue queue = device.getQueue(device.m_oneTimeQueue);
 	commandBuffer.submit(queue, {}, {});
@@ -139,13 +181,19 @@ void VulkanImage::free()
 {
 	VulkanDevice& device = VulkanContext::getDevice(m_device);
 
+    for (const VkSampler sampler : m_samplers)
+    {
+        vkDestroySampler(device.m_vkHandle, sampler, nullptr);
+    }
+
 	for (const VkImageView imageView : m_imageViews)
 	{
 		vkDestroyImageView(device.m_vkHandle, imageView, nullptr);
 	}
-	Logger::print("Freed image (ID: " + std::to_string(m_id) + ") with " + std::to_string(m_imageViews.size()) + " image views", Logger::DEBUG);
+	Logger::print("Freed image (ID: " + std::to_string(m_id) + ") with " + std::to_string(m_imageViews.size()) + " image views and " + std::to_string(m_samplers.size()) + " samplers", Logger::DEBUG);
 	Logger::pushContext("Image memory free");
 	m_imageViews.clear();
+    m_samplers.clear();
 
 	vkDestroyImage(device.m_vkHandle, m_vkHandle, nullptr);
 	m_vkHandle = VK_NULL_HANDLE;

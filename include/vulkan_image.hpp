@@ -17,7 +17,10 @@ public:
 	VkImageView createImageView(VkFormat format, VkImageAspectFlags aspectFlags);
 	void freeImageView(VkImageView imageView);
 
-	void transitionLayout(VkImageLayout layout, VkImageAspectFlags aspectFlags, uint32_t threadID);
+    VkSampler createSampler(VkFilter filter, VkSamplerAddressMode samplerAddressMode);
+    void freeSampler(VkSampler sampler);
+
+	void transitionLayout(VkImageLayout layout, uint32_t threadID);
 
 	[[nodiscard]] VkExtent3D getSize() const;
 	[[nodiscard]] VkImageType getType() const;
@@ -41,9 +44,9 @@ private:
 	uint32_t m_device;
 
 	std::vector<VkImageView> m_imageViews;
+    std::vector<VkSampler> m_samplers;
 
 	friend class VulkanDevice;
 	friend class VulkanCommandBuffer;
 	friend class VulkanSwapchain;
 };
-

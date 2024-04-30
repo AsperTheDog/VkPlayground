@@ -55,7 +55,18 @@ void VulkanCommandBuffer::cmdCopyBuffer(const uint32_t source, const uint32_t de
 	}
 
 	VulkanDevice& device = VulkanContext::getDevice(m_device);
-	vkCmdCopyBuffer(m_vkHandle, device.getBuffer(source).m_vkHandle, device.getBuffer(destination).m_vkHandle, static_cast<uint32_t>(copyRegions.size()), copyRegions.data());
+	vkCmdCopyBuffer(m_vkHandle, *device.getBuffer(source), *device.getBuffer(destination), static_cast<uint32_t>(copyRegions.size()), copyRegions.data());
+}
+
+void VulkanCommandBuffer::cmdCopyBufferToImage(const uint32_t buffer, const uint32_t image, const VkImageLayout imageLayout, const std::vector<VkBufferImageCopy>& copyRegions)
+{
+    if (!m_isRecording)
+    {
+        throw std::runtime_error("Command buffer (ID:" + std::to_string(m_id) + ") is not recording");
+    }
+
+    VulkanDevice& device = VulkanContext::getDevice(m_device);
+    vkCmdCopyBufferToImage(m_vkHandle, *device.getBuffer(buffer), *device.getImage(image), imageLayout, copyRegions.size(), copyRegions.data());
 }
 
 void VulkanCommandBuffer::cmdBlitImage(const uint32_t source, const uint32_t destination, const std::vector<VkImageBlit>& regions, const VkFilter filter) const
@@ -250,7 +261,7 @@ void VulkanCommandBuffer::cmdPipelineBarrier(const VkPipelineStageFlags srcStage
 	vkCmdPipelineBarrier(m_vkHandle, srcStageMask, dstStageMask, dependencyFlags, static_cast<uint32_t>(memoryBarriers.size()), memoryBarriers.data(), static_cast<uint32_t>(bufferMemoryBarriers.size()), bufferMemoryBarriers.data(), static_cast<uint32_t>(imageMemoryBarriers.size()), imageMemoryBarriers.data());
 }
 
-void VulkanCommandBuffer::cmdSimpleTransitionImageLayout(const uint32_t image, const VkImageLayout newLayout, VkImageAspectFlags aspectFlags, uint32_t srcQueueFamily, uint32_t dstQueueFamily) const
+void VulkanCommandBuffer::cmdSimpleTransitionImageLayout(const uint32_t image, const VkImageLayout newLayout, const uint32_t srcQueueFamily, const uint32_t dstQueueFamily) const
 {
 	const VulkanImage& imageObj = VulkanContext::getDevice(m_device).getImage(image);
 
@@ -409,13 +420,13 @@ void VulkanCommandBuffer::free()
 {
 	if (m_vkHandle != VK_NULL_HANDLE)
 	{
-		vkFreeCommandBuffers(VulkanContext::getDevice(m_device).m_vkHandle, VulkanContext::getDevice(m_device).getCommandPool(m_familyIndex, m_threadID, m_isSecondary), 1, &m_vkHandle);
+		vkFreeCommandBuffers(VulkanContext::getDevice(m_device).m_vkHandle, VulkanContext::getDevice(m_device).getCommandPool(m_familyIndex, m_threadID, m_flags), 1, &m_vkHandle);
 		Logger::print("Freed command buffer (ID:" + std::to_string(m_id) + ")", Logger::DEBUG);
 		m_vkHandle = VK_NULL_HANDLE;
 	}
 }
 
-VulkanCommandBuffer::VulkanCommandBuffer(const uint32_t device, const VkCommandBuffer commandBuffer, const bool isSecondary, const uint32_t familyIndex, const uint32_t threadID)
-	: m_vkHandle(commandBuffer), m_isSecondary(isSecondary), m_familyIndex(familyIndex), m_threadID(threadID), m_device(device)
+VulkanCommandBuffer::VulkanCommandBuffer(const uint32_t device, const VkCommandBuffer commandBuffer, const TypeFlags flags, const uint32_t familyIndex, const uint32_t threadID)
+	: m_vkHandle(commandBuffer), m_flags(flags), m_familyIndex(familyIndex), m_threadID(threadID), m_device(device)
 {
 }
