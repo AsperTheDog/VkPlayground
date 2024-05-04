@@ -27,6 +27,7 @@ public:
 	static void popContext();
 
 	static void print(std::string_view message, LevelBits level);
+    static void setThreadSafe(bool activate);
 
 private:
 
@@ -35,6 +36,8 @@ private:
 
     inline static bool m_enabled = true;
     inline static LoggerLevels m_levels = LevelBits::INFO | LevelBits::WARN | LevelBits::ERR;
+
+    inline static bool m_threadSafeMode = false;
 
 	Logger() = default;
 };
@@ -104,4 +107,10 @@ inline void Logger::print(const std::string_view message, const LevelBits level)
 	}
 
 	std::cout << context.str() << message << '\n';
+    if (m_threadSafeMode) std::cout.flush();
+}
+
+inline void Logger::setThreadSafe(const bool activate)
+{
+    m_threadSafeMode = activate;
 }
