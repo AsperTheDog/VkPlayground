@@ -1,11 +1,12 @@
 # pragma once
 
+#include <functional>
 #include <vector>
 
 template<typename... Args>
 class Signal {
 public:
-    using FunctionType = void (*)(Args...);
+    using FunctionType = std::function<void(Args...)>;
 
     void connect(FunctionType func) {
         m_functions.push_back(func);
