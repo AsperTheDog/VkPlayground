@@ -1012,11 +1012,9 @@ uint32_t VulkanDevice::createShader(const std::string& filename, const VkShaderS
 	{
 		throw std::runtime_error("failed to create shader module!");
 	}
-
+    m_shaders.push_back({ m_id, shader, stage });
     if (getReflection)
-	    m_shaders.push_back({ m_id, shader, stage, result.code });
-    else
-	    m_shaders.push_back({ m_id, shader, stage });
+	    m_shaders.back().reflect(result.code);
 	Logger::print("Created shader (ID: " + std::to_string(m_shaders.back().getID()) + ") and stage " + string_VkShaderStageFlagBits(stage), Logger::DEBUG);
 	return m_shaders.back().getID();
 }

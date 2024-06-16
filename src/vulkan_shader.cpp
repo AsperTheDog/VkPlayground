@@ -8,151 +8,130 @@
 #include "vulkan_device.hpp"
 #include "utils/logger.hpp"
 
+#include "spirv_cross/spirv_glsl.hpp"
+
 shaderc_shader_kind VulkanShader::getKindFromStage(const VkShaderStageFlagBits stage)
 {
-	switch (stage)
-	{
-	case VK_SHADER_STAGE_VERTEX_BIT: return shaderc_vertex_shader;
-	case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT: return shaderc_tess_control_shader;
-	case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT: return shaderc_tess_evaluation_shader;
-	case VK_SHADER_STAGE_GEOMETRY_BIT: return shaderc_geometry_shader;
-	case VK_SHADER_STAGE_FRAGMENT_BIT: return shaderc_fragment_shader;
-	case VK_SHADER_STAGE_COMPUTE_BIT: return shaderc_compute_shader;
-	case VK_SHADER_STAGE_RAYGEN_BIT_KHR: return shaderc_raygen_shader;
-	case VK_SHADER_STAGE_ANY_HIT_BIT_KHR: return shaderc_anyhit_shader;
-	case VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR: return shaderc_closesthit_shader;
-	case VK_SHADER_STAGE_MISS_BIT_KHR: return shaderc_miss_shader;
-	case VK_SHADER_STAGE_INTERSECTION_BIT_KHR: return shaderc_intersection_shader;
-	case VK_SHADER_STAGE_CALLABLE_BIT_KHR: return shaderc_callable_shader;
-	case VK_SHADER_STAGE_TASK_BIT_EXT: return shaderc_task_shader;
-	case VK_SHADER_STAGE_MESH_BIT_EXT: return shaderc_mesh_shader;
+    switch (stage)
+    {
+    case VK_SHADER_STAGE_VERTEX_BIT: return shaderc_vertex_shader;
+    case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT: return shaderc_tess_control_shader;
+    case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT: return shaderc_tess_evaluation_shader;
+    case VK_SHADER_STAGE_GEOMETRY_BIT: return shaderc_geometry_shader;
+    case VK_SHADER_STAGE_FRAGMENT_BIT: return shaderc_fragment_shader;
+    case VK_SHADER_STAGE_COMPUTE_BIT: return shaderc_compute_shader;
+    case VK_SHADER_STAGE_RAYGEN_BIT_KHR: return shaderc_raygen_shader;
+    case VK_SHADER_STAGE_ANY_HIT_BIT_KHR: return shaderc_anyhit_shader;
+    case VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR: return shaderc_closesthit_shader;
+    case VK_SHADER_STAGE_MISS_BIT_KHR: return shaderc_miss_shader;
+    case VK_SHADER_STAGE_INTERSECTION_BIT_KHR: return shaderc_intersection_shader;
+    case VK_SHADER_STAGE_CALLABLE_BIT_KHR: return shaderc_callable_shader;
+    case VK_SHADER_STAGE_TASK_BIT_EXT: return shaderc_task_shader;
+    case VK_SHADER_STAGE_MESH_BIT_EXT: return shaderc_mesh_shader;
     default: throw std::runtime_error(std::string("Unsupported shader stage ") + string_VkShaderStageFlagBits(stage));
-	}
+    }
 }
 
 VkShaderModule VulkanShader::operator*() const
 {
-	return m_vkHandle;
+    return m_vkHandle;
 }
 
-SpvReflectInterfaceVariable** VulkanShader::getInputs() const
+void VulkanShader::printReflectionData() const
 {
-    if (!hasReflection()) return nullptr;
+        if (m_compiler == nullptr)
+    {
+        Logger::print("No reflection data available for shader (ID: " + std::to_string(m_id) + ")", Logger::DEBUG, false);
+        return;
+    }
 
-    uint32_t inputCount = 0;
-    spvReflectEnumerateInputVariables(&m_reflectModule, &inputCount, nullptr);
-    SpvReflectInterfaceVariable** inputs = new SpvReflectInterfaceVariable*[inputCount];
-    spvReflectEnumerateInputVariables(&m_reflectModule, &inputCount, inputs);
-    return inputs;
-}
+    Logger::print("Reflection data for shader (ID: " + std::to_string(m_id) + ")", Logger::DEBUG, false);
+    Logger::print("Inputs:", Logger::DEBUG, false);
+    for (const auto& input : m_compiler->get_shader_resources().stage_inputs)
+    {
+        Logger::print("  " + input.name + " (" + std::to_string(input.type_id) + ")", Logger::DEBUG, false);
+    }
 
-SpvReflectInterfaceVariable** VulkanShader::getOutputs() const
-{
-    if (!hasReflection()) return nullptr;
+    Logger::print("Outputs:", Logger::DEBUG, false);
+    for (const auto& output : m_compiler->get_shader_resources().stage_outputs)
+    {
+        Logger::print("  " + output.name + " (" + std::to_string(output.type_id) + ")", Logger::DEBUG, false);
+    }
 
-    uint32_t outputCount = 0;
-    spvReflectEnumerateOutputVariables(&m_reflectModule, &outputCount, nullptr);
-    SpvReflectInterfaceVariable** outputs = new SpvReflectInterfaceVariable*[outputCount];
-    spvReflectEnumerateOutputVariables(&m_reflectModule, &outputCount, outputs);
-    return outputs;
+    Logger::print("Uniform buffers:", Logger::DEBUG, false);
+    for (const auto& uniformBuffer : m_compiler->get_shader_resources().uniform_buffers)
+    {
+        Logger::print("  " + uniformBuffer.name + " (" + std::to_string(uniformBuffer.type_id) + ")", Logger::DEBUG, false);
+    }
 
-}
+    Logger::print("Storage buffers:", Logger::DEBUG, false);
+    for (const auto& storageBuffer : m_compiler->get_shader_resources().storage_buffers)
+    {
+        Logger::print("  " + storageBuffer.name + " (" + std::to_string(storageBuffer.type_id) + ")", Logger::DEBUG, false);
+    }
 
-SpvReflectBlockVariable** VulkanShader::getPushConstants() const
-{
-    if (!hasReflection()) return nullptr;
+    Logger::print("Subpass inputs:", Logger::DEBUG, false);
+    for (const auto& subpassInput : m_compiler->get_shader_resources().subpass_inputs)
+    {
+        Logger::print("  " + subpassInput.name + " (" + std::to_string(subpassInput.type_id) + ")", Logger::DEBUG, false);
+    }
 
-    uint32_t pushConstantCount = 0;
-    spvReflectEnumeratePushConstantBlocks(&m_reflectModule, &pushConstantCount, nullptr);
-    SpvReflectBlockVariable** pushConstants = new SpvReflectBlockVariable*[pushConstantCount];
-    spvReflectEnumeratePushConstantBlocks(&m_reflectModule, &pushConstantCount, pushConstants);
-    return pushConstants;
-}
+    Logger::print("Storage images:", Logger::DEBUG, false);
+    for (const auto& storageImage : m_compiler->get_shader_resources().storage_images)
+    {
+        Logger::print("  " + storageImage.name + " (" + std::to_string(storageImage.type_id) + ")", Logger::DEBUG, false);
+    }
 
-SpvReflectDescriptorBinding** VulkanShader::getDescriptorBindings() const
-{
-    if (!hasReflection()) return nullptr;
-
-    uint32_t descriptorBindingCount = 0;
-    spvReflectEnumerateDescriptorBindings(&m_reflectModule, &descriptorBindingCount, nullptr);
-    SpvReflectDescriptorBinding** descriptorBindings = new SpvReflectDescriptorBinding*[descriptorBindingCount];
-    spvReflectEnumerateDescriptorBindings(&m_reflectModule, &descriptorBindingCount, descriptorBindings);
-    return descriptorBindings;
-}
-
-SpvReflectDescriptorSet** VulkanShader::getDescriptorSets() const
-{
-    if (!hasReflection()) return nullptr;
-
-    uint32_t descriptorSetCount = 0;
-    spvReflectEnumerateDescriptorSets(&m_reflectModule, &descriptorSetCount, nullptr);
-    SpvReflectDescriptorSet** descriptorSets = new SpvReflectDescriptorSet*[descriptorSetCount];
-    spvReflectEnumerateDescriptorSets(&m_reflectModule, &descriptorSetCount, descriptorSets);
-    return descriptorSets;
-}
-
-uint32_t VulkanShader::getDescriptorBindingCount() const
-{
-    if (!hasReflection()) return 0;
-    return m_reflectModule.descriptor_binding_count;
-}
-
-uint32_t VulkanShader::getDescriptorSetCount() const
-{
-    if (!hasReflection()) return 0;
-    return m_reflectModule.descriptor_set_count;
-}
-
-uint32_t VulkanShader::getPushConstantCount() const
-{
-    if (!hasReflection()) return 0;
-    return m_reflectModule.push_constant_block_count;
+    Logger::print("Sampled images:", Logger::DEBUG, false);
+    for (const auto& sampledImage : m_compiler->get_shader_resources().sampled_images)
+    {
+        Logger::print("  " + sampledImage.name + " (" + std::to_string(sampledImage.type_id) + ")", Logger::DEBUG, false);
+    }
 }
 
 void VulkanShader::free()
 {
-	if (m_vkHandle != VK_NULL_HANDLE)
-	{
-		vkDestroyShaderModule(VulkanContext::getDevice(m_device).m_vkHandle, m_vkHandle, nullptr);
-        Logger::print("Freed shader module (ID: " + std::to_string(m_id) + ")", Logger::DEBUG);
-		m_vkHandle = VK_NULL_HANDLE;
-	}
-
-    if (m_hasReflection)
+    if (m_vkHandle != VK_NULL_HANDLE)
     {
-        spvReflectDestroyShaderModule(&m_reflectModule);
-        m_hasReflection = false;
+        vkDestroyShaderModule(VulkanContext::getDevice(m_device).m_vkHandle, m_vkHandle, nullptr);
+        Logger::print("Freed shader module (ID: " + std::to_string(m_id) + ")", Logger::DEBUG);
+        m_vkHandle = VK_NULL_HANDLE;
+    }
+
+    if (m_compiler != nullptr)
+    {
+        delete m_compiler;
+        m_compiler = nullptr;
     }
 }
 
-VulkanShader::VulkanShader(const uint32_t device, const VkShaderModule handle, const VkShaderStageFlagBits stage, const std::vector<uint32_t>& code)
-	:  m_vkHandle(handle), m_stage(stage), m_device(device)
+VulkanShader::VulkanShader(const uint32_t device, const VkShaderModule handle, const VkShaderStageFlagBits stage)
+    : m_vkHandle(handle), m_stage(stage), m_device(device)
 {
-    if (!code.empty())
-    {
-        m_hasReflection = true;
-        if (const SpvReflectResult result = spvReflectCreateShaderModule(4 * code.size(), code.data(), &m_reflectModule); result != SPV_REFLECT_RESULT_SUCCESS)
-            throw std::runtime_error("Failed to reflect shader module: " + std::to_string(result));
-    }
+}
+
+void VulkanShader::reflect(const std::vector<uint32_t>& code)
+{
+    m_compiler  = new spirv_cross::CompilerGLSL(code);
 }
 
 std::string VulkanShader::readFile(const std::string_view p_filename)
 {
-	std::ifstream shaderFile(p_filename.data());
-	if (!shaderFile.is_open()) throw std::runtime_error("failed to open shader file " + std::string(p_filename));
-	std::string str((std::istreambuf_iterator(shaderFile)), std::istreambuf_iterator<char>());
-	return str;
+    std::ifstream shaderFile(p_filename.data());
+    if (!shaderFile.is_open()) throw std::runtime_error("failed to open shader file " + std::string(p_filename));
+    std::string str((std::istreambuf_iterator(shaderFile)), std::istreambuf_iterator<char>());
+    return str;
 }
 
 VulkanShader::Result VulkanShader::compileFile(const std::string_view p_source_name, const shaderc_shader_kind p_kind, const std::string_view p_source, const bool p_optimize, const std::vector<MacroDef>& macros)
 {
-	const shaderc::Compiler compiler;
-	shaderc::CompileOptions options;
+    const shaderc::Compiler compiler;
+    shaderc::CompileOptions options;
 
     for (const MacroDef& macro : macros)
         options.AddMacroDefinition(macro.name, macro.value);
-    
-	if (p_optimize) 
+
+    if (p_optimize)
         options.SetOptimizationLevel(shaderc_optimization_level_performance);
     else
     {
@@ -160,12 +139,13 @@ VulkanShader::Result VulkanShader::compileFile(const std::string_view p_source_n
         options.SetGenerateDebugInfo();
     }
 
-	const shaderc::SpvCompilationResult module =
-		compiler.CompileGlslToSpv(p_source.data(), p_kind, p_source_name.data(), options);
+    const shaderc::SpvCompilationResult module =
+        compiler.CompileGlslToSpv(p_source.data(), p_kind, p_source_name.data(), options);
 
-	if (module.GetCompilationStatus() != shaderc_compilation_status_success) {
-		return {false, {}, module.GetErrorMessage()};
-	}
+    if (module.GetCompilationStatus() != shaderc_compilation_status_success)
+    {
+        return { false, {}, module.GetErrorMessage() };
+    }
 
-	return {true, { module.cbegin(), module.cend() }, ""};
+    return { true, { module.cbegin(), module.cend() }, "" };
 }

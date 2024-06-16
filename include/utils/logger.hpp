@@ -26,7 +26,7 @@ public:
 	static void pushContext(std::string_view context);
 	static void popContext();
 
-	static void print(std::string_view message, LevelBits level);
+	static void print(std::string_view message, LevelBits level, bool printHeader = true);
     static void setThreadSafe(bool activate);
 
 private:
@@ -69,44 +69,51 @@ inline void Logger::popContext()
 	m_contexts.pop_back();
 }
 
-inline void Logger::print(const std::string_view message, const LevelBits level)
+inline void Logger::print(const std::string_view message, const LevelBits level, const bool printHeader)
 {
     if (!m_enabled || (m_levels & level) == 0) return;
 
-    std::string levelStr;
-    switch (level)
+    if (printHeader)
     {
-        case LevelBits::DEBUG:
-            levelStr = "DEBUG";
-            break;
-        case LevelBits::INFO:
-            levelStr = "INFO";
-            break;
-        case LevelBits::WARN:
-            levelStr = "WARNING";
-            break;
-        case LevelBits::ERR:
-            levelStr = "ERROR";
-            break;
-        default: 
-            levelStr = "UNKNOWN";
+        std::string levelStr;
+        switch (level)
+        {
+            case LevelBits::DEBUG:
+                levelStr = "DEBUG";
+                break;
+            case LevelBits::INFO:
+                levelStr = "INFO";
+                break;
+            case LevelBits::WARN:
+                levelStr = "WARNING";
+                break;
+            case LevelBits::ERR:
+                levelStr = "ERROR";
+                break;
+            default: 
+                levelStr = "UNKNOWN";
+        }
+
+	    std::stringstream context;
+	    if (!m_contexts.empty())
+	    {
+		    for (uint32_t i = 0; i < m_contexts.size(); ++i)
+		    {
+			    context << "  ";
+		    }
+		    context << "[" << m_contexts.back() << " | " << levelStr << "]: ";
+	    }
+	    else
+	    {
+		    context << "[" << m_rootContext << " | " << levelStr << "]: ";
+	    }
+        std::cout << context.str() << message << '\n';
     }
-
-	std::stringstream context;
-	if (!m_contexts.empty())
-	{
-		for (uint32_t i = 0; i < m_contexts.size(); ++i)
-		{
-			context << "  ";
-		}
-		context << "[" << m_contexts.back() << " | " << levelStr << "]: ";
-	}
-	else
-	{
-		context << "[" << m_rootContext << " | " << levelStr << "]: ";
-	}
-
-	std::cout << context.str() << message << '\n';
+    else
+    {
+        std::cout << message << '\n';
+    }
+	
     if (m_threadSafeMode) std::cout.flush();
 }
 
