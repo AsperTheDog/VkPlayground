@@ -37,7 +37,7 @@ public:
 	void cmdBindIndexBuffer(uint32_t bufferID, VkDeviceSize offset, VkIndexType indexType) const;
 
 	void cmdCopyBuffer(uint32_t source, uint32_t destination, const std::vector<VkBufferCopy>& copyRegions) const;
-    void cmdCopyBufferToImage(uint32_t buffer, uint32_t image, VkImageLayout imageLayout, const std::vector<VkBufferImageCopy>& copyRegions);
+    void cmdCopyBufferToImage(uint32_t buffer, uint32_t image, VkImageLayout imageLayout, const std::vector<VkBufferImageCopy>& copyRegions) const;
 	void cmdBlitImage(uint32_t source, uint32_t destination, const std::vector<VkImageBlit>& regions, VkFilter filter) const;
 	void cmdSimpleBlitImage(uint32_t source, uint32_t destination, VkFilter filter) const;
 	void cmdSimpleBlitImage(const VulkanImage& source, const VulkanImage& destination, VkFilter filter) const;

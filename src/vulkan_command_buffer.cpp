@@ -58,7 +58,7 @@ void VulkanCommandBuffer::cmdCopyBuffer(const uint32_t source, const uint32_t de
 	vkCmdCopyBuffer(m_vkHandle, *device.getBuffer(source), *device.getBuffer(destination), static_cast<uint32_t>(copyRegions.size()), copyRegions.data());
 }
 
-void VulkanCommandBuffer::cmdCopyBufferToImage(const uint32_t buffer, const uint32_t image, const VkImageLayout imageLayout, const std::vector<VkBufferImageCopy>& copyRegions)
+void VulkanCommandBuffer::cmdCopyBufferToImage(const uint32_t buffer, const uint32_t image, const VkImageLayout imageLayout, const std::vector<VkBufferImageCopy>& copyRegions) const
 {
     if (!m_isRecording)
     {

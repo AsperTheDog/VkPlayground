@@ -129,7 +129,7 @@ public:
 	void unmapStagingBuffer();
 	void dumpStagingBuffer(uint32_t buffer, VkDeviceSize size, VkDeviceSize offset, uint32_t threadID);
 	void dumpStagingBuffer(uint32_t buffer, const std::vector<VkBufferCopy>& regions, uint32_t threadID);
-    void dumpStagingBufferToImage(uint32_t image, VkExtent3D size, VkExtent3D offset, uint32_t threadID);
+    void dumpStagingBufferToImage(const uint32_t image, const VkExtent3D size, VkOffset3D offset, const uint32_t threadID);
 
 	[[nodiscard]] VulkanQueue getQueue(const QueueSelection& queueSelection) const;
 	[[nodiscard]] VulkanGPU getGPU() const;

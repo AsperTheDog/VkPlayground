@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <vulkan/vk_enum_string_helper.h>
 
+#include "vulkan_context.hpp"
 #include "utils/logger.hpp"
 
 VulkanQueue VulkanDevice::getQueue(const QueueSelection& queueSelection) const
@@ -482,7 +483,7 @@ void VulkanDevice::dumpStagingBuffer(const uint32_t buffer, const std::vector<Vk
 	freeCommandBuffer(commandBuffer, threadID);
 }
 
-void VulkanDevice::dumpStagingBufferToImage(const uint32_t image, const VkExtent3D size, VkExtent3D offset, const uint32_t threadID)
+void VulkanDevice::dumpStagingBufferToImage(const uint32_t image, const VkExtent3D size, const VkOffset3D offset, const uint32_t threadID)
 {
     const VulkanBuffer& stagingBuffer = getBuffer(m_stagingBufferInfo.stagingBuffer);
 
@@ -494,14 +495,18 @@ void VulkanDevice::dumpStagingBufferToImage(const uint32_t image, const VkExtent
     region.imageSubresource.mipLevel = 0;
     region.imageSubresource.baseArrayLayer = 0;
     region.imageSubresource.layerCount = 1;
-    region.imageOffset = {0, 0, 0};
+    region.imageOffset = offset;
     region.imageExtent = size;
 
-    const QueueFamily transferQueueFamily = m_physicalDevice.getQueueFamilies().getQueueFamily(m_stagingBufferInfo.queue.familyIndex);
 	VulkanCommandBuffer& commandBuffer = getCommandBuffer(createOneTimeCommandBuffer(threadID), threadID);
+    const VkImageLayout layout = getImage(image).getLayout();
 
 	commandBuffer.beginRecording(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    if (layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) 
+        commandBuffer.cmdSimpleTransitionImageLayout(image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 	commandBuffer.cmdCopyBufferToImage(m_stagingBufferInfo.stagingBuffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, {region});
+    if (layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) 
+        commandBuffer.cmdSimpleTransitionImageLayout(image, layout);
 	commandBuffer.endRecording();
 	const VulkanQueue queue = getQueue(m_stagingBufferInfo.queue);
 	commandBuffer.submit(queue, {}, {});
