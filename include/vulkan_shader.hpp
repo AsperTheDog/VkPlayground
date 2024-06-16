@@ -1,4 +1,5 @@
 #pragma once
+#include <optional>
 #include <string>
 #include <vector>
 #include <vulkan/vulkan.h>
@@ -22,7 +23,27 @@ public:
 
 	VkShaderModule operator*() const;
 
+    [[nodiscard]] std::vector<SpvReflectInterfaceVariable*> getInputs() const;
+    [[nodiscard]] std::vector<SpvReflectInterfaceVariable*> getOutputs() const;
+    [[nodiscard]] std::vector<SpvReflectEntryPoint> getEntryPoints() const;
 
+    [[nodiscard]] std::vector<SpvReflectBlockVariable> getPushConstants() const;
+    [[nodiscard]] std::vector<SpvReflectBlockVariable> getPushConstants(uint32_t set) const;
+    [[nodiscard]] std::optional<SpvReflectBlockVariable> getPushConstant(uint32_t set, uint32_t binding) const;
+
+    [[nodiscard]] std::vector<SpvReflectDescriptorSet> getDescriptorSets() const;
+    [[nodiscard]] std::vector<SpvReflectDescriptorBinding> getDescriptorBindings() const;
+    [[nodiscard]] std::vector<SpvReflectDescriptorBinding> getDescriptorBindings(uint32_t set) const;
+    [[nodiscard]] std::vector<SpvReflectDescriptorBinding> getDescriptorBindings(VkDescriptorType type) const;
+    [[nodiscard]] std::vector<SpvReflectDescriptorBinding> getDescriptorBindings(uint32_t set, VkDescriptorType type) const;
+
+    [[nodiscard]] uint32_t getDescriptorBindingCount() const;
+    [[nodiscard]] uint32_t getDescriptorSetCount() const;
+    [[nodiscard]] uint32_t getPushConstantCount() const;
+
+    [[nodiscard]] VkShaderStageFlagBits getStage() const { return m_stage; }
+
+    [[nodiscard]] bool hasReflection() const { return m_hasReflection; }
 
 private:
 	void free();

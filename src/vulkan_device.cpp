@@ -988,7 +988,7 @@ void VulkanDevice::freeSemaphore(const VulkanSemaphore& semaphore)
 	freeSemaphore(semaphore.m_id);
 }
 
-uint32_t VulkanDevice::createShader(const std::string& filename, const VkShaderStageFlagBits stage, const std::vector<VulkanShader::MacroDef>& macros)
+uint32_t VulkanDevice::createShader(const std::string& filename, const VkShaderStageFlagBits stage, const bool getReflection, const std::vector<VulkanShader::MacroDef>& macros)
 {
 	const VulkanShader::Result result = VulkanShader::compileFile(filename, VulkanShader::getKindFromStage(stage), VulkanShader::readFile(filename),
 #ifdef _DEBUG
@@ -1013,7 +1013,10 @@ uint32_t VulkanDevice::createShader(const std::string& filename, const VkShaderS
 		throw std::runtime_error("failed to create shader module!");
 	}
 
-	m_shaders.push_back({ m_id, shader, stage });
+    if (getReflection)
+	    m_shaders.push_back({ m_id, shader, stage, result.code });
+    else
+	    m_shaders.push_back({ m_id, shader, stage });
 	Logger::print("Created shader (ID: " + std::to_string(m_shaders.back().getID()) + ") and stage " + string_VkShaderStageFlagBits(stage), Logger::DEBUG);
 	return m_shaders.back().getID();
 }

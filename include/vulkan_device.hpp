@@ -68,7 +68,7 @@ public:
 	void freePipelineLayout(uint32_t id);
 	void freePipelineLayout(const VulkanPipelineLayout& layout);
 
-	uint32_t createShader(const std::string& filename, VkShaderStageFlagBits stage, const std::vector<VulkanShader::MacroDef>& macros);
+	uint32_t createShader(const std::string& filename, VkShaderStageFlagBits stage, bool getReflection, const std::vector<VulkanShader::MacroDef>& macros);
 	VulkanShader& getShader(uint32_t id);
     [[nodiscard]] const VulkanShader& getShader(uint32_t id) const;
 	void freeShader(uint32_t id);
