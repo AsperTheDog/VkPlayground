@@ -43,11 +43,23 @@ void VulkanShader::free()
         Logger::print("Freed shader module (ID: " + std::to_string(m_id) + ")", Logger::DEBUG);
 		m_vkHandle = VK_NULL_HANDLE;
 	}
+
+    if (m_hasReflection)
+    {
+        spvReflectDestroyShaderModule(&m_reflectModule);
+        m_hasReflection = false;
+    }
 }
 
-VulkanShader::VulkanShader(const uint32_t device, const VkShaderModule handle, const VkShaderStageFlagBits stage)
+VulkanShader::VulkanShader(const uint32_t device, const VkShaderModule handle, const VkShaderStageFlagBits stage, const std::vector<uint32_t>& code)
 	:  m_vkHandle(handle), m_stage(stage), m_device(device)
 {
+    if (!code.empty())
+    {
+        m_hasReflection = true;
+        if (const SpvReflectResult result = spvReflectCreateShaderModule(code.size(), code.data(), &m_reflectModule); result != SPV_REFLECT_RESULT_SUCCESS)
+            throw std::runtime_error("Failed to reflect shader module: " + std::to_string(result));
+    }
 }
 
 std::string VulkanShader::readFile(const std::string_view p_filename)
