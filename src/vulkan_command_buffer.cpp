@@ -66,7 +66,7 @@ void VulkanCommandBuffer::cmdCopyBufferToImage(const uint32_t buffer, const uint
     }
 
     VulkanDevice& device = VulkanContext::getDevice(m_device);
-    vkCmdCopyBufferToImage(m_vkHandle, *device.getBuffer(buffer), *device.getImage(image), imageLayout, copyRegions.size(), copyRegions.data());
+    vkCmdCopyBufferToImage(m_vkHandle, *device.getBuffer(buffer), *device.getImage(image), imageLayout, static_cast<uint32_t>(copyRegions.size()), copyRegions.data());
 }
 
 void VulkanCommandBuffer::cmdBlitImage(const uint32_t source, const uint32_t destination, const std::vector<VkImageBlit>& regions, const VkFilter filter) const
