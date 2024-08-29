@@ -113,6 +113,7 @@ VulkanShader::VulkanShader(const uint32_t device, const VkShaderModule handle, c
 void VulkanShader::reflect(const std::vector<uint32_t>& code)
 {
     m_compiler  = new spirv_cross::CompilerGLSL(code);
+    printReflectionData();
 }
 
 std::string VulkanShader::readFile(const std::string_view p_filename)

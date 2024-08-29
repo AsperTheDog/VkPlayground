@@ -3,6 +3,7 @@
 #include <functional>
 #include <vector>
 #include <ranges>
+#include <string>
 
 template<typename... Args>
 class Signal {
