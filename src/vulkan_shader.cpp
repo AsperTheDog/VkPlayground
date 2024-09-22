@@ -37,6 +37,18 @@ VkShaderModule VulkanShader::operator*() const
     return m_vkHandle;
 }
 
+VulkanShader::ReflectionData VulkanShader::getReflectionData() const
+{
+    if (m_compiler == nullptr)
+    {
+        Logger::print("No reflection data available for shader (ID: " + std::to_string(m_id) + ")", Logger::DEBUG, false);
+        return {};
+    }
+
+    return ReflectionData(m_compiler->get_shader_resources());
+
+}
+
 void VulkanShader::printReflectionData() const
 {
         if (m_compiler == nullptr)

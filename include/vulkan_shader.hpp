@@ -18,6 +18,16 @@ public:
         std::string value;
     };
 
+    struct ReflectionData
+    {
+        ReflectionData() : valid(false) {}
+        explicit ReflectionData(const spirv_cross::ShaderResources& src): resources(src), valid(true) {}
+
+        spirv_cross::ShaderResources resources{};
+        bool valid;
+    };
+
+
 	static [[nodiscard]] shaderc_shader_kind getKindFromStage(VkShaderStageFlagBits stage);
 
 	VkShaderModule operator*() const;
@@ -25,6 +35,7 @@ public:
     [[nodiscard]] VkShaderStageFlagBits getStage() const { return m_stage; }
 
     [[nodiscard]] bool hasReflection() const { return m_compiler != nullptr; }
+    ReflectionData getReflectionData() const;
 
     void printReflectionData() const;
 
