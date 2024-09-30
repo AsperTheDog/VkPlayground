@@ -35,7 +35,7 @@ public:
     [[nodiscard]] VkShaderStageFlagBits getStage() const { return m_stage; }
 
     [[nodiscard]] bool hasReflection() const { return m_compiler != nullptr; }
-    ReflectionData getReflectionData() const;
+    [[nodiscard]] ReflectionData getReflectionData() const;
 
     void printReflectionData() const;
 
