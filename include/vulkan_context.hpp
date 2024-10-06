@@ -15,7 +15,7 @@ public:
 	static [[nodiscard]] uint32_t getGPUCount();
 	static [[nodiscard]] std::vector<VulkanGPU> getGPUs();
 
-	static uint32_t createDevice(VulkanGPU gpu, const QueueFamilySelector& queues, const std::vector<const char*>& extensions, const VkPhysicalDeviceFeatures& features);
+	static uint32_t createDevice(VulkanGPU gpu, const QueueFamilySelector& queues, const std::vector<const char*>& extensions, const VkPhysicalDeviceFeatures& features, void* nextInfo = nullptr);
 	static VulkanDevice& getDevice(uint32_t index);
 	static void freeDevice(uint32_t index);
 	static void freeDevice(const VulkanDevice& device);

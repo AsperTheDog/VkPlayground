@@ -140,10 +140,11 @@ std::vector<VulkanGPU> VulkanContext::getGPUs()
 	return gpus;
 }
 
-uint32_t VulkanContext::createDevice(const VulkanGPU gpu, const QueueFamilySelector& queues, const std::vector<const char*>& extensions, const VkPhysicalDeviceFeatures& features)
+uint32_t VulkanContext::createDevice(const VulkanGPU gpu, const QueueFamilySelector& queues, const std::vector<const char*>& extensions, const VkPhysicalDeviceFeatures& features, void* nextInfo)
 {
 	VkDeviceCreateInfo deviceCreateInfo{};
 	deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    deviceCreateInfo.pNext = nextInfo;
 	if (m_validationLayersEnabled)
 	{
 		deviceCreateInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());

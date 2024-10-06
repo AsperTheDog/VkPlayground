@@ -20,7 +20,7 @@ bool GPUQueueStructure::isQueueFlagSupported(const VkQueueFlagBits flag) const
 {
 	for (const QueueFamily& queueFamily : queueFamilies)
 	{
-		if (queueFamily.properties.queueFlags & flag)
+		if (queueFamily.properties.queueFlags & flag && queueFamily.properties.queueCount > 0)
 		{
 			return true;
 		}
