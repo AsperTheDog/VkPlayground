@@ -265,7 +265,8 @@ MemoryChunk::MemoryBlock VulkanMemoryAllocator::allocate(const VkDeviceSize size
 	}
 
     const VkDeviceSize heapSize = getMemoryStructure().getMemoryTypeHeap(memoryType).size;
-    if (chunkSize > heapSize * 0.8) chunkSize = heapSize * 0.8;
+    const VkDeviceSize maxHeapUsage = static_cast<VkDeviceSize>(static_cast<double>(heapSize) * 0.8);
+    if (chunkSize > maxHeapUsage) chunkSize = maxHeapUsage;
     if (chunkSize < size) 
         throw std::runtime_error("Allocation of size " + std::to_string(size) + " was requested for memory type " + std::to_string(memoryType) + " but the heap size is only " + std::to_string(heapSize) + " (Cannot allocate more than 80% of heap)");
 
