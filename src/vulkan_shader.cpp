@@ -101,6 +101,14 @@ void VulkanShader::printReflectionData() const
     }
 }
 
+VulkanShader::ReflectionData VulkanShader::getReflectionDataFromFile(const std::string& filepath, const VkShaderStageFlagBits stage)
+{
+    const VulkanShader::Result result = VulkanShader::compileFile(filepath, VulkanShader::getKindFromStage(stage), VulkanShader::readFile(filepath), false, {});
+    if (!result.success) return {};
+    const spirv_cross::CompilerGLSL compiler(result.code);
+    return ReflectionData(compiler.get_shader_resources());
+}
+
 void VulkanShader::free()
 {
     if (m_vkHandle != VK_NULL_HANDLE)

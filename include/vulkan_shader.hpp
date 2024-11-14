@@ -39,6 +39,8 @@ public:
 
     void printReflectionData() const;
 
+    static ReflectionData getReflectionDataFromFile(const std::string& filepath, VkShaderStageFlagBits stage);
+
 private:
 	void free();
 
