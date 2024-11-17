@@ -21,7 +21,7 @@ public:
     struct ReflectionData
     {
         ReflectionData() : valid(false) {}
-        explicit ReflectionData(const spirv_cross::ShaderResources& src): resources(src), valid(true) {}
+        explicit ReflectionData(spirv_cross::ShaderResources src): resources(std::move(src)), valid(true) {}
 
         spirv_cross::ShaderResources resources{};
         bool valid;

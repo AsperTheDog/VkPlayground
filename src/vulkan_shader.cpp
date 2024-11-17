@@ -104,7 +104,11 @@ void VulkanShader::printReflectionData() const
 VulkanShader::ReflectionData VulkanShader::getReflectionDataFromFile(const std::string& filepath, const VkShaderStageFlagBits stage)
 {
     const VulkanShader::Result result = VulkanShader::compileFile(filepath, VulkanShader::getKindFromStage(stage), VulkanShader::readFile(filepath), false, {});
-    if (!result.success) return {};
+    if (!result.success)
+    {
+        Logger::print("Failed to compile shader file " + filepath + ": " + result.error, Logger::ERR);
+        return {};
+    }
     const spirv_cross::CompilerGLSL compiler(result.code);
     return ReflectionData(compiler.get_shader_resources());
 }
