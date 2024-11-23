@@ -10,6 +10,32 @@
 
 #include "spirv_cross/spirv_glsl.hpp"
 
+VulkanShader::ReflectionManager::ReflectionManager(spirv_cross::CompilerGLSL* compiler, const bool isCompilerLocal)
+ : compiler(compiler), isCompilerLocal(isCompilerLocal) {}
+
+VulkanShader::ReflectionManager::ReflectionManager(ReflectionManager&& other) noexcept : compiler(other.compiler), isCompilerLocal(other.isCompilerLocal)
+{
+    other.compiler = nullptr;
+}
+
+VulkanShader::ReflectionManager& VulkanShader::ReflectionManager::operator=(ReflectionManager&& other) noexcept
+{
+    compiler = other.compiler;
+    isCompilerLocal = other.isCompilerLocal;
+    other.compiler = nullptr;
+    return *this;
+}
+
+std::string VulkanShader::ReflectionManager::getName(const spirv_cross::ID id, const std::string& nameField) const
+{
+    std::string name = nameField;
+    if (name.empty())
+        name = compiler->get_name(id);
+    if (name.empty())
+        name = compiler->get_fallback_name(id);
+    return name;
+}
+
 shaderc_shader_kind VulkanShader::getKindFromStage(const VkShaderStageFlagBits stage)
 {
     switch (stage)
@@ -37,7 +63,7 @@ VkShaderModule VulkanShader::operator*() const
     return m_vkHandle;
 }
 
-VulkanShader::ReflectionData VulkanShader::getReflectionData() const
+VulkanShader::ReflectionManager VulkanShader::getReflectionData() const
 {
     if (m_compiler == nullptr)
     {
@@ -45,8 +71,7 @@ VulkanShader::ReflectionData VulkanShader::getReflectionData() const
         return {};
     }
 
-    return ReflectionData(m_compiler->get_shader_resources());
-
+    return VulkanShader::ReflectionManager{m_compiler, false};
 }
 
 void VulkanShader::printReflectionData() const
@@ -101,7 +126,7 @@ void VulkanShader::printReflectionData() const
     }
 }
 
-VulkanShader::ReflectionData VulkanShader::getReflectionDataFromFile(const std::string& filepath, const VkShaderStageFlagBits stage)
+VulkanShader::ReflectionManager VulkanShader::getReflectionDataFromFile(const std::string& filepath, const VkShaderStageFlagBits stage)
 {
     const VulkanShader::Result result = VulkanShader::compileFile(filepath, VulkanShader::getKindFromStage(stage), VulkanShader::readFile(filepath), false, {});
     if (!result.success)
@@ -109,8 +134,8 @@ VulkanShader::ReflectionData VulkanShader::getReflectionDataFromFile(const std::
         Logger::print("Failed to compile shader file " + filepath + ": " + result.error, Logger::ERR);
         return {};
     }
-    const spirv_cross::CompilerGLSL compiler(result.code);
-    return ReflectionData(compiler.get_shader_resources());
+    spirv_cross::CompilerGLSL* compiler = new spirv_cross::CompilerGLSL(result.code);
+    return VulkanShader::ReflectionManager{compiler};
 }
 
 void VulkanShader::free()

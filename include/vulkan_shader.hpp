@@ -18,13 +18,27 @@ public:
         std::string value;
     };
 
-    struct ReflectionData
+    struct ReflectionManager
     {
-        ReflectionData() : valid(false) {}
-        explicit ReflectionData(spirv_cross::ShaderResources src): resources(std::move(src)), valid(true) {}
+        ReflectionManager() = default;
+        explicit ReflectionManager(spirv_cross::CompilerGLSL* compiler, bool isCompilerLocal = true);
+        ~ReflectionManager() { if (compiler != nullptr && isCompilerLocal) delete compiler; }
+        
+        ReflectionManager(const ReflectionManager&) = delete;
+        ReflectionManager& operator=(const ReflectionManager&) = delete;
 
-        spirv_cross::ShaderResources resources{};
-        bool valid;
+        ReflectionManager(ReflectionManager&& other) noexcept;
+        ReflectionManager& operator=(ReflectionManager&& other) noexcept;
+
+
+        [[nodiscard]] spirv_cross::ShaderResources getResources() const { return compiler->get_shader_resources(); }
+        [[nodiscard]] bool isValid() const { return compiler != nullptr; }
+
+        [[nodiscard]] std::string getName(spirv_cross::ID id, const std::string& nameField) const;
+
+        spirv_cross::CompilerGLSL* compiler = nullptr;
+        bool isCompilerLocal = false;
+
     };
 
 
@@ -35,11 +49,11 @@ public:
     [[nodiscard]] VkShaderStageFlagBits getStage() const { return m_stage; }
 
     [[nodiscard]] bool hasReflection() const { return m_compiler != nullptr; }
-    [[nodiscard]] ReflectionData getReflectionData() const;
+    [[nodiscard]] ReflectionManager getReflectionData() const;
 
     void printReflectionData() const;
 
-    static ReflectionData getReflectionDataFromFile(const std::string& filepath, VkShaderStageFlagBits stage);
+    static ReflectionManager getReflectionDataFromFile(const std::string& filepath, VkShaderStageFlagBits stage);
 
 private:
 	void free();
