@@ -68,8 +68,8 @@ private:
 	VulkanShader(uint32_t device, VkShaderModule handle, VkShaderStageFlagBits stage);
     void reflect(const std::vector<uint32_t>& code);
 
-	static std::string readFile(std::string_view p_filename);
-	static [[nodiscard]] Result compileFile(std::string_view p_source_name, shaderc_shader_kind p_kind, std::string_view p_source, bool p_optimize, const std::vector<MacroDef>& macros);
+	static std::string readFile(const std::string& p_filename);
+	static [[nodiscard]] Result compileFile(const std::string& p_source_name, shaderc_shader_kind p_kind, const std::string& p_source, bool p_optimize, const std::vector<MacroDef>& macros);
     
 	VkShaderModule m_vkHandle = VK_NULL_HANDLE;
 	VkShaderStageFlagBits m_stage = VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;

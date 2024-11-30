@@ -165,7 +165,7 @@ void VulkanShader::reflect(const std::vector<uint32_t>& code)
     printReflectionData();
 }
 
-std::string VulkanShader::readFile(const std::string_view p_filename)
+std::string VulkanShader::readFile(const std::string& p_filename)
 {
     std::ifstream shaderFile(p_filename.data());
     if (!shaderFile.is_open()) throw std::runtime_error("failed to open shader file " + std::string(p_filename));
@@ -173,7 +173,7 @@ std::string VulkanShader::readFile(const std::string_view p_filename)
     return str;
 }
 
-VulkanShader::Result VulkanShader::compileFile(const std::string_view p_source_name, const shaderc_shader_kind p_kind, const std::string_view p_source, const bool p_optimize, const std::vector<MacroDef>& macros)
+VulkanShader::Result VulkanShader::compileFile(const std::string& p_source_name, const shaderc_shader_kind p_kind, const std::string& p_source, const bool p_optimize, const std::vector<MacroDef>& macros)
 {
     const shaderc::Compiler compiler;
     shaderc::CompileOptions options;
