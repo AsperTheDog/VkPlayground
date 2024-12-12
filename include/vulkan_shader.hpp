@@ -24,12 +24,8 @@ public:
         explicit ReflectionManager(spirv_cross::CompilerGLSL* compiler, bool isCompilerLocal = true);
         ~ReflectionManager() { if (compiler != nullptr && isCompilerLocal) delete compiler; }
         
-        ReflectionManager(const ReflectionManager&) = delete;
-        ReflectionManager& operator=(const ReflectionManager&) = delete;
-
         ReflectionManager(ReflectionManager&& other) noexcept;
         ReflectionManager& operator=(ReflectionManager&& other) noexcept;
-
 
         [[nodiscard]] spirv_cross::ShaderResources getResources() const { return compiler->get_shader_resources(); }
         [[nodiscard]] bool isValid() const { return compiler != nullptr; }
