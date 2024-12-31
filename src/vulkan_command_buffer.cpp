@@ -1,6 +1,5 @@
 #include "vulkan_command_buffer.hpp"
 
-#include <array>
 #include <stdexcept>
 #include <vector>
 #include <vulkan/vk_enum_string_helper.h>
@@ -20,7 +19,7 @@ void VulkanCommandBuffer::beginRecording(const VkCommandBufferUsageFlags flags)
 #ifdef _DEBUG
 	if (m_isRecording)
 	{
-		Logger::print("Tried to begin recording, but command buffer (ID:" + std::to_string(m_id) + ") is already recording", Logger::LevelBits::WARN);
+		Logger::print("Tried to begin recording, but command buffer (ID:" + std::to_string(m_ID) + ") is already recording", Logger::LevelBits::WARN);
 		return;
 	}
 #endif
@@ -38,7 +37,7 @@ void VulkanCommandBuffer::endRecording()
 {
 	if (!m_isRecording)
 	{
-		Logger::print("Tried to end recording, but command buffer (ID:" + std::to_string(m_id) + ") is not recording", Logger::LevelBits::WARN);
+		Logger::print("Tried to end recording, but command buffer (ID:" + std::to_string(m_ID) + ") is not recording", Logger::LevelBits::WARN);
 		return;
 	}
 
@@ -51,10 +50,10 @@ void VulkanCommandBuffer::cmdCopyBuffer(const uint32_t source, const uint32_t de
 {
 	if (!m_isRecording)
 	{
-		throw std::runtime_error("Command buffer (ID:" + std::to_string(m_id) + ") is not recording");
+		throw std::runtime_error("Command buffer (ID:" + std::to_string(m_ID) + ") is not recording");
 	}
 
-	VulkanDevice& device = VulkanContext::getDevice(m_device);
+	VulkanDevice& device = VulkanContext::getDevice(getDeviceID());
 	vkCmdCopyBuffer(m_vkHandle, *device.getBuffer(source), *device.getBuffer(destination), static_cast<uint32_t>(copyRegions.size()), copyRegions.data());
 }
 
@@ -62,10 +61,10 @@ void VulkanCommandBuffer::cmdCopyBufferToImage(const uint32_t buffer, const uint
 {
     if (!m_isRecording)
     {
-        throw std::runtime_error("Command buffer (ID:" + std::to_string(m_id) + ") is not recording");
+        throw std::runtime_error("Command buffer (ID:" + std::to_string(m_ID) + ") is not recording");
     }
 
-    VulkanDevice& device = VulkanContext::getDevice(m_device);
+    VulkanDevice& device = VulkanContext::getDevice(getDeviceID());
     vkCmdCopyBufferToImage(m_vkHandle, *device.getBuffer(buffer), *device.getImage(image), imageLayout, static_cast<uint32_t>(copyRegions.size()), copyRegions.data());
 }
 
@@ -73,10 +72,10 @@ void VulkanCommandBuffer::cmdBlitImage(const uint32_t source, const uint32_t des
 {
 	if (!m_isRecording)
 	{
-		throw std::runtime_error("Command buffer (ID:" + std::to_string(m_id) + ") is not recording");
+		throw std::runtime_error("Command buffer (ID:" + std::to_string(m_ID) + ") is not recording");
 	}
 
-	VulkanDevice& device = VulkanContext::getDevice(m_device);
+	VulkanDevice& device = VulkanContext::getDevice(getDeviceID());
 	const VulkanImage& srcImage = device.getImage(source);
 	const VulkanImage& dstImage = device.getImage(destination);
 	vkCmdBlitImage(m_vkHandle, *srcImage, srcImage.getLayout(), *dstImage, dstImage.getLayout(), static_cast<uint32_t>(regions.size()), regions.data(), filter);
@@ -84,7 +83,7 @@ void VulkanCommandBuffer::cmdBlitImage(const uint32_t source, const uint32_t des
 
 void VulkanCommandBuffer::cmdSimpleBlitImage(const uint32_t source, const uint32_t destination, const VkFilter filter) const
 {
-	VulkanDevice& device = VulkanContext::getDevice(m_device);
+	VulkanDevice& device = VulkanContext::getDevice(getDeviceID());
 	const VulkanImage& srcImage = device.getImage(source);
 	const VulkanImage& dstImage = device.getImage(destination);
 	cmdSimpleBlitImage(srcImage, dstImage, filter);
@@ -94,7 +93,7 @@ void VulkanCommandBuffer::cmdSimpleBlitImage(const VulkanImage& source, const Vu
 {
 	if (!m_isRecording)
 	{
-		throw std::runtime_error("Command buffer (ID:" + std::to_string(m_id) + ") is not recording");
+		throw std::runtime_error("Command buffer (ID:" + std::to_string(m_ID) + ") is not recording");
 	}
 
 	VkImageBlit region{};
@@ -133,16 +132,16 @@ void VulkanCommandBuffer::cmdPushConstant(const uint32_t layout, const VkShaderS
 {
 	if (!m_isRecording)
 	{
-		throw std::runtime_error("Command buffer (ID:" + std::to_string(m_id) + ") is not recording");
+		throw std::runtime_error("Command buffer (ID:" + std::to_string(m_ID) + ") is not recording");
 	}
 
-	vkCmdPushConstants(m_vkHandle, VulkanContext::getDevice(m_device).getPipelineLayout(layout).m_vkHandle, stageFlags, offset, size, pValues);
+	vkCmdPushConstants(m_vkHandle, VulkanContext::getDevice(getDeviceID()).getPipelineLayout(layout).m_vkHandle, stageFlags, offset, size, pValues);
 }
 
 void VulkanCommandBuffer::cmdBindDescriptorSet(const VkPipelineBindPoint bindPoint, const uint32_t layout, const uint32_t descriptorSet) const
 {
-	const VkPipelineLayout vkLayout = *VulkanContext::getDevice(m_device).getPipelineLayout(layout);
-	const VkDescriptorSet vkDescriptorSet = *VulkanContext::getDevice(m_device).getDescriptorSet(descriptorSet);
+	const VkPipelineLayout vkLayout = *VulkanContext::getDevice(getDeviceID()).getPipelineLayout(layout);
+	const VkDescriptorSet vkDescriptorSet = *VulkanContext::getDevice(getDeviceID()).getDescriptorSet(descriptorSet);
 	vkCmdBindDescriptorSets(m_vkHandle, bindPoint, vkLayout, 0, 1, &vkDescriptorSet, 0, nullptr);
 }
 
@@ -150,11 +149,11 @@ void VulkanCommandBuffer::submit(const VulkanQueue& queue, const std::vector<std
 {
 	if (m_isRecording)
 	{
-		Logger::print("Tried to submit command buffer (ID:" + std::to_string(m_id) + ") while it is still recording, forcefully ending recording", Logger::LevelBits::WARN);
+		Logger::print("Tried to submit command buffer (ID:" + std::to_string(m_ID) + ") while it is still recording, forcefully ending recording", Logger::LevelBits::WARN);
 		endRecording();
 	}
 
-	VulkanDevice& device = VulkanContext::getDevice(m_device);
+	VulkanDevice& device = VulkanContext::getDevice(getDeviceID());
 
 	std::vector<VkSemaphore> waitSemaphores{};
 	std::vector<VkPipelineStageFlags> waitStages{};
@@ -186,7 +185,7 @@ void VulkanCommandBuffer::submit(const VulkanQueue& queue, const std::vector<std
 	const VkResult ret = vkQueueSubmit(queue.m_vkHandle, 1, &submitInfo, fence != UINT32_MAX ? device.getFence(fence).m_vkHandle : VK_NULL_HANDLE);
 	if (ret != VK_SUCCESS)
 	{
-		throw std::runtime_error("Failed to submit command buffer (ID:" + std::to_string(m_id) + "), error: " + string_VkResult(ret));
+		throw std::runtime_error("Failed to submit command buffer (ID:" + std::to_string(m_ID) + "), error: " + string_VkResult(ret));
 	}
 }
 
@@ -194,21 +193,23 @@ void VulkanCommandBuffer::reset() const
 {
 	if (const VkResult ret = vkResetCommandBuffer(m_vkHandle, 0); ret != VK_SUCCESS)
 	{
-		throw std::runtime_error("Failed to reset command buffer (ID:" + std::to_string(m_id) + "), error: " + string_VkResult(ret));
+		throw std::runtime_error("Failed to reset command buffer (ID:" + std::to_string(m_ID) + "), error: " + string_VkResult(ret));
 	}
 }
 
 void VulkanCommandBuffer::cmdBeginRenderPass(const uint32_t renderPass, const uint32_t frameBuffer, const VkExtent2D extent, const std::vector<VkClearValue>& clearValues) const
 {
+    VulkanDevice& device = VulkanContext::getDevice(getDeviceID());
+
 	if (!m_isRecording)
 	{
-		throw std::runtime_error("Tried to execute command CmdBeginRenderPass, but command buffer (ID:" + std::to_string(m_id) + ") is not recording");
+		throw std::runtime_error("Tried to execute command CmdBeginRenderPass, but command buffer (ID:" + std::to_string(m_ID) + ") is not recording");
 	}
 
 	VkRenderPassBeginInfo beginInfo{};
 	beginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	beginInfo.renderPass = VulkanContext::getDevice(m_device).getRenderPass(renderPass).m_vkHandle;
-	beginInfo.framebuffer = VulkanContext::getDevice(m_device).getFramebuffer(frameBuffer).m_vkHandle;
+	beginInfo.renderPass = device.getRenderPass(renderPass).m_vkHandle;
+	beginInfo.framebuffer = device.getFramebuffer(frameBuffer).m_vkHandle;
 	beginInfo.renderArea.offset = { 0, 0 };
 	beginInfo.renderArea.extent = extent;
 
@@ -222,7 +223,7 @@ void VulkanCommandBuffer::cmdEndRenderPass() const
 {
 	if (!m_isRecording)
 	{
-		throw std::runtime_error("Tried to execute command CmdEndRenderPass, but command buffer (ID:" + std::to_string(m_id) + ") is not recording");
+		throw std::runtime_error("Tried to execute command CmdEndRenderPass, but command buffer (ID:" + std::to_string(m_ID) + ") is not recording");
 	}
 
 	vkCmdEndRenderPass(m_vkHandle);
@@ -232,17 +233,17 @@ void VulkanCommandBuffer::cmdBindPipeline(const VkPipelineBindPoint bindPoint, c
 {
 	if (!m_isRecording)
 	{
-		throw std::runtime_error("Tried to execute command CmdBindPipeline, but command buffer (ID:" + std::to_string(m_id) + ") is not recording");
+		throw std::runtime_error("Tried to execute command CmdBindPipeline, but command buffer (ID:" + std::to_string(m_ID) + ") is not recording");
 	}
 
-	vkCmdBindPipeline(m_vkHandle, bindPoint, VulkanContext::getDevice(m_device).getPipeline(pipelineID).m_vkHandle);
+	vkCmdBindPipeline(m_vkHandle, bindPoint, VulkanContext::getDevice(getDeviceID()).getPipeline(pipelineID).m_vkHandle);
 }
 
 void VulkanCommandBuffer::cmdNextSubpass() const
 {
 	if (!m_isRecording)
 	{
-		throw std::runtime_error("Tried to execute command CmdNextSubpass, but command buffer (ID:" + std::to_string(m_id) + ") is not recording");
+		throw std::runtime_error("Tried to execute command CmdNextSubpass, but command buffer (ID:" + std::to_string(m_ID) + ") is not recording");
 	}
 
 	vkCmdNextSubpass(m_vkHandle, VK_SUBPASS_CONTENTS_INLINE);
@@ -255,7 +256,7 @@ void VulkanCommandBuffer::cmdPipelineBarrier(const VkPipelineStageFlags srcStage
 {
 	if (!m_isRecording)
 	{
-		throw std::runtime_error("Tried to execute command CmdPipelineBarrier, but command buffer (ID:" + std::to_string(m_id) + ") is not recording");
+		throw std::runtime_error("Tried to execute command CmdPipelineBarrier, but command buffer (ID:" + std::to_string(m_ID) + ") is not recording");
 	}
 
 	vkCmdPipelineBarrier(m_vkHandle, srcStageMask, dstStageMask, dependencyFlags, static_cast<uint32_t>(memoryBarriers.size()), memoryBarriers.data(), static_cast<uint32_t>(bufferMemoryBarriers.size()), bufferMemoryBarriers.data(), static_cast<uint32_t>(imageMemoryBarriers.size()), imageMemoryBarriers.data());
@@ -263,7 +264,7 @@ void VulkanCommandBuffer::cmdPipelineBarrier(const VkPipelineStageFlags srcStage
 
 void VulkanCommandBuffer::cmdSimpleTransitionImageLayout(const uint32_t image, const VkImageLayout newLayout, const uint32_t srcQueueFamily, const uint32_t dstQueueFamily) const
 {
-	const VulkanImage& imageObj = VulkanContext::getDevice(m_device).getImage(image);
+	const VulkanImage& imageObj = VulkanContext::getDevice(getDeviceID()).getImage(image);
 
 	VkImageMemoryBarrier barrier = {};
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -325,7 +326,7 @@ void VulkanCommandBuffer::cmdSimpleAbsoluteBarrier() const
 {
 	if (!m_isRecording)
 	{
-		throw std::runtime_error("Tried to execute command CmdSimpleAbsoluteBarrier, but command buffer (ID:" + std::to_string(m_id) + ") is not recording");
+		throw std::runtime_error("Tried to execute command CmdSimpleAbsoluteBarrier, but command buffer (ID:" + std::to_string(m_ID) + ") is not recording");
 	}
 
 	VkMemoryBarrier barrier{};
@@ -340,24 +341,24 @@ void VulkanCommandBuffer::cmdBindVertexBuffer(const uint32_t buffer, const VkDev
 {
 	if (!m_isRecording)
 	{
-		throw std::runtime_error("Tried to execute command CmdBindVertexBuffers, but command buffer (ID:" + std::to_string(m_id) + ") is not recording");
+		throw std::runtime_error("Tried to execute command CmdBindVertexBuffers, but command buffer (ID:" + std::to_string(m_ID) + ") is not recording");
 	}
 
-	vkCmdBindVertexBuffers(m_vkHandle, 0, 1, &VulkanContext::getDevice(m_device).getBuffer(buffer).m_vkHandle, &offset);
+	vkCmdBindVertexBuffers(m_vkHandle, 0, 1, &VulkanContext::getDevice(getDeviceID()).getBuffer(buffer).m_vkHandle, &offset);
 }
 
 void VulkanCommandBuffer::cmdBindVertexBuffers(const std::vector<uint32_t>& bufferIDs, const std::vector<VkDeviceSize>& offsets) const
 {
 	if (!m_isRecording)
 	{
-		throw std::runtime_error("Tried to execute command CmdBindVertexBuffers, but command buffer (ID:" + std::to_string(m_id) + ") is not recording");
+		throw std::runtime_error("Tried to execute command CmdBindVertexBuffers, but command buffer (ID:" + std::to_string(m_ID) + ") is not recording");
 	}
 
 	std::vector<VkBuffer> vkBuffers;
 	vkBuffers.reserve(bufferIDs.size());
 	for (const auto& buffer : bufferIDs)
 	{
-		vkBuffers.push_back(VulkanContext::getDevice(m_device).getBuffer(buffer).m_vkHandle);
+		vkBuffers.push_back(VulkanContext::getDevice(getDeviceID()).getBuffer(buffer).m_vkHandle);
 	}
 	vkCmdBindVertexBuffers(m_vkHandle, 0, static_cast<uint32_t>(vkBuffers.size()), vkBuffers.data(), offsets.data());
 }
@@ -366,17 +367,17 @@ void VulkanCommandBuffer::cmdBindIndexBuffer(const uint32_t bufferID, const VkDe
 {
 	if (!m_isRecording)
 	{
-		throw std::runtime_error("Tried to execute command CmdBindIndexBuffer, but command buffer (ID:" + std::to_string(m_id) + ") is not recording");
+		throw std::runtime_error("Tried to execute command CmdBindIndexBuffer, but command buffer (ID:" + std::to_string(m_ID) + ") is not recording");
 	}
 
-	vkCmdBindIndexBuffer(m_vkHandle, VulkanContext::getDevice(m_device).getBuffer(bufferID).m_vkHandle, offset, indexType);
+	vkCmdBindIndexBuffer(m_vkHandle, VulkanContext::getDevice(getDeviceID()).getBuffer(bufferID).m_vkHandle, offset, indexType);
 }
 
 void VulkanCommandBuffer::cmdSetViewport(const VkViewport& viewport) const
 {
 	if (!m_isRecording)
 	{
-		throw std::runtime_error("Tried to execute command CmdSetViewport, but command buffer (ID:" + std::to_string(m_id) + ") is not recording");
+		throw std::runtime_error("Tried to execute command CmdSetViewport, but command buffer (ID:" + std::to_string(m_ID) + ") is not recording");
 	}
 
 	vkCmdSetViewport(m_vkHandle, 0, 1, &viewport);
@@ -386,7 +387,7 @@ void VulkanCommandBuffer::cmdSetScissor(const VkRect2D scissor) const
 {
 	if (!m_isRecording)
 	{
-		throw std::runtime_error("Tried to execute command CmdSetScissor, but command buffer (ID:" + std::to_string(m_id) + ") is not recording");
+		throw std::runtime_error("Tried to execute command CmdSetScissor, but command buffer (ID:" + std::to_string(m_ID) + ") is not recording");
 	}
 
 	vkCmdSetScissor(m_vkHandle, 0, 1, &scissor);
@@ -396,7 +397,7 @@ void VulkanCommandBuffer::cmdDraw(const uint32_t vertexCount, const uint32_t fir
 {
 	if (!m_isRecording)
 	{
-		throw std::runtime_error("Tried to execute command CmdDraw, but command buffer (ID:" + std::to_string(m_id) + ") is not recording");
+		throw std::runtime_error("Tried to execute command CmdDraw, but command buffer (ID:" + std::to_string(m_ID) + ") is not recording");
 	}
 
 	vkCmdDraw(m_vkHandle, vertexCount, 1, firstVertex, 0);
@@ -406,7 +407,7 @@ void VulkanCommandBuffer::cmdDrawIndexed(const uint32_t indexCount, const uint32
 {
 	if (!m_isRecording)
 	{
-		throw std::runtime_error("Tried to execute command CmdDrawIndexed, but command buffer (ID:" + std::to_string(m_id) + ") is not recording");
+		throw std::runtime_error("Tried to execute command CmdDrawIndexed, but command buffer (ID:" + std::to_string(m_ID) + ") is not recording");
 	}
 	vkCmdDrawIndexed(m_vkHandle, indexCount, 1, firstIndex, vertexOffset, 0);
 }
@@ -420,13 +421,14 @@ void VulkanCommandBuffer::free()
 {
 	if (m_vkHandle != VK_NULL_HANDLE)
 	{
-		vkFreeCommandBuffers(VulkanContext::getDevice(m_device).m_vkHandle, VulkanContext::getDevice(m_device).getCommandPool(m_familyIndex, m_threadID, m_flags), 1, &m_vkHandle);
-		Logger::print("Freed command buffer (ID:" + std::to_string(m_id) + ")", Logger::DEBUG);
+        VulkanDevice& device = VulkanContext::getDevice(getDeviceID());
+		vkFreeCommandBuffers(device.m_VkHandle, device.getCommandPool(m_familyIndex, m_threadID, m_flags), 1, &m_vkHandle);
+		Logger::print("Freed command buffer (ID:" + std::to_string(m_ID) + ")", Logger::DEBUG);
 		m_vkHandle = VK_NULL_HANDLE;
 	}
 }
 
 VulkanCommandBuffer::VulkanCommandBuffer(const uint32_t device, const VkCommandBuffer commandBuffer, const TypeFlags flags, const uint32_t familyIndex, const uint32_t threadID)
-	: m_vkHandle(commandBuffer), m_flags(flags), m_familyIndex(familyIndex), m_threadID(threadID), m_device(device)
+	: VulkanDeviceSubresource(device), m_vkHandle(commandBuffer), m_flags(flags), m_familyIndex(familyIndex), m_threadID(threadID)
 {
 }

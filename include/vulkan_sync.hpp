@@ -5,7 +5,7 @@
 
 class VulkanDevice;
 
-class VulkanFence : public Identifiable
+class VulkanFence final : public VulkanDeviceSubresource
 {
 public:
 
@@ -17,7 +17,7 @@ public:
 	VkFence operator*() const;
 
 private:
-	void free();
+	void free() override;
 
 	VulkanFence(uint32_t device, VkFence fence, bool isSignaled);
 
@@ -25,26 +25,22 @@ private:
 
 	bool m_isSignaled = false;
 
-	uint32_t m_device;
-
 	friend class VulkanDevice;
 	friend class SDLWindow;
 	friend class VulkanCommandBuffer;
 };
 
-class VulkanSemaphore : public Identifiable
+class VulkanSemaphore final : public VulkanDeviceSubresource
 {
 public:
 	VkSemaphore operator*() const;
 
 private:
-	void free();
+	void free() override;
 
 	VulkanSemaphore(uint32_t device, VkSemaphore semaphore);
 
 	VkSemaphore m_vkHandle = VK_NULL_HANDLE;
-
-	uint32_t m_device;
 
 	friend class VulkanDevice;
 	friend class SDLWindow;

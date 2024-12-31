@@ -9,7 +9,7 @@
 
 class VulkanFence;
 
-class VulkanSwapchain : public Identifiable
+class VulkanSwapchain final : public VulkanDeviceSubresource
 {
 public:
 	VkSwapchainKHR operator*() const;
@@ -28,9 +28,9 @@ public:
 	bool present(QueueSelection queue, const std::vector<uint32_t>& semaphores);
 
 private:
-	void free();
+	void free() override;
 
-	VulkanSwapchain(VkSwapchainKHR handle, uint32_t device, VkExtent2D extent, VkSurfaceFormatKHR format, uint32_t minImageCount);
+	VulkanSwapchain(uint32_t device, VkSwapchainKHR handle, VkExtent2D extent, VkSurfaceFormatKHR format, uint32_t minImageCount);
 	
 	VkExtent2D m_extent;
 	VkSurfaceFormatKHR m_format;
@@ -43,7 +43,6 @@ private:
 	bool m_wasAcquired = false;
 
 	VkSwapchainKHR m_vkHandle = VK_NULL_HANDLE;
-	uint32_t m_device = UINT32_MAX;
 
 	friend class VulkanDevice;
 };

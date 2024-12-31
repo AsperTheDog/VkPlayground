@@ -7,6 +7,7 @@
 #include <vector>
 #include <vulkan/vulkan.h>
 
+#include "vulkan_gpu.hpp"
 #include "utils/identifiable.hpp"
 
 class VulkanGPU;
@@ -22,6 +23,8 @@ public:
         VkDeviceSize heapSize;
     };
 
+    [[nodiscard]] VkPhysicalDeviceMemoryProperties getMemoryProperties() const;
+
 	[[nodiscard]] std::string toString() const;
 
 	[[nodiscard]] std::optional<uint32_t> getStagingMemoryType(uint32_t typeFilter) const;
@@ -31,9 +34,9 @@ public:
     [[nodiscard]] VkMemoryHeap getMemoryTypeHeap(uint32_t memoryType) const;
 
 private:
-	explicit MemoryStructure(VulkanGPU gpu);
+    explicit MemoryStructure(const VulkanGPU gpu) : m_GPU(gpu) {}
 
-	VkPhysicalDeviceMemoryProperties m_memoryProperties;
+    VulkanGPU m_GPU;
 
 	friend class VulkanMemoryAllocator;
 };

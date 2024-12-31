@@ -81,13 +81,13 @@ VkRenderPass VulkanRenderPass::operator*() const
 
 void VulkanRenderPass::free()
 {
-	Logger::print("Freeing render pass (ID: " + std::to_string(m_id) + ")", Logger::DEBUG);
-	vkDestroyRenderPass(VulkanContext::getDevice(m_device).m_vkHandle, m_vkHandle, nullptr);
+	Logger::print("Freeing render pass (ID: " + std::to_string(m_ID) + ")", Logger::DEBUG);
+	vkDestroyRenderPass(VulkanContext::getDevice(getDeviceID()).m_VkHandle, m_vkHandle, nullptr);
 	m_vkHandle = VK_NULL_HANDLE;
 }
 
 VulkanRenderPass::VulkanRenderPass(const uint32_t device, const VkRenderPass renderPass)
-	: m_vkHandle(renderPass), m_device(device)
+	: VulkanDeviceSubresource(device), m_vkHandle(renderPass)
 {
 
 }

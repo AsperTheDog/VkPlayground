@@ -6,7 +6,7 @@
 
 class VulkanDevice;
 
-class VulkanBuffer : public Identifiable
+class VulkanBuffer final : public VulkanDeviceSubresource
 {
 public:
 	[[nodiscard]] VkMemoryRequirements getMemoryRequirements() const;
@@ -27,19 +27,18 @@ public:
 	[[nodiscard]] uint32_t getBoundMemoryType() const;
 
 private:
-	void free();
+	void free() override;
 
 	VulkanBuffer(uint32_t device, VkBuffer vkHandle, VkDeviceSize size);
 
 	void setBoundMemory(const MemoryChunk::MemoryBlock& memoryRegion);
 
-	VkBuffer m_vkHandle = VK_NULL_HANDLE;
+private:
+    VkBuffer m_vkHandle = VK_NULL_HANDLE;
 
 	MemoryChunk::MemoryBlock m_memoryRegion;
 	VkDeviceSize m_size = 0;
 	void* m_mappedData = nullptr;
-
-	uint32_t m_device;
 
 	friend class VulkanDevice;
 	friend class VulkanCommandBuffer;

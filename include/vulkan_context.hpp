@@ -32,7 +32,7 @@ private:
 	inline static VkInstance m_vkHandle = VK_NULL_HANDLE;
 	inline static bool m_validationLayersEnabled = false;
 
-	inline static std::vector<VulkanDevice> m_devices{};
+	inline static std::vector<VulkanDevice*> m_devices{};
 
     inline static VkDebugUtilsMessengerEXT m_debugMessenger = VK_NULL_HANDLE;
 

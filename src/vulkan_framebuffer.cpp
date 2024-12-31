@@ -12,13 +12,13 @@ void VulkanFramebuffer::free()
 {
 	if (m_vkHandle != VK_NULL_HANDLE)
 	{
-		vkDestroyFramebuffer(VulkanContext::getDevice(m_device).m_vkHandle, m_vkHandle, nullptr);
+		vkDestroyFramebuffer(VulkanContext::getDevice(getDeviceID()).m_VkHandle, m_vkHandle, nullptr);
 		m_vkHandle = VK_NULL_HANDLE;
 	}
 }
 
 VulkanFramebuffer::VulkanFramebuffer(const uint32_t device, const VkFramebuffer handle)
-	: m_vkHandle(handle), m_device(device)
+    : VulkanDeviceSubresource(device), m_vkHandle(handle)
 {
 	
 }

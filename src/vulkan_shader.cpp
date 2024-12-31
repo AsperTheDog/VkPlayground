@@ -67,7 +67,7 @@ VulkanShader::ReflectionManager VulkanShader::getReflectionData() const
 {
     if (m_compiler == nullptr)
     {
-        Logger::print("No reflection data available for shader (ID: " + std::to_string(m_id) + ")", Logger::DEBUG, false);
+        Logger::print("No reflection data available for shader (ID: " + std::to_string(m_ID) + ")", Logger::DEBUG, false);
         return {};
     }
 
@@ -78,11 +78,11 @@ void VulkanShader::printReflectionData() const
 {
         if (m_compiler == nullptr)
     {
-        Logger::print("No reflection data available for shader (ID: " + std::to_string(m_id) + ")", Logger::DEBUG, false);
+        Logger::print("No reflection data available for shader (ID: " + std::to_string(m_ID) + ")", Logger::DEBUG, false);
         return;
     }
 
-    Logger::print("Reflection data for shader (ID: " + std::to_string(m_id) + ")", Logger::DEBUG, false);
+    Logger::print("Reflection data for shader (ID: " + std::to_string(m_ID) + ")", Logger::DEBUG, false);
     Logger::print("Inputs:", Logger::DEBUG, false);
     for (const auto& input : m_compiler->get_shader_resources().stage_inputs)
     {
@@ -142,8 +142,8 @@ void VulkanShader::free()
 {
     if (m_vkHandle != VK_NULL_HANDLE)
     {
-        vkDestroyShaderModule(VulkanContext::getDevice(m_device).m_vkHandle, m_vkHandle, nullptr);
-        Logger::print("Freed shader module (ID: " + std::to_string(m_id) + ")", Logger::DEBUG);
+        vkDestroyShaderModule(VulkanContext::getDevice(getDeviceID()).m_VkHandle, m_vkHandle, nullptr);
+        Logger::print("Freed shader module (ID: " + std::to_string(m_ID) + ")", Logger::DEBUG);
         m_vkHandle = VK_NULL_HANDLE;
     }
 
@@ -155,7 +155,7 @@ void VulkanShader::free()
 }
 
 VulkanShader::VulkanShader(const uint32_t device, const VkShaderModule handle, const VkShaderStageFlagBits stage)
-    : m_vkHandle(handle), m_stage(stage), m_device(device)
+    : VulkanDeviceSubresource(device), m_vkHandle(handle), m_stage(stage)
 {
 }
 
@@ -190,7 +190,7 @@ VulkanShader::Result VulkanShader::compileFile(const std::string& p_source_name,
     }
 
     const shaderc::SpvCompilationResult module =
-        compiler.CompileGlslToSpv(p_source.data(), p_kind, p_source_name.data(), options);
+        compiler.CompileGlslToSpv(p_source, p_kind, p_source_name.data(), options);
 
     if (module.GetCompilationStatus() != shaderc_compilation_status_success)
     {

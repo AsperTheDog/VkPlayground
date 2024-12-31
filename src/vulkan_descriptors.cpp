@@ -16,14 +16,14 @@ void VulkanDescriptorPool::free()
 	if (m_vkHandle != VK_NULL_HANDLE)
 	{
 		const bool canDescrsBeFreed = (m_flags & VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT) != 0;
-		Logger::print("Freeing descriptor pool (ID: " + std::to_string(m_id) + ")" + (canDescrsBeFreed ? "" : " alongside all associated descriptor sets"), Logger::DEBUG);
-		vkDestroyDescriptorPool(VulkanContext::getDevice(m_device).m_vkHandle, m_vkHandle, nullptr);
+		Logger::print("Freeing descriptor pool (ID: " + std::to_string(m_ID) + ")" + (canDescrsBeFreed ? "" : " alongside all associated descriptor sets"), Logger::DEBUG);
+		vkDestroyDescriptorPool(VulkanContext::getDevice(getDeviceID()).m_VkHandle, m_vkHandle, nullptr);
 		m_vkHandle = VK_NULL_HANDLE;
 	}
 }
 
 VulkanDescriptorPool::VulkanDescriptorPool(const uint32_t device, const VkDescriptorPool descriptorPool, const VkDescriptorPoolCreateFlags flags)
-	: m_vkHandle(descriptorPool), m_device(device), m_flags(flags)
+	: VulkanDeviceSubresource(device), m_vkHandle(descriptorPool), m_flags(flags)
 {
 
 }
@@ -37,14 +37,14 @@ void VulkanDescriptorSetLayout::free()
 {
 	if (m_vkHandle != VK_NULL_HANDLE)
 	{
-		Logger::print("Freeing descriptor set layout (ID: " + std::to_string(m_id) + ")", Logger::DEBUG);
-		vkDestroyDescriptorSetLayout(VulkanContext::getDevice(m_device).m_vkHandle, m_vkHandle, nullptr);
+		Logger::print("Freeing descriptor set layout (ID: " + std::to_string(m_ID) + ")", Logger::DEBUG);
+		vkDestroyDescriptorSetLayout(VulkanContext::getDevice(getDeviceID()).m_VkHandle, m_vkHandle, nullptr);
 		m_vkHandle = VK_NULL_HANDLE;
 	}
 }
 
 VulkanDescriptorSetLayout::VulkanDescriptorSetLayout(const uint32_t device, const VkDescriptorSetLayout descriptorSetLayout)
-	: m_vkHandle(descriptorSetLayout), m_device(device)
+	: VulkanDeviceSubresource(device), m_vkHandle(descriptorSetLayout)
 {
 
 }
@@ -56,23 +56,25 @@ VkDescriptorSet VulkanDescriptorSet::operator*() const
 
 void VulkanDescriptorSet::updateDescriptorSet(const VkWriteDescriptorSet& writeDescriptorSet) const
 {
-    Logger::print("Updating descriptor set (ID: " + std::to_string(m_id) + ")", Logger::DEBUG);
+    Logger::print("Updating descriptor set (ID: " + std::to_string(m_ID) + ")", Logger::DEBUG);
     Logger::print(std::string("  Update info: descriptor type: ") + string_VkDescriptorType(writeDescriptorSet.descriptorType), Logger::DEBUG);
-	vkUpdateDescriptorSets(VulkanContext::getDevice(m_device).m_vkHandle, 1, &writeDescriptorSet, 0, nullptr);
+	vkUpdateDescriptorSets(VulkanContext::getDevice(getDeviceID()).m_VkHandle, 1, &writeDescriptorSet, 0, nullptr);
 }
 
 void VulkanDescriptorSet::free()
 {
+    VulkanDevice& device = VulkanContext::getDevice(getDeviceID());
+
 	if (m_vkHandle != VK_NULL_HANDLE)
 	{
 		if (!m_canBeFreed) return;
-		Logger::print("Freeing descriptor set (ID: " + std::to_string(m_id) + ")", Logger::DEBUG);
-		vkFreeDescriptorSets(VulkanContext::getDevice(m_device).m_vkHandle, VulkanContext::getDevice(m_device).getDescriptorPool(m_pool).m_vkHandle, 1, &m_vkHandle);
+		Logger::print("Freeing descriptor set (ID: " + std::to_string(m_ID) + ")", Logger::DEBUG);
+		vkFreeDescriptorSets(device.m_VkHandle, device.getDescriptorPool(m_pool).m_vkHandle, 1, &m_vkHandle);
 		m_vkHandle = VK_NULL_HANDLE;
 	}
 }
 
 VulkanDescriptorSet::VulkanDescriptorSet(const uint32_t device, const uint32_t pool, const VkDescriptorSet descriptorSet)
-	: m_vkHandle(descriptorSet), m_device(device), m_pool(pool), m_canBeFreed((VulkanContext::getDevice(m_device).getDescriptorPool(pool).m_flags & VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT) != 0)
+	: VulkanDeviceSubresource(device), m_vkHandle(descriptorSet), m_pool(pool), m_canBeFreed((VulkanContext::getDevice(getDeviceID()).getDescriptorPool(pool).m_flags & VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT) != 0)
 {
 }

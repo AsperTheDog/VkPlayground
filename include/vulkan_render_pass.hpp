@@ -52,18 +52,18 @@ private:
 	friend class VulkanDevice;
 };
 
-class VulkanRenderPass : public Identifiable
+class VulkanRenderPass final : public VulkanDeviceSubresource
 {
 public:
 	VkRenderPass operator*() const;
 
 private:
-	void free();
+	void free() override;
 
 	VulkanRenderPass(uint32_t device, VkRenderPass renderPass);
 
-	VkRenderPass m_vkHandle = VK_NULL_HANDLE;
-	uint32_t m_device;
+private:
+    VkRenderPass m_vkHandle = VK_NULL_HANDLE;
 
 	friend class VulkanDevice;
 	friend class VulkanCommandBuffer;

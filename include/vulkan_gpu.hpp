@@ -25,7 +25,7 @@ public:
 	[[nodiscard]] VkFormatProperties getFormatProperties(VkFormat format) const;
 	[[nodiscard]] VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const;
 
-	[[nodiscard]] VkPhysicalDevice getHandle() const;
+    [[nodiscard]] VkPhysicalDevice getHandle() const { return m_vkHandle; }
 
 	VkPhysicalDevice operator*() const;
 

@@ -9,7 +9,7 @@
 
 class VulkanDevice;
 
-class VulkanShader : public Identifiable
+class VulkanShader final : public VulkanDeviceSubresource
 {
 public:
     struct MacroDef
@@ -52,7 +52,7 @@ public:
     static ReflectionManager getReflectionDataFromFile(const std::string& filepath, VkShaderStageFlagBits stage);
 
 private:
-	void free();
+	void free() override;
 
 	struct Result
 	{
@@ -69,8 +69,6 @@ private:
     
 	VkShaderModule m_vkHandle = VK_NULL_HANDLE;
 	VkShaderStageFlagBits m_stage = VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
-
-	uint32_t m_device;
 
     spirv_cross::CompilerGLSL* m_compiler = nullptr;
 

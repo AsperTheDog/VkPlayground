@@ -6,43 +6,40 @@
 
 class VulkanDevice;
 
-class VulkanDescriptorPool : public Identifiable
+class VulkanDescriptorPool final : public VulkanDeviceSubresource
 {
 public:
 	[[nodiscard]] VkDescriptorPool operator*() const;
 
 private:
-	void free();
+	void free() override;
 
 	VulkanDescriptorPool(uint32_t device, VkDescriptorPool descriptorPool, VkDescriptorPoolCreateFlags flags);
 
 	VkDescriptorPool m_vkHandle = VK_NULL_HANDLE;
 
-	uint32_t m_device = UINT32_MAX;
 	VkDescriptorPoolCreateFlags m_flags = 0;
 
 	friend class VulkanDevice;
 	friend class VulkanDescriptorSet;
 };
 
-class VulkanDescriptorSetLayout : public Identifiable
+class VulkanDescriptorSetLayout final : public VulkanDeviceSubresource
 {
 public:
 	[[nodiscard]] VkDescriptorSetLayout operator*() const;
 
 private:
-	void free();
+	void free() override;
 
 	VulkanDescriptorSetLayout(uint32_t device, VkDescriptorSetLayout descriptorSetLayout);
 
 	VkDescriptorSetLayout m_vkHandle = VK_NULL_HANDLE;
 
-	uint32_t m_device = UINT32_MAX;
-
 	friend class VulkanDevice;
 };
 
-class VulkanDescriptorSet : public Identifiable
+class VulkanDescriptorSet final : public VulkanDeviceSubresource
 {
 public:
 	[[nodiscard]] VkDescriptorSet operator*() const;
@@ -50,13 +47,12 @@ public:
 	void updateDescriptorSet(const VkWriteDescriptorSet& writeDescriptorSet) const;
 
 private:
-	void free();
+	void free() override;
 
 	VulkanDescriptorSet(uint32_t device, uint32_t pool, VkDescriptorSet descriptorSet);
 
 	VkDescriptorSet m_vkHandle = VK_NULL_HANDLE;
 
-	uint32_t m_device = UINT32_MAX;
 	uint32_t m_pool = UINT32_MAX;
 	bool m_canBeFreed = false;
 

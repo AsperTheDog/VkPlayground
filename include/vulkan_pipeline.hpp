@@ -1,5 +1,4 @@
 #pragma once
-#include <string>
 #include <vector>
 #include <vulkan/vulkan.h>
 
@@ -73,7 +72,7 @@ private:
 	friend class VulkanDevice;
 };
 
-class VulkanPipeline : public Identifiable
+class VulkanPipeline final : public VulkanDeviceSubresource
 {
 public:
 	[[nodiscard]] uint32_t getLayout() const;
@@ -83,10 +82,9 @@ public:
 	VkPipeline operator*() const;
 
 private:
-	void free();
+	void free() override;
 
-	VulkanPipeline() = default;
-	VulkanPipeline(VulkanDevice& device, VkPipeline handle, uint32_t layout, uint32_t renderPass, uint32_t subpass);
+	VulkanPipeline(ResourceID device, VkPipeline handle, uint32_t layout, uint32_t renderPass, uint32_t subpass);
 
 	VkPipeline m_vkHandle;
 
@@ -94,25 +92,21 @@ private:
 	uint32_t m_renderPass;
 	uint32_t m_subpass;
 
-	VulkanDevice* m_device;
-
 	friend class VulkanDevice;
 	friend class VulkanCommandBuffer;
 };
 
-class VulkanPipelineLayout : public Identifiable
+class VulkanPipelineLayout final : public VulkanDeviceSubresource
 {
 public:
 	VkPipelineLayout operator*() const;
 
 private:
-	void free();
+	void free() override;
 
 	VulkanPipelineLayout(uint32_t device, VkPipelineLayout handle);
 
 	VkPipelineLayout m_vkHandle = VK_NULL_HANDLE;
-
-	uint32_t m_device;
 
 	friend class VulkanDevice;
 	friend class VulkanCommandBuffer;

@@ -6,7 +6,7 @@
 
 class VulkanDevice;
 
-class VulkanImage : public Identifiable
+class VulkanImage final : public VulkanDeviceSubresource
 {
 public:
 	[[nodiscard]] VkMemoryRequirements getMemoryRequirements() const;
@@ -29,7 +29,7 @@ public:
 	VkImage operator*() const;
 
 private:
-	void free();
+	void free() override;
 
 	VulkanImage(uint32_t device, VkImage vkHandle, VkExtent3D size, VkImageType type, VkImageLayout layout);
 
@@ -41,7 +41,6 @@ private:
 	VkImageLayout m_layout = VK_IMAGE_LAYOUT_UNDEFINED;
 	
 	VkImage m_vkHandle = VK_NULL_HANDLE;
-	uint32_t m_device;
 
 	std::vector<VkImageView> m_imageViews;
     std::vector<VkSampler> m_samplers;

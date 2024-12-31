@@ -37,7 +37,7 @@ uint32_t VulkanSwapchain::acquireNextImage(const uint32_t fence)
 		throw std::runtime_error("Swapchain not created");
 
 	uint32_t imageIndex;
-	VulkanDevice& device = VulkanContext::getDevice(m_device);
+	VulkanDevice& device = VulkanContext::getDevice(getDeviceID());
 	const VulkanSemaphore& semaphore = device.getSemaphore(m_imageAvailableSemaphore);
 	const VkResult result = vkAcquireNextImageKHR(*device, m_vkHandle, UINT64_MAX, *semaphore, fence != UINT32_MAX ? *device.getFence(fence) : nullptr, &imageIndex);
 	if (result == VK_ERROR_OUT_OF_DATE_KHR)
@@ -81,7 +81,7 @@ bool VulkanSwapchain::present(const QueueSelection queue, const std::vector<uint
 
 	std::vector<VkSemaphore> vkSemaphores{semaphores.size()};
 	for (uint32_t i = 0; i < semaphores.size(); i++)
-		vkSemaphores[i] = *VulkanContext::getDevice(m_device).getSemaphore(semaphores[i]);
+		vkSemaphores[i] = *VulkanContext::getDevice(getDeviceID()).getSemaphore(semaphores[i]);
 
 	VkPresentInfoKHR presentInfo{};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -91,7 +91,7 @@ bool VulkanSwapchain::present(const QueueSelection queue, const std::vector<uint
 	presentInfo.pSwapchains = &m_vkHandle;
 	presentInfo.pImageIndices = &m_nextImage;
 
-	const VulkanQueue queueObj = VulkanContext::getDevice(m_device).getQueue(queue);
+	const VulkanQueue queueObj = VulkanContext::getDevice(getDeviceID()).getQueue(queue);
 	const VkResult result = vkQueuePresentKHR(*queueObj, &presentInfo);
 	if (result == VK_ERROR_OUT_OF_DATE_KHR) 
 		return false;
@@ -113,23 +113,23 @@ void VulkanSwapchain::free()
         m_imageViews.clear();
 		m_images.clear();
 
-		VulkanContext::getDevice(m_device).freeSemaphore(m_imageAvailableSemaphore);
+		VulkanContext::getDevice(getDeviceID()).freeSemaphore(m_imageAvailableSemaphore);
 
-		vkDestroySwapchainKHR(VulkanContext::getDevice(m_device).m_vkHandle, m_vkHandle, nullptr);
-        Logger::print("Freed Swapchain (ID: " + std::to_string(m_id) + ")", Logger::DEBUG);
+		vkDestroySwapchainKHR(VulkanContext::getDevice(getDeviceID()).m_VkHandle, m_vkHandle, nullptr);
+        Logger::print("Freed Swapchain (ID: " + std::to_string(m_ID) + ")", Logger::DEBUG);
 		m_vkHandle = VK_NULL_HANDLE;
 	}
 }
 
-VulkanSwapchain::VulkanSwapchain(const VkSwapchainKHR handle, const uint32_t device, const VkExtent2D extent, const VkSurfaceFormatKHR format, const uint32_t minImageCount)
-	: m_extent(extent), m_format(format), m_minImageCount(minImageCount), m_vkHandle(handle), m_device(device)
+VulkanSwapchain::VulkanSwapchain(const uint32_t device, const VkSwapchainKHR handle, const VkExtent2D extent, const VkSurfaceFormatKHR format, const uint32_t minImageCount)
+	: VulkanDeviceSubresource(device), m_extent(extent), m_format(format), m_minImageCount(minImageCount), m_vkHandle(handle)
 {
 	uint32_t imageCount;
 	VulkanDevice& deviceObj = VulkanContext::getDevice(device);
 	std::vector<VkImage> images;
-	vkGetSwapchainImagesKHR(deviceObj.m_vkHandle, m_vkHandle, &imageCount, nullptr);
+	vkGetSwapchainImagesKHR(deviceObj.m_VkHandle, m_vkHandle, &imageCount, nullptr);
     images.resize(imageCount);
-    vkGetSwapchainImagesKHR(deviceObj.m_vkHandle, m_vkHandle, &imageCount, images.data());
+    vkGetSwapchainImagesKHR(deviceObj.m_VkHandle, m_vkHandle, &imageCount, images.data());
 
 	for (const VkImage image : images)
 		m_images.push_back({device, image, VkExtent3D{ extent.width, extent.height, 1 }, VK_IMAGE_TYPE_2D, VK_IMAGE_LAYOUT_UNDEFINED});

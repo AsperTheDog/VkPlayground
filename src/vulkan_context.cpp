@@ -189,17 +189,17 @@ uint32_t VulkanContext::createDevice(const VulkanGPU gpu, const QueueFamilySelec
 		throw std::runtime_error(std::string("Failed to create logical device, error: ") + string_VkResult(ret));
 	}
 
-	m_devices.push_back({ gpu, device });
-	return m_devices.back().getID();
+	m_devices.push_back(new VulkanDevice{ gpu, device });
+	return m_devices.back()->getID();
 }
 
 VulkanDevice& VulkanContext::getDevice(const uint32_t index)
 {
 	for (auto& device : m_devices)
 	{
-		if (device.getID() == index)
+		if (device->getID() == index)
 		{
-			return device;
+			return *device;
 		}
 	}
 
@@ -211,10 +211,12 @@ void VulkanContext::freeDevice(const uint32_t index)
 {
 	for (auto it = m_devices.begin(); it != m_devices.end(); ++it)
 	{
-		if (it->getID() == index)
+		if ((*it)->getID() == index)
 		{
-			it->free();
+            VulkanDevice* device = *it;
+			device->free();
 			m_devices.erase(it);
+            delete device;
 			break;
 		}
 	}
@@ -227,9 +229,10 @@ void VulkanContext::freeDevice(const VulkanDevice& device)
 
 void VulkanContext::free()
 {
-	for (auto& device : m_devices)
+	for (VulkanDevice* device : m_devices)
 	{
-		device.free();
+		device->free();
+        delete device;
 	}
 	m_devices.clear();
 

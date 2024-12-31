@@ -12,7 +12,7 @@ class VulkanFence;
 class VulkanRenderPass;
 class VulkanDevice;
 
-class VulkanCommandBuffer : public Identifiable
+class VulkanCommandBuffer final : public VulkanDeviceSubresource
 {
 public:
 	void beginRecording(VkCommandBufferUsageFlags flags = 0);
@@ -60,7 +60,7 @@ private:
         ONE_TIME = 2
     };
     typedef uint32_t TypeFlags;
-    void free();
+    void free() override;
 
 	VulkanCommandBuffer(uint32_t device, VkCommandBuffer commandBuffer, TypeFlags flags, uint32_t familyIndex, uint32_t threadID);
 
@@ -70,8 +70,6 @@ private:
 	TypeFlags m_flags = false;
 	uint32_t m_familyIndex = 0;
 	uint32_t m_threadID = 0;
-
-	uint32_t m_device;
 
 	friend class VulkanDevice;
 };
