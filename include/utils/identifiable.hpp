@@ -2,8 +2,6 @@
 
 #include <cstdint>
 
-class VulkanDevice;
-
 typedef uint32_t ResourceID;
 
 class Identifiable

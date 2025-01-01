@@ -71,6 +71,8 @@ private:
 	uint32_t m_familyIndex = 0;
 	uint32_t m_threadID = 0;
 
+    bool m_CanBeReset = false;
+
 	friend class VulkanDevice;
 };
 
