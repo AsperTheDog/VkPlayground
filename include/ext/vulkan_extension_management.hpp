@@ -61,8 +61,7 @@ private:
 class VulkanDeviceExtensionManager
 {
 public:
-    VulkanDeviceExtensionManager() = default;
-    explicit VulkanDeviceExtensionManager(const ResourceID p_DeviceID) : m_DeviceID(p_DeviceID) {}
+    explicit VulkanDeviceExtensionManager() = default;
     VulkanDeviceExtensionManager(VulkanDeviceExtensionManager&& p_Other) noexcept;
     VulkanDeviceExtensionManager(const VulkanDeviceExtensionManager& p_Other);
 
@@ -79,12 +78,17 @@ public:
     template <typename T>
     T* getExtension(const std::string& p_ExtensionName);
 
+    void freeExtension(const std::string& p_Extension);
     void freeExtensions();
 
 private:
+    void setDevice(const ResourceID p_Device) { m_DeviceID = p_Device; }
+
     std::unordered_map<std::string, VulkanDeviceExtension*> m_Extensions{};
 
     ResourceID m_DeviceID = -1;
+
+    friend class VulkanDevice;
 };
 
 

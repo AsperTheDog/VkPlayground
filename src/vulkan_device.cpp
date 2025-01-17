@@ -801,5 +801,5 @@ VkCommandPool VulkanDevice::getCommandPool(const uint32_t p_QueueFamilyIndex, co
 VulkanDevice::VulkanDevice(const VulkanGPU p_PhysicalDevice, const VkDevice p_Device, VulkanDeviceExtensionManager* p_ExtensionManager)
     : m_VkHandle(p_Device), m_PhysicalDevice(p_PhysicalDevice), m_MemoryAllocator(*this), m_ExtensionManager(p_ExtensionManager)
 {
-
+    m_ExtensionManager->setDevice(this);
 }

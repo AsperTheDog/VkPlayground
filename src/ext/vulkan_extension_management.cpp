@@ -3,7 +3,7 @@
 
 VulkanExtensionChain::~VulkanExtensionChain()
 {
-    for (const auto pNext : m_pNext)
+    for (VulkanExtensionElem* pNext : m_pNext)
     {
         free(pNext);
     }
@@ -57,7 +57,7 @@ VulkanDeviceExtensionManager::VulkanDeviceExtensionManager(const VulkanDeviceExt
 
 void VulkanDeviceExtensionManager::addExtensionsToChain(VulkanExtensionChain& p_Chain) const
 {
-    for (const auto& l_Extension : m_Extensions | std::views::values)
+    for (const VulkanDeviceExtension* l_Extension : m_Extensions | std::views::values)
     {
         if (l_Extension->getExtensionStructType() == VK_STRUCTURE_TYPE_MAX_ENUM || p_Chain.containsExtensionStruct(l_Extension->getExtensionStructType()))
         {
@@ -106,16 +106,26 @@ std::vector<const char*> VulkanDeviceExtensionManager::getExtensionNames() const
 {
     std::vector<const char*> l_ExtensionNames;
     l_ExtensionNames.reserve(m_Extensions.size());
-    for (const auto& l_Extension : m_Extensions | std::views::keys)
+    for (const std::string& l_Extension : m_Extensions | std::views::keys)
     {
         l_ExtensionNames.push_back(l_Extension.c_str());
     }
     return l_ExtensionNames;
 }
 
+void VulkanDeviceExtensionManager::freeExtension(const std::string& p_Extension)
+{
+    if (m_Extensions.contains(p_Extension))
+    {
+        m_Extensions.at(p_Extension)->free();
+        delete m_Extensions.at(p_Extension);
+        m_Extensions.erase(p_Extension);
+    }
+}
+
 void VulkanDeviceExtensionManager::freeExtensions()
 {
-    for (const auto& l_Extension : m_Extensions | std::views::values)
+    for (VulkanDeviceExtension* l_Extension : m_Extensions | std::views::values)
     {
         l_Extension->free();
         delete l_Extension;
