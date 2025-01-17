@@ -14,13 +14,15 @@
 #include "vulkan_shader.hpp"
 #include "vulkan_command_buffer.hpp"
 #include "vulkan_descriptors.hpp"
-#include "vulkan_swapchain.hpp"
 
+class VulkanDeviceExtensionManager;
 typedef uint32_t ThreadID;
 
 class VulkanDevice : public Identifiable
 {
 public:
+
+    VulkanDeviceExtensionManager* getExtensionManager() const { return m_ExtensionManager; }
 
     template<typename T>
     [[nodiscard]] T* getSubresource(ResourceID p_ID) const;
@@ -111,12 +113,6 @@ public:
     bool freeDescriptorSet(const VulkanDescriptorSet& p_DescriptorSet) { return freeSubresource<VulkanDescriptorSet>(p_DescriptorSet.getID()); }
     void updateDescriptorSets(const std::vector<VkWriteDescriptorSet>& p_DescriptorWrites) const;
 
-	ResourceID createSwapchain(VkSurfaceKHR p_Surface, VkExtent2D p_Extent, VkSurfaceFormatKHR p_DesiredFormat, uint32_t p_OldSwapchain = UINT32_MAX);
-    VulkanSwapchain& getSwapchain(const ResourceID p_ID) { return *getSubresource<VulkanSwapchain>(p_ID); }
-    [[nodiscard]] const VulkanSwapchain& getSwapchain(const ResourceID p_ID) const { return *getSubresource<VulkanSwapchain>(p_ID); }
-    bool freeSwapchain(const ResourceID p_ID) { return freeSubresource<VulkanSwapchain>(p_ID); }
-    bool freeSwapchain(const VulkanSwapchain& p_Swapchain) { return freeSubresource<VulkanSwapchain>(p_Swapchain.getID()); }
-
 	ResourceID createSemaphore();
     VulkanSemaphore& getSemaphore(const ResourceID p_ID) { return *getSubresource<VulkanSemaphore>(p_ID); }
     [[nodiscard]] const VulkanSemaphore& getSemaphore(const ResourceID p_ID) const { return *getSubresource<VulkanSemaphore>(p_ID); }
@@ -155,7 +151,7 @@ private:
 	[[nodiscard]] VkDeviceMemory getMemoryHandle(uint32_t p_ChunkID) const;
     VkCommandPool getCommandPool(uint32_t p_QueueFamilyIndex, uint32_t p_ThreadID, VulkanCommandBuffer::TypeFlags p_Flags);
 
-	VulkanDevice(VulkanGPU p_PhysicalDevice, VkDevice p_Device);
+	VulkanDevice(VulkanGPU p_PhysicalDevice, VkDevice p_Device, VulkanDeviceExtensionManager* p_ExtensionManager);
 
 	struct ThreadCommandInfo
 	{
@@ -182,6 +178,8 @@ private:
 	VulkanMemoryAllocator m_MemoryAllocator;
 	QueueSelection m_OneTimeQueue{UINT32_MAX, UINT32_MAX};
 
+    VulkanDeviceExtensionManager* m_ExtensionManager = nullptr;
+
 	friend class VulkanContext;
 	friend class VulkanGPU;
 
@@ -202,7 +200,7 @@ private:
 	friend class VulkanDescriptorSet;
 	friend class VulkanSwapchain;
 
-    friend class VulkanDeviceExtender;
+    friend class VulkanDeviceExtensionManager;
 };
 
 

@@ -43,10 +43,10 @@ public:
     [[nodiscard]] virtual VulkanExtensionElem* getExtensionStruct() const = 0;
     [[nodiscard]] virtual VkStructureType getExtensionStructType() const = 0;
 
+    virtual void free() = 0;
+
 protected:
     explicit VulkanDeviceExtension(const ResourceID p_DeviceID) : m_DeviceID(p_DeviceID) {}
-
-    virtual void freeResources() = 0;
 
 private:
 
@@ -60,21 +60,31 @@ private:
 
 class VulkanDeviceExtensionManager
 {
+public:
+    VulkanDeviceExtensionManager() = default;
     explicit VulkanDeviceExtensionManager(const ResourceID p_DeviceID) : m_DeviceID(p_DeviceID) {}
+    VulkanDeviceExtensionManager(VulkanDeviceExtensionManager&& p_Other) noexcept;
+    VulkanDeviceExtensionManager(const VulkanDeviceExtensionManager& p_Other);
 
     void addExtensionsToChain(VulkanExtensionChain& p_Chain) const;
-
     void addExtension(const std::string& p_ExtensionName, VulkanDeviceExtension* p_Extension, bool p_ForceReplace = false);
 
     [[nodiscard]] VulkanDeviceExtension* getExtension(const std::string& p_ExtensionName) const;
+    [[nodiscard]] bool containsExtension(const std::string& p_ExtensionName) const;
+    [[nodiscard]] bool isEmpty() const { return m_Extensions.empty(); }
+    [[nodiscard]] size_t getExtensionCount() const { return m_Extensions.size(); }
+    [[nodiscard]] std::vector<const char*> getExtensionNames() const;
+    [[nodiscard]] bool isValid() const { return m_DeviceID != -1; }
 
     template <typename T>
     T* getExtension(const std::string& p_ExtensionName);
 
-private:
-    std::unordered_map<std::string, VulkanDeviceExtension*> m_Extensions;
+    void freeExtensions();
 
-    ResourceID m_DeviceID;
+private:
+    std::unordered_map<std::string, VulkanDeviceExtension*> m_Extensions{};
+
+    ResourceID m_DeviceID = -1;
 };
 
 

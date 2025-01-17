@@ -6,6 +6,7 @@
 #include "vulkan_queues.hpp"
 
 class VulkanGPU;
+class VulkanDeviceExtensionManager;
 
 class VulkanContext : public Identifiable
 {
@@ -15,7 +16,7 @@ public:
 	static [[nodiscard]] uint32_t getGPUCount();
 	static [[nodiscard]] std::vector<VulkanGPU> getGPUs();
 
-	static uint32_t createDevice(VulkanGPU gpu, const QueueFamilySelector& queues, const std::vector<const char*>& extensions, const VkPhysicalDeviceFeatures& features, void* nextInfo = nullptr);
+	static uint32_t createDevice(VulkanGPU gpu, const QueueFamilySelector& queues, const VulkanDeviceExtensionManager& extensions, const VkPhysicalDeviceFeatures& features);
 	static VulkanDevice& getDevice(uint32_t index);
 	static void freeDevice(uint32_t index);
 	static void freeDevice(const VulkanDevice& device);

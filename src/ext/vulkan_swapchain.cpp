@@ -1,10 +1,90 @@
-#include "vulkan_swapchain.hpp"
+#include "ext/vulkan_swapchain.hpp"
 
 #include <stdexcept>
+#include <ranges>
 #include <vulkan/vk_enum_string_helper.h>
 
 #include "vulkan_context.hpp"
 #include "utils/logger.hpp"
+
+ResourceID VulkanSwapchainExtension::createSwapchain(VkSurfaceKHR p_Surface, VkExtent2D p_Extent, VkSurfaceFormatKHR p_DesiredFormat, uint32_t p_OldSwapchain)
+{
+    const VulkanGPU l_PhysicalDevice = VulkanContext::getDevice(getDeviceID()).getGPU();
+	const VkSurfaceFormatKHR l_SelectedFormat = l_PhysicalDevice.getClosestFormat(p_Surface, p_DesiredFormat);
+
+	const VkSurfaceCapabilitiesKHR l_Capabilities = l_PhysicalDevice.getCapabilities(p_Surface);
+
+	VkSwapchainCreateInfoKHR l_CreateInfo{};
+	l_CreateInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+	l_CreateInfo.surface = p_Surface;
+	l_CreateInfo.minImageCount = l_Capabilities.minImageCount + 1;
+	if (l_Capabilities.maxImageCount > 0 && l_CreateInfo.minImageCount > l_Capabilities.maxImageCount)
+		l_CreateInfo.minImageCount = l_Capabilities.maxImageCount;
+	l_CreateInfo.imageFormat = l_SelectedFormat.format;
+	l_CreateInfo.imageColorSpace = l_SelectedFormat.colorSpace;
+	l_CreateInfo.imageExtent = p_Extent;
+	l_CreateInfo.imageArrayLayers = 1;
+	l_CreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+	l_CreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	l_CreateInfo.preTransform = l_Capabilities.currentTransform;
+	l_CreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+	l_CreateInfo.presentMode = VK_PRESENT_MODE_FIFO_KHR;
+	l_CreateInfo.clipped = VK_TRUE;
+	if (p_OldSwapchain != UINT32_MAX)
+		l_CreateInfo.oldSwapchain = *getSwapchain(p_OldSwapchain);
+
+	VkSwapchainKHR l_SwapchainHandle;
+	if (const VkResult l_Ret = vkCreateSwapchainKHR(*VulkanContext::getDevice(getDeviceID()), &l_CreateInfo, nullptr, &l_SwapchainHandle); l_Ret != VK_SUCCESS)
+	{
+		throw std::runtime_error(std::string("failed to create swap chain, error: ") + string_VkResult(l_Ret));
+	}
+
+	if (p_OldSwapchain != UINT32_MAX)
+		freeSwapchain(p_OldSwapchain);
+
+    VulkanSwapchain* l_NewRes = new VulkanSwapchain{ getDeviceID(), l_SwapchainHandle, p_Extent, l_SelectedFormat, l_CreateInfo.minImageCount };
+    m_Swapchains[l_NewRes->getID()] = l_NewRes;
+	Logger::print("Created swapchain (ID: " + std::to_string(l_NewRes->getID()) + ")", Logger::DEBUG);
+	return l_NewRes->getID();
+}
+
+VulkanSwapchain& VulkanSwapchainExtension::getSwapchain(const ResourceID p_ID)
+{
+    return *m_Swapchains.at(p_ID);
+}
+
+const VulkanSwapchain& VulkanSwapchainExtension::getSwapchain(const ResourceID p_ID) const
+{
+    return *m_Swapchains.at(p_ID);
+}
+
+bool VulkanSwapchainExtension::freeSwapchain(const ResourceID p_ID)
+{
+    VulkanSwapchain* l_Swapchain = m_Swapchains.at(p_ID);
+    if (l_Swapchain)
+    {
+        l_Swapchain->free();
+        m_Swapchains.erase(p_ID);
+        delete l_Swapchain;
+        return true;
+    }
+    return false;
+}
+
+bool VulkanSwapchainExtension::freeSwapchain(const VulkanSwapchain& p_Swapchain)
+{
+    return freeSwapchain(p_Swapchain.getID());
+}
+
+void VulkanSwapchainExtension::free()
+{
+    for (const auto& l_Swapchain : m_Swapchains | std::views::values)
+    {
+        l_Swapchain->free();
+        delete l_Swapchain;
+    }
+    m_Swapchains.clear();
+}
 
 VkSwapchainKHR VulkanSwapchain::operator*() const
 {

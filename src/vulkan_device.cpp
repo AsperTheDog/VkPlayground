@@ -5,6 +5,7 @@
 #include <vulkan/vk_enum_string_helper.h>
 
 #include "vulkan_context.hpp"
+#include "ext/vulkan_extension_management.hpp"
 #include "utils/logger.hpp"
 
 VulkanQueue VulkanDevice::getQueue(const QueueSelection& p_QueueSelection) const
@@ -609,46 +610,6 @@ void VulkanDevice::updateDescriptorSets(const std::vector<VkWriteDescriptorSet>&
     vkUpdateDescriptorSets(m_VkHandle, static_cast<uint32_t>(p_DescriptorWrites.size()), p_DescriptorWrites.data(), 0, nullptr);
 }
 
-ResourceID VulkanDevice::createSwapchain(const VkSurfaceKHR p_Surface, const VkExtent2D p_Extent, const VkSurfaceFormatKHR p_DesiredFormat, const uint32_t p_OldSwapchain)
-{
-	const VkSurfaceFormatKHR l_SelectedFormat = m_PhysicalDevice.getClosestFormat(p_Surface, p_DesiredFormat);
-
-	const VkSurfaceCapabilitiesKHR l_Capabilities = m_PhysicalDevice.getCapabilities(p_Surface);
-
-	VkSwapchainCreateInfoKHR l_CreateInfo{};
-	l_CreateInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-	l_CreateInfo.surface = p_Surface;
-	l_CreateInfo.minImageCount = l_Capabilities.minImageCount + 1;
-	if (l_Capabilities.maxImageCount > 0 && l_CreateInfo.minImageCount > l_Capabilities.maxImageCount)
-		l_CreateInfo.minImageCount = l_Capabilities.maxImageCount;
-	l_CreateInfo.imageFormat = l_SelectedFormat.format;
-	l_CreateInfo.imageColorSpace = l_SelectedFormat.colorSpace;
-	l_CreateInfo.imageExtent = p_Extent;
-	l_CreateInfo.imageArrayLayers = 1;
-	l_CreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-	l_CreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	l_CreateInfo.preTransform = l_Capabilities.currentTransform;
-	l_CreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-	l_CreateInfo.presentMode = VK_PRESENT_MODE_FIFO_KHR;
-	l_CreateInfo.clipped = VK_TRUE;
-	if (p_OldSwapchain != UINT32_MAX)
-		l_CreateInfo.oldSwapchain = *getSwapchain(p_OldSwapchain);
-
-	VkSwapchainKHR l_SwapchainHandle;
-	if (const VkResult l_Ret = vkCreateSwapchainKHR(m_VkHandle, &l_CreateInfo, nullptr, &l_SwapchainHandle); l_Ret != VK_SUCCESS)
-	{
-		throw std::runtime_error(std::string("failed to create swap chain, error: ") + string_VkResult(l_Ret));
-	}
-
-	if (p_OldSwapchain != UINT32_MAX)
-		freeSwapchain(p_OldSwapchain);
-
-    VulkanSwapchain* l_NewRes = new VulkanSwapchain{ m_ID, l_SwapchainHandle, p_Extent, l_SelectedFormat, l_CreateInfo.minImageCount };
-    m_Subresources[l_NewRes->getID()] = l_NewRes;
-	Logger::print("Created swapchain (ID: " + std::to_string(l_NewRes->getID()) + ")", Logger::DEBUG);
-	return l_NewRes->getID();
-}
-
 ResourceID VulkanDevice::createShader(const std::string& p_Filename, const VkShaderStageFlagBits p_Stage, const bool p_GetReflection, const std::vector<VulkanShader::MacroDef>& p_Macros)
 {
 	const VulkanShader::Result l_Result = VulkanShader::compileFile(p_Filename, VulkanShader::getKindFromStage(p_Stage), VulkanShader::readFile(p_Filename),
@@ -804,6 +765,11 @@ bool VulkanDevice::free()
         freeSubresource(l_ID);
     }
 
+    if (m_ExtensionManager != nullptr)
+    {
+        m_ExtensionManager->freeExtensions();
+    }
+
     if (!m_VkHandle)
         return false;
 	vkDestroyDevice(m_VkHandle, nullptr);
@@ -832,8 +798,8 @@ VkCommandPool VulkanDevice::getCommandPool(const uint32_t p_QueueFamilyIndex, co
     return m_ThreadCommandInfos[p_ThreadID].commandPools[p_QueueFamilyIndex];
 }
 
-VulkanDevice::VulkanDevice(const VulkanGPU p_PhysicalDevice, const VkDevice p_Device)
-	: m_VkHandle(p_Device), m_PhysicalDevice(p_PhysicalDevice), m_MemoryAllocator(*this)
+VulkanDevice::VulkanDevice(const VulkanGPU p_PhysicalDevice, const VkDevice p_Device, VulkanDeviceExtensionManager* p_ExtensionManager)
+    : m_VkHandle(p_Device), m_PhysicalDevice(p_PhysicalDevice), m_MemoryAllocator(*this), m_ExtensionManager(p_ExtensionManager)
 {
 
 }

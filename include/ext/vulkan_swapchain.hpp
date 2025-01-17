@@ -1,13 +1,33 @@
 #pragma once
 #include <vector>
-#include <vulkan/vulkan.h>
 
+#include "vulkan_extension_management.hpp"
 #include "vulkan_image.hpp"
 #include "vulkan_queues.hpp"
 #include "utils/identifiable.hpp"
 
 
 class VulkanFence;
+
+class VulkanSwapchainExtension final : public VulkanDeviceExtension
+{
+public:
+    explicit VulkanSwapchainExtension(const ResourceID p_DeviceID) : VulkanDeviceExtension(p_DeviceID) {}
+
+    [[nodiscard]] VulkanExtensionElem* getExtensionStruct() const override { return nullptr; }
+    [[nodiscard]] VkStructureType getExtensionStructType() const override { return VK_STRUCTURE_TYPE_MAX_ENUM; }
+
+    ResourceID createSwapchain(VkSurfaceKHR p_Surface, VkExtent2D p_Extent, VkSurfaceFormatKHR p_DesiredFormat, uint32_t p_OldSwapchain = UINT32_MAX);
+    VulkanSwapchain& getSwapchain(ResourceID p_ID);
+    [[nodiscard]] const VulkanSwapchain& getSwapchain(ResourceID p_ID) const;
+    bool freeSwapchain(const ResourceID p_ID);
+    bool freeSwapchain(const VulkanSwapchain& p_Swapchain);
+
+    void free() override;
+
+private:
+    std::map<ResourceID, VulkanSwapchain*> m_Swapchains;
+};
 
 class VulkanSwapchain final : public VulkanDeviceSubresource
 {
@@ -44,6 +64,6 @@ private:
 
 	VkSwapchainKHR m_vkHandle = VK_NULL_HANDLE;
 
-	friend class VulkanDevice;
+    friend class VulkanSwapchainExtension;
 };
 

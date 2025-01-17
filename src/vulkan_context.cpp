@@ -9,6 +9,7 @@
 #include "vulkan_device.hpp"
 #include "vulkan_gpu.hpp"
 #include "vulkan_queues.hpp"
+#include "ext/vulkan_extension_management.hpp"
 #include "utils/logger.hpp"
 
 std::vector<const char*> validationLayers = {
@@ -140,11 +141,16 @@ std::vector<VulkanGPU> VulkanContext::getGPUs()
 	return gpus;
 }
 
-uint32_t VulkanContext::createDevice(const VulkanGPU gpu, const QueueFamilySelector& queues, const std::vector<const char*>& extensions, const VkPhysicalDeviceFeatures& features, void* nextInfo)
+uint32_t VulkanContext::createDevice(const VulkanGPU gpu, const QueueFamilySelector& queues, const VulkanDeviceExtensionManager& extensions, const VkPhysicalDeviceFeatures& features)
 {
+    VulkanExtensionChain chain{};
+    extensions.addExtensionsToChain(chain);
+    const std::vector<const char*> extensionNames = extensions.getExtensionNames();
+
 	VkDeviceCreateInfo deviceCreateInfo{};
 	deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-    deviceCreateInfo.pNext = nextInfo;
+    deviceCreateInfo.pNext = chain.getChain();
+
 	if (m_validationLayersEnabled)
 	{
 		deviceCreateInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
@@ -154,10 +160,10 @@ uint32_t VulkanContext::createDevice(const VulkanGPU gpu, const QueueFamilySelec
 	{
 		deviceCreateInfo.enabledLayerCount = 0;
 	}
-	if (!extensions.empty())
+	if (!extensions.isEmpty())
 	{
-		deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
-		deviceCreateInfo.ppEnabledExtensionNames = extensions.data();
+		deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(extensionNames.size());
+		deviceCreateInfo.ppEnabledExtensionNames = extensionNames.data();
 	}
 	else
 	{
@@ -189,7 +195,8 @@ uint32_t VulkanContext::createDevice(const VulkanGPU gpu, const QueueFamilySelec
 		throw std::runtime_error(std::string("Failed to create logical device, error: ") + string_VkResult(ret));
 	}
 
-	m_devices.push_back(new VulkanDevice{ gpu, device });
+    VulkanDeviceExtensionManager* extManager = new VulkanDeviceExtensionManager{ extensions };
+	m_devices.push_back(new VulkanDevice{ gpu, device, extManager });
 	return m_devices.back()->getID();
 }
 

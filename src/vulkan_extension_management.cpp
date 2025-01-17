@@ -1,4 +1,5 @@
-﻿#include <ext/vulkan_extension_management.hpp>
+﻿#include <ranges>
+#include <ext/vulkan_extension_management.hpp>
 
 VulkanExtensionChain::~VulkanExtensionChain()
 {
@@ -40,16 +41,29 @@ bool VulkanExtensionChain::containsExtensionStruct(const VkStructureType p_Struc
     return false;
 }
 
+VulkanDeviceExtensionManager::VulkanDeviceExtensionManager(VulkanDeviceExtensionManager&& p_Other) noexcept
+{
+    m_DeviceID = p_Other.m_DeviceID;
+    m_Extensions = std::move(p_Other.m_Extensions);
+    p_Other.m_DeviceID = 0;
+    p_Other.m_Extensions.clear();
+}
+
+VulkanDeviceExtensionManager::VulkanDeviceExtensionManager(const VulkanDeviceExtensionManager& p_Other)
+{
+    m_DeviceID = p_Other.m_DeviceID;
+    m_Extensions = p_Other.m_Extensions;
+}
+
 void VulkanDeviceExtensionManager::addExtensionsToChain(VulkanExtensionChain& p_Chain) const
 {
-    for (const std::pair<const std::string, VulkanDeviceExtension*>& l_Extension : m_Extensions)
+    for (const auto& l_Extension : m_Extensions | std::views::values)
     {
-        if (p_Chain.containsExtensionStruct(l_Extension.second->getExtensionStructType()))
+        if (l_Extension->getExtensionStructType() == VK_STRUCTURE_TYPE_MAX_ENUM || p_Chain.containsExtensionStruct(l_Extension->getExtensionStructType()))
         {
             continue;
         }
-        VulkanExtensionElem* l_Struct = l_Extension.second->getExtensionStruct();
-        p_Chain.addExtensionPointer(l_Extension.second->getExtensionStruct());
+        p_Chain.addExtensionPointer(l_Extension->getExtensionStruct());
     }
 }
 
@@ -81,4 +95,30 @@ VulkanDeviceExtension* VulkanDeviceExtensionManager::getExtension(const std::str
         return m_Extensions.at(p_ExtensionName);
     }
     return nullptr;
+}
+
+bool VulkanDeviceExtensionManager::containsExtension(const std::string& p_ExtensionName) const
+{
+    return m_Extensions.contains(p_ExtensionName);
+}
+
+std::vector<const char*> VulkanDeviceExtensionManager::getExtensionNames() const
+{
+    std::vector<const char*> l_ExtensionNames;
+    l_ExtensionNames.reserve(m_Extensions.size());
+    for (const auto& l_Extension : m_Extensions | std::views::keys)
+    {
+        l_ExtensionNames.push_back(l_Extension.c_str());
+    }
+    return l_ExtensionNames;
+}
+
+void VulkanDeviceExtensionManager::freeExtensions()
+{
+    for (const auto& l_Extension : m_Extensions | std::views::values)
+    {
+        l_Extension->free();
+        delete l_Extension;
+    }
+    m_Extensions.clear();
 }
