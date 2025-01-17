@@ -1,5 +1,17 @@
 ﻿#include "ext/vulkan_raytracing.hpp"
 
+#include "vulkan_context.hpp"
+
+VulkanRayTracingPipelineExtension* VulkanRayTracingPipelineExtension::get(const VulkanDevice& p_Device)
+{
+    return p_Device.getExtensionManager()->getExtension<VulkanRayTracingPipelineExtension>(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
+}
+
+VulkanRayTracingPipelineExtension* VulkanRayTracingPipelineExtension::get(ResourceID p_DeviceID)
+{
+    return VulkanContext::getDevice(p_DeviceID).getExtensionManager()->getExtension<VulkanRayTracingPipelineExtension>(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
+}
+
 VulkanRayTracingPipelineExtension::VulkanRayTracingPipelineExtension(const ResourceID p_DeviceID, const bool p_EnablePipeline, const bool p_EnableReplay, const bool p_EnableReplayMixed, const bool p_EnableIndirect, const bool p_EnableCulling)
     : VulkanDeviceExtension(p_DeviceID), m_EnablePipeline(p_EnablePipeline), m_EnableReplay(p_EnableReplay), m_EnableReplayMixed(p_EnableReplayMixed), m_EnableIndirect(p_EnableIndirect), m_EnableCulling(p_EnableCulling)
 {

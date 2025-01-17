@@ -7,7 +7,17 @@
 #include "vulkan_context.hpp"
 #include "utils/logger.hpp"
 
-ResourceID VulkanSwapchainExtension::createSwapchain(VkSurfaceKHR p_Surface, VkExtent2D p_Extent, VkSurfaceFormatKHR p_DesiredFormat, uint32_t p_OldSwapchain)
+VulkanSwapchainExtension* VulkanSwapchainExtension::get(const VulkanDevice& p_Device)
+{
+    return p_Device.getExtensionManager()->getExtension<VulkanSwapchainExtension>(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+}
+
+VulkanSwapchainExtension* VulkanSwapchainExtension::get(const ResourceID p_DeviceID)
+{
+    return VulkanContext::getDevice(p_DeviceID).getExtensionManager()->getExtension<VulkanSwapchainExtension>(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+}
+
+ResourceID VulkanSwapchainExtension::createSwapchain(const VkSurfaceKHR p_Surface, const VkExtent2D p_Extent, const VkSurfaceFormatKHR p_DesiredFormat, const uint32_t p_OldSwapchain)
 {
     const VulkanGPU l_PhysicalDevice = VulkanContext::getDevice(getDeviceID()).getGPU();
 	const VkSurfaceFormatKHR l_SelectedFormat = l_PhysicalDevice.getClosestFormat(p_Surface, p_DesiredFormat);

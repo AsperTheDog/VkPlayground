@@ -4,6 +4,9 @@
 class VulkanShaderClockExtension : public VulkanDeviceExtension
 {
 public:
+    static VulkanShaderClockExtension* get(const VulkanDevice& p_Device);
+    static VulkanShaderClockExtension* get(ResourceID p_DeviceID);
+
     explicit VulkanShaderClockExtension(ResourceID p_DeviceID, bool p_EnableDeviceClock, bool p_EnableSubgroupClock);
 
     [[nodiscard]] VulkanExtensionElem* getExtensionStruct() const override;

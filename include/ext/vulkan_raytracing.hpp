@@ -4,6 +4,9 @@
 class VulkanRayTracingPipelineExtension final : public VulkanDeviceExtension
 {
 public:
+    static VulkanRayTracingPipelineExtension* get(const VulkanDevice& p_Device);
+    static VulkanRayTracingPipelineExtension* get(ResourceID p_DeviceID);
+
     explicit VulkanRayTracingPipelineExtension(ResourceID p_DeviceID, bool p_EnablePipeline, bool p_EnableReplay, bool p_EnableReplayMixed, bool p_EnableIndirect, bool p_EnableCulling);
 
     [[nodiscard]] VulkanExtensionElem* getExtensionStruct() const override;

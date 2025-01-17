@@ -4,6 +4,9 @@
 class VulkanAccelerationStructureExtension : public VulkanDeviceExtension
 {
 public:
+    static VulkanAccelerationStructureExtension* get(const VulkanDevice& p_Device);
+    static VulkanAccelerationStructureExtension* get(ResourceID p_DeviceID);
+
     VulkanAccelerationStructureExtension(ResourceID p_DeviceID, bool p_EnableStructure, bool p_EnableIndirectBuild, bool p_EnableCaptureReplay, bool p_EnableHostCommands, bool p_EnableUpdateAfterBuild);
     
     [[nodiscard]] VulkanExtensionElem* getExtensionStruct() const override;

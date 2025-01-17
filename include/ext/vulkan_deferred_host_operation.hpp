@@ -4,6 +4,9 @@
 class VulkanDeferredHostOperationsExtension : public VulkanDeviceExtension
 {
 public:
+    static VulkanDeferredHostOperationsExtension* get(const VulkanDevice& p_Device);
+    static VulkanDeferredHostOperationsExtension* get(ResourceID p_DeviceID);
+
     explicit VulkanDeferredHostOperationsExtension(const ResourceID p_ID) : VulkanDeviceExtension(p_ID) {}
 
     [[nodiscard]] VulkanExtensionElem* getExtensionStruct() const override { return nullptr; }

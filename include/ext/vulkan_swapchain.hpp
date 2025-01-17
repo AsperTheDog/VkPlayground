@@ -12,6 +12,9 @@ class VulkanFence;
 class VulkanSwapchainExtension final : public VulkanDeviceExtension
 {
 public:
+    static VulkanSwapchainExtension* get(const VulkanDevice& p_Device);
+    static VulkanSwapchainExtension* get(ResourceID p_DeviceID);
+
     explicit VulkanSwapchainExtension(const ResourceID p_DeviceID) : VulkanDeviceExtension(p_DeviceID) {}
 
     [[nodiscard]] VulkanExtensionElem* getExtensionStruct() const override { return nullptr; }

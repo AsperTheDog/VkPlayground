@@ -1,5 +1,18 @@
 #include "ext/vulkan_shader_clock.hpp"
 
+#include "vulkan_context.hpp"
+
+
+VulkanShaderClockExtension* VulkanShaderClockExtension::get(const VulkanDevice& p_Device)
+{
+    return p_Device.getExtensionManager()->getExtension<VulkanShaderClockExtension>(VK_KHR_SHADER_CLOCK_EXTENSION_NAME);
+}
+
+VulkanShaderClockExtension* VulkanShaderClockExtension::get(ResourceID p_DeviceID)
+{
+    return VulkanContext::getDevice(p_DeviceID).getExtensionManager()->getExtension<VulkanShaderClockExtension>(VK_KHR_SHADER_CLOCK_EXTENSION_NAME);
+}
+
 VulkanShaderClockExtension::VulkanShaderClockExtension(const ResourceID p_DeviceID, const bool p_EnableDeviceClock, const bool p_EnableSubgroupClock)
     : VulkanDeviceExtension(p_DeviceID), m_EnableDeviceClock(p_EnableDeviceClock), m_EnableSubgroupClock(p_EnableSubgroupClock)
 {
