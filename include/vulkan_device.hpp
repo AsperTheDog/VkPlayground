@@ -50,8 +50,8 @@ public:
 	ResourceID createFramebuffer(VkExtent3D p_Size, const VulkanRenderPass& p_RenderPass, const std::vector<VkImageView>& p_Attachments);
     VulkanFramebuffer& getFramebuffer(const ResourceID p_ID) { return *getSubresource<VulkanFramebuffer>(p_ID); }
     [[nodiscard]] const VulkanFramebuffer& getFramebuffer(const ResourceID p_ID) const { return *getSubresource<VulkanFramebuffer>(p_ID); }
-    [[nodiscard]] bool freeFramebuffer(const ResourceID p_ID) { return freeSubresource<VulkanFramebuffer>(p_ID); }
-    [[nodiscard]] bool freeFramebuffer(const VulkanFramebuffer& p_Framebuffer) { return freeSubresource<VulkanFramebuffer>(p_Framebuffer.getID()); }
+    bool freeFramebuffer(const ResourceID p_ID) { return freeSubresource<VulkanFramebuffer>(p_ID); }
+    bool freeFramebuffer(const VulkanFramebuffer& p_Framebuffer) { return freeSubresource<VulkanFramebuffer>(p_Framebuffer.getID()); }
 
 	ResourceID createBuffer(VkDeviceSize p_Size, VkBufferUsageFlags p_Usage);
     VulkanBuffer& getBuffer(const ResourceID p_ID) { return *getSubresource<VulkanBuffer>(p_ID); }
