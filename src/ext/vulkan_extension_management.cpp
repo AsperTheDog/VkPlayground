@@ -18,15 +18,20 @@ VulkanExtensionChain& VulkanExtensionChain::addExtensionPointer(const VulkanExte
 void* VulkanExtensionChain::getChain() const
 {
     VulkanExtensionElem* pNext = nullptr;
+    VulkanExtensionElem* pFirst = nullptr;
     for (VulkanExtensionElem* const pNextElem : m_pNext)
     {
         if (pNext != nullptr)
         {
             pNext->pNext = pNextElem;
         }
+        else
+        {
+            pFirst = pNextElem;
+        }
         pNext = pNextElem;
     }
-    return pNext;
+    return pFirst;
 }
 
 bool VulkanExtensionChain::containsExtensionStruct(const VkStructureType p_StructType) const

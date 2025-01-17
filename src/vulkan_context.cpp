@@ -146,12 +146,12 @@ uint32_t VulkanContext::createDevice(const VulkanGPU p_GPU, const QueueFamilySel
 
 	VkDeviceCreateInfo l_DeviceCreateInfo{};
 	l_DeviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    VulkanExtensionChain l_Chain{};
     if (p_Extensions != nullptr)
     {
-        VulkanExtensionChain l_Chain{};
         p_Extensions->addExtensionsToChain(l_Chain);
-        l_DeviceCreateInfo.pNext = l_Chain.getChain();
     }
+    l_DeviceCreateInfo.pNext = l_Chain.getChain();
 
 	if (m_validationLayersEnabled)
 	{
