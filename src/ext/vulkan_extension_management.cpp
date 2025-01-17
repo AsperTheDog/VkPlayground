@@ -102,15 +102,13 @@ bool VulkanDeviceExtensionManager::containsExtension(const std::string& p_Extens
     return m_Extensions.contains(p_ExtensionName);
 }
 
-std::vector<const char*> VulkanDeviceExtensionManager::getExtensionNames() const
+void VulkanDeviceExtensionManager::populateExtensionNames(std::vector<const char*> p_Container) const
 {
-    std::vector<const char*> l_ExtensionNames;
-    l_ExtensionNames.reserve(m_Extensions.size());
+    p_Container.reserve(m_Extensions.size());
     for (const std::string& l_Extension : m_Extensions | std::views::keys)
     {
-        l_ExtensionNames.push_back(l_Extension.c_str());
+        p_Container.push_back(l_Extension.c_str());
     }
-    return l_ExtensionNames;
 }
 
 void VulkanDeviceExtensionManager::freeExtension(const std::string& p_Extension)

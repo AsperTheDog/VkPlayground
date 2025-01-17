@@ -72,8 +72,8 @@ public:
     [[nodiscard]] bool containsExtension(const std::string& p_ExtensionName) const;
     [[nodiscard]] bool isEmpty() const { return m_Extensions.empty(); }
     [[nodiscard]] size_t getExtensionCount() const { return m_Extensions.size(); }
-    [[nodiscard]] std::vector<const char*> getExtensionNames() const;
     [[nodiscard]] bool isValid() const { return m_DeviceID != -1; }
+    void populateExtensionNames(std::vector<const char*> p_Container) const;
 
     template <typename T>
     T* getExtension(const std::string& p_ExtensionName);
