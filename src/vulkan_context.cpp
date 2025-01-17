@@ -165,7 +165,6 @@ uint32_t VulkanContext::createDevice(const VulkanGPU p_GPU, const QueueFamilySel
     std::vector<const char*> l_ExtensionNames{};
 	if (p_Extensions != nullptr && !p_Extensions->isEmpty())
 	{
-        l_ExtensionNames.resize(p_Extensions->getExtensionCount());
         p_Extensions->populateExtensionNames(l_ExtensionNames);
 		l_DeviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(l_ExtensionNames.size());
 		l_DeviceCreateInfo.ppEnabledExtensionNames = l_ExtensionNames.data();

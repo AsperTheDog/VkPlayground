@@ -102,7 +102,7 @@ bool VulkanDeviceExtensionManager::containsExtension(const std::string& p_Extens
     return m_Extensions.contains(p_ExtensionName);
 }
 
-void VulkanDeviceExtensionManager::populateExtensionNames(std::vector<const char*> p_Container) const
+void VulkanDeviceExtensionManager::populateExtensionNames(std::vector<const char*>& p_Container) const
 {
     p_Container.reserve(m_Extensions.size());
     for (const std::string& l_Extension : m_Extensions | std::views::keys)
@@ -129,4 +129,13 @@ void VulkanDeviceExtensionManager::freeExtensions()
         delete l_Extension;
     }
     m_Extensions.clear();
+}
+
+void VulkanDeviceExtensionManager::setDevice(const ResourceID p_Device)
+{
+    m_DeviceID = p_Device;
+    for (VulkanDeviceExtension* l_Extension : m_Extensions | std::views::values)
+    {
+        l_Extension->setDevice(p_Device);
+    }
 }

@@ -44,6 +44,7 @@ public:
     [[nodiscard]] virtual VkStructureType getExtensionStructType() const = 0;
 
     virtual void free() = 0;
+    void setDevice(const uint32_t p_DeviceID) { m_DeviceID = p_DeviceID; }
 
 protected:
     explicit VulkanDeviceExtension(const ResourceID p_DeviceID) : m_DeviceID(p_DeviceID) {}
@@ -73,7 +74,7 @@ public:
     [[nodiscard]] bool isEmpty() const { return m_Extensions.empty(); }
     [[nodiscard]] size_t getExtensionCount() const { return m_Extensions.size(); }
     [[nodiscard]] bool isValid() const { return m_DeviceID != -1; }
-    void populateExtensionNames(std::vector<const char*> p_Container) const;
+    void populateExtensionNames(std::vector<const char*>& p_Container) const;
 
     template <typename T>
     T* getExtension(const std::string& p_ExtensionName);
@@ -82,7 +83,7 @@ public:
     void freeExtensions();
 
 private:
-    void setDevice(const ResourceID p_Device) { m_DeviceID = p_Device; }
+    void setDevice(const ResourceID p_Device);
 
     std::unordered_map<std::string, VulkanDeviceExtension*> m_Extensions{};
 
