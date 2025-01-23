@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 #include <vector>
-#include <vulkan/vulkan.h>
+#include <Volk/volk.h>
 #include <shaderc/shaderc.hpp>
 #include <spirv_cross/spirv_glsl.hpp>
 
@@ -21,35 +21,34 @@ public:
     struct ReflectionManager
     {
         ReflectionManager() = default;
-        explicit ReflectionManager(spirv_cross::CompilerGLSL* compiler, bool isCompilerLocal = true);
+        explicit ReflectionManager(spirv_cross::CompilerGLSL* p_Compiler, bool p_IsCompilerLocal = true);
         ~ReflectionManager() { if (compiler != nullptr && isCompilerLocal) delete compiler; }
         
-        ReflectionManager(ReflectionManager&& other) noexcept;
-        ReflectionManager& operator=(ReflectionManager&& other) noexcept;
+        ReflectionManager(ReflectionManager&& p_Other) noexcept;
+        ReflectionManager& operator=(ReflectionManager&& p_Other) noexcept;
 
         [[nodiscard]] spirv_cross::ShaderResources getResources() const { return compiler->get_shader_resources(); }
         [[nodiscard]] bool isValid() const { return compiler != nullptr; }
 
-        [[nodiscard]] std::string getName(spirv_cross::ID id, const std::string& nameField) const;
+        [[nodiscard]] std::string getName(spirv_cross::ID p_ID, const std::string& p_NameField) const;
 
         spirv_cross::CompilerGLSL* compiler = nullptr;
         bool isCompilerLocal = false;
-
     };
 
 
-	static [[nodiscard]] shaderc_shader_kind getKindFromStage(VkShaderStageFlagBits stage);
+	static [[nodiscard]] shaderc_shader_kind getKindFromStage(VkShaderStageFlagBits p_Stage);
 
 	VkShaderModule operator*() const;
 
-    [[nodiscard]] VkShaderStageFlagBits getStage() const { return m_stage; }
+    [[nodiscard]] VkShaderStageFlagBits getStage() const { return m_Stage; }
 
-    [[nodiscard]] bool hasReflection() const { return m_compiler != nullptr; }
+    [[nodiscard]] bool hasReflection() const { return m_Compiler != nullptr; }
     [[nodiscard]] ReflectionManager getReflectionData() const;
 
     void printReflectionData() const;
 
-    static ReflectionManager getReflectionDataFromFile(const std::string& filepath, VkShaderStageFlagBits stage);
+    static ReflectionManager getReflectionDataFromFile(const std::string& p_Filepath, VkShaderStageFlagBits p_Stage);
 
 private:
 	void free() override;
@@ -61,16 +60,16 @@ private:
 		std::string error;
 	};
 
-	VulkanShader(uint32_t device, VkShaderModule handle, VkShaderStageFlagBits stage);
-    void reflect(const std::vector<uint32_t>& code);
+	VulkanShader(ResourceID p_Device, VkShaderModule p_Handle, VkShaderStageFlagBits p_Stage);
+    void reflect(const std::vector<uint32_t>& p_Code);
 
-	static std::string readFile(const std::string& p_filename);
-	static [[nodiscard]] Result compileFile(const std::string& p_source_name, shaderc_shader_kind p_kind, const std::string& p_source, bool p_optimize, const std::vector<MacroDef>& macros);
+	static std::string readFile(const std::string& p_Filename);
+	static [[nodiscard]] Result compileFile(const std::string& p_Source_name, shaderc_shader_kind p_Kind, const std::string& p_Source, bool p_Optimize, const std::vector<MacroDef>& p_Macros);
     
-	VkShaderModule m_vkHandle = VK_NULL_HANDLE;
-	VkShaderStageFlagBits m_stage = VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
+	VkShaderModule m_VkHandle = VK_NULL_HANDLE;
+	VkShaderStageFlagBits m_Stage = VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
 
-    spirv_cross::CompilerGLSL* m_compiler = nullptr;
+    spirv_cross::CompilerGLSL* m_Compiler = nullptr;
 
 	friend class VulkanDevice;
 	friend class VulkanPipeline;

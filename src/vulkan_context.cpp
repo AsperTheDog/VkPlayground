@@ -50,21 +50,27 @@ void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& p_Crea
 }
 
 void VulkanContext::setupDebugMessenger() {
-	if (!m_validationLayersEnabled) return;
+	if (!m_ValidationLayersEnabled) return;
 
 	VkDebugUtilsMessengerCreateInfoEXT l_CreateInfo;
 	populateDebugMessengerCreateInfo(l_CreateInfo);
 
-	if (const VkResult l_Ret = CreateDebugUtilsMessengerEXT(m_vkHandle, &l_CreateInfo, nullptr, &m_debugMessenger); l_Ret != VK_SUCCESS) {
+	if (const VkResult l_Ret = CreateDebugUtilsMessengerEXT(m_VkHandle, &l_CreateInfo, nullptr, &m_DebugMessenger); l_Ret != VK_SUCCESS) {
 		throw std::runtime_error(std::string("Failed to set up debug messenger, error: ") + string_VkResult(l_Ret));
 	}
-	Logger::print("Created debug messenger for vulkan context", Logger::DEBUG);
+    LOG_DEBUG("Created debug messenger for vulkan context");
 }
 
 void VulkanContext::init(const uint32_t p_VulkanApiVersion, const bool p_EnableValidationLayers, const bool p_AssertOnError, std::vector<const char*> p_Extensions)
 {
+    const VkResult ret = volkInitialize();
+    if (ret != VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to initialize volk");
+    }
+
 	g_assertOnError = p_AssertOnError;
-	m_validationLayersEnabled = p_EnableValidationLayers;
+	m_ValidationLayersEnabled = p_EnableValidationLayers;
 
 #ifdef _DEBUG
 	if (p_EnableValidationLayers && !checkValidationLayerSupport())
@@ -107,30 +113,32 @@ void VulkanContext::init(const uint32_t p_VulkanApiVersion, const bool p_EnableV
 	l_InstanceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(p_Extensions.size());
 	l_InstanceCreateInfo.ppEnabledExtensionNames = p_Extensions.data();
 
-	if (const VkResult l_Ret = vkCreateInstance(&l_InstanceCreateInfo, nullptr, &m_vkHandle); l_Ret != VK_SUCCESS)
+	if (const VkResult l_Ret = vkCreateInstance(&l_InstanceCreateInfo, nullptr, &m_VkHandle); l_Ret != VK_SUCCESS)
 	{
 		throw std::runtime_error(std::string("Failed to create Vulkan instance, error:") + string_VkResult(l_Ret));
 	}
 
-	Logger::print("Created vulkan context", Logger::DEBUG);
+    LOG_DEBUG("Created vulkan context");
 
-	if (m_validationLayersEnabled)
+    volkLoadInstance(m_VkHandle);
+
+	if (m_ValidationLayersEnabled)
 		setupDebugMessenger();
 }
 
 uint32_t VulkanContext::getGPUCount()
 {
 	uint32_t l_GPUCount = 0;
-	vkEnumeratePhysicalDevices(m_vkHandle, &l_GPUCount, nullptr);
+	vkEnumeratePhysicalDevices(m_VkHandle, &l_GPUCount, nullptr);
 	return l_GPUCount;
 }
 
 std::vector<VulkanGPU> VulkanContext::getGPUs()
 {
 	uint32_t l_GPUCount = 0;
-	vkEnumeratePhysicalDevices(m_vkHandle, &l_GPUCount, nullptr);
+	vkEnumeratePhysicalDevices(m_VkHandle, &l_GPUCount, nullptr);
 	std::vector<VkPhysicalDevice> l_PhysicalDevices(l_GPUCount);
-	vkEnumeratePhysicalDevices(m_vkHandle, &l_GPUCount, l_PhysicalDevices.data());
+	vkEnumeratePhysicalDevices(m_VkHandle, &l_GPUCount, l_PhysicalDevices.data());
 
 	std::vector<VulkanGPU> l_GPUs;
 	l_GPUs.reserve(l_PhysicalDevices.size());
@@ -143,7 +151,6 @@ std::vector<VulkanGPU> VulkanContext::getGPUs()
 
 uint32_t VulkanContext::createDevice(const VulkanGPU p_GPU, const QueueFamilySelector& p_Queues, const VulkanDeviceExtensionManager* p_Extensions, const VkPhysicalDeviceFeatures& p_Features)
 {
-
 	VkDeviceCreateInfo l_DeviceCreateInfo{};
 	l_DeviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     VulkanExtensionChain l_Chain{};
@@ -152,8 +159,14 @@ uint32_t VulkanContext::createDevice(const VulkanGPU p_GPU, const QueueFamilySel
         p_Extensions->addExtensionsToChain(l_Chain);
     }
     l_DeviceCreateInfo.pNext = l_Chain.getChain();
+    const void* pNext = l_DeviceCreateInfo.pNext;
+    while (pNext != nullptr)
+    {
+        const VkBaseInStructure* l_Struct = static_cast<const VkBaseInStructure*>(pNext);
+        pNext = l_Struct->pNext;
+    }
 
-	if (m_validationLayersEnabled)
+	if (m_ValidationLayersEnabled)
 	{
 		l_DeviceCreateInfo.enabledLayerCount = static_cast<uint32_t>(g_ValidationLayers.size());
 		l_DeviceCreateInfo.ppEnabledLayerNames = g_ValidationLayers.data();
@@ -180,9 +193,9 @@ uint32_t VulkanContext::createDevice(const VulkanGPU p_GPU, const QueueFamilySel
 		VkDeviceQueueCreateInfo l_QueueCreateInfo{};
 		l_QueueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
 		l_QueueCreateInfo.queueFamilyIndex = l_Index;
-		l_QueueCreateInfo.queueCount = static_cast<uint32_t>(p_Queues.m_selections[l_Index].priorities.size());
-		l_QueueCreateInfo.pQueuePriorities = p_Queues.m_selections[l_Index].priorities.data();
-		if (p_Queues.m_selections[l_Index].familyFlags & QueueFamilyTypeBits::PROTECTED)
+		l_QueueCreateInfo.queueCount = static_cast<uint32_t>(p_Queues.m_Selections[l_Index].priorities.size());
+		l_QueueCreateInfo.pQueuePriorities = p_Queues.m_Selections[l_Index].priorities.data();
+		if (p_Queues.m_Selections[l_Index].familyFlags & QueueFamilyTypeBits::PROTECTED)
 		{
 			l_QueueCreateInfo.flags = VK_DEVICE_QUEUE_CREATE_PROTECTED_BIT;
 		}
@@ -194,20 +207,20 @@ uint32_t VulkanContext::createDevice(const VulkanGPU p_GPU, const QueueFamilySel
 	l_DeviceCreateInfo.pEnabledFeatures = &p_Features;
 
 	VkDevice l_Device;
-	if (const VkResult L_Ret = vkCreateDevice(p_GPU.m_vkHandle, &l_DeviceCreateInfo, nullptr, &l_Device); L_Ret != VK_SUCCESS)
+	if (const VkResult L_Ret = vkCreateDevice(p_GPU.m_VkHandle, &l_DeviceCreateInfo, nullptr, &l_Device); L_Ret != VK_SUCCESS)
 	{
 		throw std::runtime_error(std::string("Failed to create logical device, error: ") + string_VkResult(L_Ret));
 	}
     VulkanDeviceExtensionManager* l_ExtManager = nullptr;
     if (p_Extensions != nullptr)
         l_ExtManager = new VulkanDeviceExtensionManager{ *p_Extensions };
-	m_devices.push_back(new VulkanDevice{ p_GPU, l_Device, l_ExtManager });
-	return m_devices.back()->getID();
+	m_Devices.push_back(new VulkanDevice{ p_GPU, l_Device, l_ExtManager });
+    return m_Devices.back()->getID();
 }
 
-VulkanDevice& VulkanContext::getDevice(const uint32_t p_Index)
+VulkanDevice& VulkanContext::getDevice(const ResourceID p_Index)
 {
-	for (VulkanDevice* l_Device : m_devices)
+	for (VulkanDevice* l_Device : m_Devices)
 	{
 		if (l_Device->getID() == p_Index)
 		{
@@ -215,19 +228,19 @@ VulkanDevice& VulkanContext::getDevice(const uint32_t p_Index)
 		}
 	}
 
-	Logger::print("Device search failed out of " + std::to_string(m_devices.size()) + " devices", Logger::DEBUG);
+    LOG_DEBUG("Device search failed out of ", m_Devices.size(), " devices");
 	throw std::runtime_error("Device (ID:" + std::to_string(p_Index) + ") not found");
 }
 
-void VulkanContext::freeDevice(const uint32_t p_Index)
+void VulkanContext::freeDevice(const ResourceID p_Index)
 {
-	for (auto l_It = m_devices.begin(); l_It != m_devices.end(); ++l_It)
+	for (auto l_It = m_Devices.begin(); l_It != m_Devices.end(); ++l_It)
 	{
 		if ((*l_It)->getID() == p_Index)
 		{
             VulkanDevice* l_Device = *l_It;
 			l_Device->free();
-			m_devices.erase(l_It);
+			m_Devices.erase(l_It);
             delete l_Device;
 			break;
 		}
@@ -241,27 +254,27 @@ void VulkanContext::freeDevice(const VulkanDevice& p_Device)
 
 void VulkanContext::free()
 {
-	for (VulkanDevice* l_Device : m_devices)
+	for (VulkanDevice* l_Device : m_Devices)
 	{
 		l_Device->free();
         delete l_Device;
 	}
-	m_devices.clear();
+	m_Devices.clear();
 
-	if (m_validationLayersEnabled)
+	if (m_ValidationLayersEnabled)
 	{
-		DestroyDebugUtilsMessengerEXT(m_vkHandle, m_debugMessenger, nullptr);
-		Logger::print("Destroyed debug messenger", Logger::DEBUG);
+		DestroyDebugUtilsMessengerEXT(m_VkHandle, m_DebugMessenger, nullptr);
+        LOG_DEBUG("Destroyed debug messenger");
 	}
 
-	vkDestroyInstance(m_vkHandle, nullptr);
-	Logger::print("Destroyed vulkan context", Logger::DEBUG);
-	m_vkHandle = VK_NULL_HANDLE;
+	vkDestroyInstance(m_VkHandle, nullptr);
+    LOG_DEBUG("Destroyed vulkan context");
+	m_VkHandle = VK_NULL_HANDLE;
 }
 
 VkInstance VulkanContext::getHandle()
 {
-	return m_vkHandle;
+	return m_VkHandle;
 }
 
 bool VulkanContext::checkValidationLayerSupport()
@@ -292,23 +305,23 @@ bool VulkanContext::checkValidationLayerSupport()
 
 bool VulkanContext::areExtensionsSupported(const std::vector<const char*>& p_Extensions)
 {
-	uint32_t extensionCount;
-	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-	std::vector<VkExtensionProperties> availableExtensions(extensionCount);
-	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, availableExtensions.data());
+	uint32_t l_ExtensionCount;
+	vkEnumerateInstanceExtensionProperties(nullptr, &l_ExtensionCount, nullptr);
+	std::vector<VkExtensionProperties> l_AvailableExtensions(l_ExtensionCount);
+	vkEnumerateInstanceExtensionProperties(nullptr, &l_ExtensionCount, l_AvailableExtensions.data());
 
-	for (const char* extensionName : p_Extensions)
+	for (const char* l_ExtensionName : p_Extensions)
 	{
-		bool extensionFound = false;
-		for (const VkExtensionProperties& extensionProperties : availableExtensions)
+		bool l_ExtensionFound = false;
+		for (const VkExtensionProperties& l_ExtensionProperties : l_AvailableExtensions)
 		{
-			if (strcmp(extensionName, extensionProperties.extensionName) == 0)
+			if (strcmp(l_ExtensionName, l_ExtensionProperties.extensionName) == 0)
 			{
-				extensionFound = true;
+				l_ExtensionFound = true;
 				break;
 			}
 		}
-		if (!extensionFound)
+		if (!l_ExtensionFound)
 		{
 			return false;
 		}

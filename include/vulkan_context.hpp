@@ -1,5 +1,5 @@
 #pragma once
-#include <vulkan/vulkan.h>
+#include <Volk/volk.h>
 #include <vector>
 
 #include "vulkan_device.hpp"
@@ -16,9 +16,9 @@ public:
 	static [[nodiscard]] uint32_t getGPUCount();
 	static [[nodiscard]] std::vector<VulkanGPU> getGPUs();
 
-	static uint32_t createDevice(VulkanGPU p_GPU, const QueueFamilySelector& p_Queues, const VulkanDeviceExtensionManager* p_Extensions, const VkPhysicalDeviceFeatures& p_Features);
-	static VulkanDevice& getDevice(uint32_t p_Index);
-	static void freeDevice(uint32_t p_Index);
+	static ResourceID createDevice(VulkanGPU p_GPU, const QueueFamilySelector& p_Queues, const VulkanDeviceExtensionManager* p_Extensions, const VkPhysicalDeviceFeatures& p_Features);
+	static VulkanDevice& getDevice(ResourceID p_Index);
+	static void freeDevice(ResourceID p_Index);
 	static void freeDevice(const VulkanDevice& p_Device);
 
 	static void free();
@@ -30,12 +30,12 @@ private:
 	static bool areExtensionsSupported(const std::vector<const char*>& p_Extensions);
     static void setupDebugMessenger();
 
-	inline static VkInstance m_vkHandle = VK_NULL_HANDLE;
-	inline static bool m_validationLayersEnabled = false;
+	inline static VkInstance m_VkHandle = VK_NULL_HANDLE;
+	inline static bool m_ValidationLayersEnabled = false;
 
-	inline static std::vector<VulkanDevice*> m_devices{};
+	inline static std::vector<VulkanDevice*> m_Devices{};
 
-    inline static VkDebugUtilsMessengerEXT m_debugMessenger = VK_NULL_HANDLE;
+    inline static VkDebugUtilsMessengerEXT m_DebugMessenger = VK_NULL_HANDLE;
 
 	friend class SDLWindow;
 };

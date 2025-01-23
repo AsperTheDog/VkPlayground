@@ -1,6 +1,6 @@
 #pragma once
 #include <vector>
-#include <vulkan/vulkan.h>
+#include <Volk/volk.h>
 
 #include "utils/identifiable.hpp"
 
@@ -25,11 +25,11 @@ public:
 		VkImageLayout layout;
 	};
 
-	VulkanRenderPassBuilder& addAttachment(const VkAttachmentDescription& attachment);
-	VulkanRenderPassBuilder& addSubpass(VkPipelineBindPoint bindPoint, const std::vector<AttachmentReference>& attachments, VkSubpassDescriptionFlags flags);
-	VulkanRenderPassBuilder& addDependency(const VkSubpassDependency& dependency);
+	VulkanRenderPassBuilder& addAttachment(const VkAttachmentDescription& p_Attachment);
+	VulkanRenderPassBuilder& addSubpass(VkPipelineBindPoint bindPoint, const std::vector<AttachmentReference>& p_Attachments, VkSubpassDescriptionFlags p_Flags);
+	VulkanRenderPassBuilder& addDependency(const VkSubpassDependency& p_Dependency);
 
-	static VkAttachmentDescription createAttachment(VkFormat format, VkAttachmentLoadOp loadOp, VkAttachmentStoreOp storeOp, VkImageLayout initialLayout, VkImageLayout finalLayout);
+	static VkAttachmentDescription createAttachment(VkFormat p_Format, VkAttachmentLoadOp p_LoadOp, VkAttachmentStoreOp p_StoreOp, VkImageLayout p_InitialLayout, VkImageLayout p_FinalLayout);
 
 
 private:
@@ -45,9 +45,9 @@ private:
 		bool hasDepthStencilAttachment = false;
 	};
 
-	std::vector<VkAttachmentDescription> m_attachments;
-	std::vector<SubpassInfo> m_subpasses;
-	std::vector<VkSubpassDependency> m_dependencies;
+	std::vector<VkAttachmentDescription> m_Attachments;
+	std::vector<SubpassInfo> m_Subpasses;
+	std::vector<VkSubpassDependency> m_Dependencies;
 
 	friend class VulkanDevice;
 };
@@ -60,10 +60,10 @@ public:
 private:
 	void free() override;
 
-	VulkanRenderPass(uint32_t device, VkRenderPass renderPass);
+	VulkanRenderPass(ResourceID p_Device, VkRenderPass p_RenderPass);
 
 private:
-    VkRenderPass m_vkHandle = VK_NULL_HANDLE;
+    VkRenderPass m_VkHandle = VK_NULL_HANDLE;
 
 	friend class VulkanDevice;
 	friend class VulkanCommandBuffer;

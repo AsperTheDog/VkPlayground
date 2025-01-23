@@ -1,5 +1,5 @@
 #pragma once
-#include <vulkan/vulkan.h>
+#include <Volk/volk.h>
 
 #include "utils/identifiable.hpp"
 
@@ -19,11 +19,11 @@ public:
 private:
 	void free() override;
 
-	VulkanFence(uint32_t device, VkFence fence, bool isSignaled);
+	VulkanFence(ResourceID p_Device, VkFence p_Fence, bool p_IsSignaled);
 
-	VkFence m_vkHandle = VK_NULL_HANDLE;
+	VkFence m_VkHandle = VK_NULL_HANDLE;
 
-	bool m_isSignaled = false;
+	bool m_IsSignaled = false;
 
 	friend class VulkanDevice;
 	friend class SDLWindow;
@@ -38,9 +38,9 @@ public:
 private:
 	void free() override;
 
-	VulkanSemaphore(uint32_t device, VkSemaphore semaphore);
+	VulkanSemaphore(ResourceID p_Device, VkSemaphore p_Semaphore);
 
-	VkSemaphore m_vkHandle = VK_NULL_HANDLE;
+	VkSemaphore m_VkHandle = VK_NULL_HANDLE;
 
 	friend class VulkanDevice;
 	friend class SDLWindow;

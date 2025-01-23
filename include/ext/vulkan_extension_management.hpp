@@ -2,15 +2,9 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <vulkan/vulkan_core.h>
+#include <Volk/volk.h>
 
 #include "utils/identifiable.hpp"
-
-struct VulkanExtensionElem
-{
-    VkStructureType    sType;
-    void*              pNext;
-};
 
 class VulkanExtensionChain
 {
@@ -18,16 +12,16 @@ public:
     ~VulkanExtensionChain();
 
     template <typename T>
-    VulkanExtensionChain& addExtension(const T& extension);
+    VulkanExtensionChain& addExtension(const T& p_Extension);
 
     [[nodiscard]] void* getChain() const;
     [[nodiscard]] bool containsExtensionStruct(VkStructureType p_StructType) const;
 
 private:
-    // TRANSFERS OWNERSHIP OF POINTER
-    VulkanExtensionChain& addExtensionPointer(const VulkanExtensionElem* pNext);
+    // TAKES OWNERSHIP OF POINTER
+    VulkanExtensionChain& addExtensionPointer(const VkBaseInStructure* p_Next);
 
-    std::vector<VulkanExtensionElem*> m_pNext;
+    std::vector<VkBaseInStructure*> m_Next;
 
     friend class VulkanDeviceExtensionManager;
 };
@@ -40,11 +34,11 @@ public:
     [[nodiscard]] ExtensionID getExtensionID() const { return m_ExtensionID; }
     [[nodiscard]] ResourceID getDeviceID() const { return m_DeviceID; }
 
-    [[nodiscard]] virtual VulkanExtensionElem* getExtensionStruct() const = 0;
+    [[nodiscard]] virtual VkBaseInStructure* getExtensionStruct() const = 0;
     [[nodiscard]] virtual VkStructureType getExtensionStructType() const = 0;
 
     virtual void free() = 0;
-    void setDevice(const uint32_t p_DeviceID) { m_DeviceID = p_DeviceID; }
+    void setDevice(const ResourceID p_DeviceID) { m_DeviceID = p_DeviceID; }
 
 protected:
     explicit VulkanDeviceExtension(const ResourceID p_DeviceID) : m_DeviceID(p_DeviceID) {}
@@ -83,7 +77,7 @@ public:
     void freeExtensions();
 
 private:
-    void setDevice(const ResourceID p_Device);
+    void setDevice(ResourceID p_Device);
 
     std::unordered_map<std::string, VulkanDeviceExtension*> m_Extensions{};
 
@@ -96,12 +90,12 @@ private:
 
 
 template <typename T>
-VulkanExtensionChain& VulkanExtensionChain::addExtension(const T& extension)
+VulkanExtensionChain& VulkanExtensionChain::addExtension(const T& p_Extension)
 {
     static_assert(std::is_trivially_destructible_v<T>, "T must have a trivial or no destructor!");
     
-    T* pNext = new T(extension);
-    m_pNext.push_back(reinterpret_cast<VulkanExtensionElem*>(pNext));
+    T* pNext = new T(p_Extension);
+    m_Next.push_back(reinterpret_cast<VkBaseInStructure*>(pNext));
     return *this;
 }
 

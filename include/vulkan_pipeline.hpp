@@ -1,6 +1,7 @@
 #pragma once
+#include <string>
 #include <vector>
-#include <vulkan/vulkan.h>
+#include <Volk/volk.h>
 
 #include "utils/identifiable.hpp"
 #include "vulkan_binding.hpp"
@@ -9,63 +10,69 @@ class VulkanDevice;
 
 struct VulkanPipelineBuilder
 {
-	explicit VulkanPipelineBuilder(VulkanDevice* device);
+	explicit VulkanPipelineBuilder(ResourceID p_Device);
 
-	void addShaderStage(uint32_t shader);
+	void addShaderStage(ResourceID p_Shader, const std::string& p_Entrypoint = "main");
 	void resetShaderStages();
 
-	void setVertexInputState(const VkPipelineVertexInputStateCreateInfo& state);
-	void addVertexBinding(const VulkanBinding& binding);
+	void setVertexInputState(const VkPipelineVertexInputStateCreateInfo& p_State);
+	void addVertexBinding(const VulkanBinding& p_Binding);
 
-	void setInputAssemblyState(const VkPipelineInputAssemblyStateCreateInfo& state);
-	void setInputAssemblyState(VkPrimitiveTopology topology, VkBool32 primitiveRestartEnable);
+	void setInputAssemblyState(const VkPipelineInputAssemblyStateCreateInfo& p_State);
+	void setInputAssemblyState(VkPrimitiveTopology p_Topology, VkBool32 p_PrimitiveRestartEnable);
 
-	void setTessellationState(const VkPipelineTessellationStateCreateInfo& state);
-	void setTessellationState(uint32_t patchControlPoints);
+	void setTessellationState(const VkPipelineTessellationStateCreateInfo& p_State);
+	void setTessellationState(uint32_t p_PatchControlPoints);
 
-	void setViewportState(const VkPipelineViewportStateCreateInfo& state);
-	void setViewportState(uint32_t viewportCount, uint32_t scissorCount);
-	void setViewportState(const std::vector<VkViewport>& viewports, const std::vector<VkRect2D>& scissors);
+	void setViewportState(const VkPipelineViewportStateCreateInfo& p_State);
+	void setViewportState(uint32_t p_ViewportCount, uint32_t p_ScissorCount);
+	void setViewportState(const std::vector<VkViewport>& p_Viewports, const std::vector<VkRect2D>& p_Scissors);
 
-	void setRasterizationState(const VkPipelineRasterizationStateCreateInfo& state);
-	void setRasterizationState(VkPolygonMode polygonMode, VkCullModeFlags cullMode = VK_CULL_MODE_BACK_BIT, VkFrontFace frontFace = VK_FRONT_FACE_CLOCKWISE);
+	void setRasterizationState(const VkPipelineRasterizationStateCreateInfo& P_State);
+	void setRasterizationState(VkPolygonMode p_PolygonMode, VkCullModeFlags p_CullMode = VK_CULL_MODE_BACK_BIT, VkFrontFace p_FrontFace = VK_FRONT_FACE_CLOCKWISE);
 
-	void setMultisampleState(const VkPipelineMultisampleStateCreateInfo& state);
-	void setMultisampleState(VkSampleCountFlagBits rasterizationSamples, VkBool32 sampleShadingEnable = VK_FALSE, float minSampleShading = 1.0f);
+	void setMultisampleState(const VkPipelineMultisampleStateCreateInfo& p_State);
+	void setMultisampleState(VkSampleCountFlagBits p_RasterizationSamples, VkBool32 p_SampleShadingEnable = VK_FALSE, float p_MinSampleShading = 1.0f);
 
-	void setDepthStencilState(const VkPipelineDepthStencilStateCreateInfo& state);
-	void setDepthStencilState(VkBool32 depthTestEnable, VkBool32 depthWriteEnable, VkCompareOp depthCompareOp);
+	void setDepthStencilState(const VkPipelineDepthStencilStateCreateInfo& p_State);
+	void setDepthStencilState(VkBool32 p_DepthTestEnable, VkBool32 p_DepthWriteEnable, VkCompareOp p_DepthCompareOp);
 
-	void setColorBlendState(const VkPipelineColorBlendStateCreateInfo& state);
-	void setColorBlendState(VkBool32 logicOpEnable, VkLogicOp logicOp, std::array<float, 4> colorBlendConstants);
-	void addColorBlendAttachment(const VkPipelineColorBlendAttachmentState& attachment);
+	void setColorBlendState(const VkPipelineColorBlendStateCreateInfo& p_State);
+	void setColorBlendState(VkBool32 p_LogicOpEnable, VkLogicOp p_LogicOp, std::array<float, 4> p_ColorBlendConstants);
+	void addColorBlendAttachment(const VkPipelineColorBlendAttachmentState& p_Attachment);
 
-	void setDynamicState(const VkPipelineDynamicStateCreateInfo& state);
-	void setDynamicState(const std::vector<VkDynamicState>& dynamicStates);
+	void setDynamicState(const VkPipelineDynamicStateCreateInfo& p_State);
+	void setDynamicState(const std::vector<VkDynamicState>& p_DynamicStates);
 
 
 private:
-	VkPipelineVertexInputStateCreateInfo m_vertexInputState{};
-	VkPipelineInputAssemblyStateCreateInfo m_inputAssemblyState{};
-	VkPipelineTessellationStateCreateInfo m_tessellationState{};
-	VkPipelineViewportStateCreateInfo m_viewportState{};
-	VkPipelineRasterizationStateCreateInfo m_rasterizationState{};
-	VkPipelineMultisampleStateCreateInfo m_multisampleState{};
-	VkPipelineDepthStencilStateCreateInfo m_depthStencilState{};
-	VkPipelineColorBlendStateCreateInfo m_colorBlendState{};
-	VkPipelineDynamicStateCreateInfo m_dynamicState{};
+	VkPipelineVertexInputStateCreateInfo m_VertexInputState{};
+	VkPipelineInputAssemblyStateCreateInfo m_InputAssemblyState{};
+	VkPipelineTessellationStateCreateInfo m_TessellationState{};
+	VkPipelineViewportStateCreateInfo m_ViewportState{};
+	VkPipelineRasterizationStateCreateInfo m_RasterizationState{};
+	VkPipelineMultisampleStateCreateInfo m_MultisampleState{};
+	VkPipelineDepthStencilStateCreateInfo m_DepthStencilState{};
+	VkPipelineColorBlendStateCreateInfo m_ColorBlendState{};
+	VkPipelineDynamicStateCreateInfo m_DynamicState{};
 
-	bool m_tesellationStateEnabled = false;
+	bool m_TesellationStateEnabled = false;
 
-	std::vector<uint32_t> m_shaderStages;
-	std::vector<VkVertexInputBindingDescription> m_vertexInputBindings;
-	std::vector<VkVertexInputAttributeDescription> m_vertexInputAttributes;
-	std::vector<VkViewport> m_viewports;
-	std::vector<VkRect2D> m_scissors;
-	std::vector<VkPipelineColorBlendAttachmentState> m_attachments;
-	std::vector<VkDynamicState> m_dynamicStates;
+    struct ShaderData
+    {
+        ResourceID shader;
+        std::string entrypoint;
+    };
 
-	VulkanDevice* m_device;
+	std::vector<ShaderData> m_ShaderStages;
+	std::vector<VkVertexInputBindingDescription> m_VertexInputBindings;
+	std::vector<VkVertexInputAttributeDescription> m_VertexInputAttributes;
+	std::vector<VkViewport> m_Viewports;
+	std::vector<VkRect2D> m_Scissors;
+	std::vector<VkPipelineColorBlendAttachmentState> m_Attachments;
+	std::vector<VkDynamicState> m_DynamicStates;
+
+	ResourceID m_Device;
 
 	[[nodiscard]] std::vector<VkPipelineShaderStageCreateInfo> createShaderStages() const;
 
@@ -75,22 +82,22 @@ private:
 class VulkanPipeline final : public VulkanDeviceSubresource
 {
 public:
-	[[nodiscard]] uint32_t getLayout() const;
-	[[nodiscard]] uint32_t getRenderPass() const;
-	[[nodiscard]] uint32_t getSubpass() const;
+	[[nodiscard]] ResourceID getLayout() const;
+	[[nodiscard]] ResourceID getRenderPass() const;
+	[[nodiscard]] ResourceID getSubpass() const;
 
 	VkPipeline operator*() const;
 
 private:
 	void free() override;
 
-	VulkanPipeline(ResourceID device, VkPipeline handle, uint32_t layout, uint32_t renderPass, uint32_t subpass);
+	VulkanPipeline(ResourceID p_Device, VkPipeline p_Handle, ResourceID p_Layout, ResourceID p_RenderPass, ResourceID p_Subpass);
 
-	VkPipeline m_vkHandle;
+	VkPipeline m_VkHandle;
 
-	uint32_t m_layout;
-	uint32_t m_renderPass;
-	uint32_t m_subpass;
+	ResourceID m_Layout;
+	ResourceID m_RenderPass;
+	ResourceID m_Subpass;
 
 	friend class VulkanDevice;
 	friend class VulkanCommandBuffer;
@@ -106,7 +113,7 @@ private:
 
 	VulkanPipelineLayout(uint32_t device, VkPipelineLayout handle);
 
-	VkPipelineLayout m_vkHandle = VK_NULL_HANDLE;
+	VkPipelineLayout m_VkHandle = VK_NULL_HANDLE;
 
 	friend class VulkanDevice;
 	friend class VulkanCommandBuffer;

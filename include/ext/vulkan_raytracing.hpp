@@ -9,7 +9,7 @@ public:
 
     explicit VulkanRayTracingPipelineExtension(ResourceID p_DeviceID, bool p_EnablePipeline, bool p_EnableReplay, bool p_EnableReplayMixed, bool p_EnableIndirect, bool p_EnableCulling);
 
-    [[nodiscard]] VulkanExtensionElem* getExtensionStruct() const override;
+    [[nodiscard]] VkBaseInStructure* getExtensionStruct() const override;
     [[nodiscard]] VkStructureType getExtensionStructType() const override { return VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR; }
 
     void free() override {}

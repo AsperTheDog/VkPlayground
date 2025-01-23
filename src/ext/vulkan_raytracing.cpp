@@ -18,7 +18,7 @@ VulkanRayTracingPipelineExtension::VulkanRayTracingPipelineExtension(const Resou
     
 }
 
-VulkanExtensionElem* VulkanRayTracingPipelineExtension::getExtensionStruct() const
+VkBaseInStructure* VulkanRayTracingPipelineExtension::getExtensionStruct() const
 {
     VkPhysicalDeviceRayTracingPipelineFeaturesKHR* l_Struct = new VkPhysicalDeviceRayTracingPipelineFeaturesKHR{};
     l_Struct->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
@@ -28,5 +28,5 @@ VulkanExtensionElem* VulkanRayTracingPipelineExtension::getExtensionStruct() con
     l_Struct->rayTracingPipelineShaderGroupHandleCaptureReplayMixed = m_EnableReplayMixed;
     l_Struct->rayTracingPipelineTraceRaysIndirect = m_EnableIndirect;
     l_Struct->rayTraversalPrimitiveCulling = m_EnableCulling;
-    return reinterpret_cast<VulkanExtensionElem*>(l_Struct);
+    return reinterpret_cast<VkBaseInStructure*>(l_Struct);
 }

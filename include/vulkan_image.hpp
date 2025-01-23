@@ -1,6 +1,4 @@
 #pragma once
-#include <vulkan/vulkan.h>
-
 #include "utils/identifiable.hpp"
 #include "vulkan_memory.hpp"
 
@@ -11,16 +9,16 @@ class VulkanImage final : public VulkanDeviceSubresource
 public:
 	[[nodiscard]] VkMemoryRequirements getMemoryRequirements() const;
 	
-	void allocateFromIndex(uint32_t memoryIndex);
-	void allocateFromFlags(VulkanMemoryAllocator::MemoryPropertyPreferences memoryProperties);
+	void allocateFromIndex(uint32_t p_MemoryIndex);
+	void allocateFromFlags(VulkanMemoryAllocator::MemoryPropertyPreferences p_MemoryProperties);
 
-	VkImageView createImageView(VkFormat format, VkImageAspectFlags aspectFlags);
-	void freeImageView(VkImageView imageView);
+	VkImageView createImageView(VkFormat p_Format, VkImageAspectFlags p_AspectFlags);
+	void freeImageView(VkImageView p_ImageView);
 
-    VkSampler createSampler(VkFilter filter, VkSamplerAddressMode samplerAddressMode);
-    void freeSampler(VkSampler sampler);
+    VkSampler createSampler(VkFilter p_Filter, VkSamplerAddressMode p_SamplerAddressMode);
+    void freeSampler(VkSampler p_Sampler);
 
-	void transitionLayout(VkImageLayout layout, uint32_t threadID);
+	void transitionLayout(VkImageLayout p_Layout, uint32_t p_ThreadID);
 
 	[[nodiscard]] VkExtent3D getSize() const;
 	[[nodiscard]] VkImageType getType() const;
@@ -31,19 +29,19 @@ public:
 private:
 	void free() override;
 
-	VulkanImage(uint32_t device, VkImage vkHandle, VkExtent3D size, VkImageType type, VkImageLayout layout);
+	VulkanImage(ResourceID p_Device, VkImage p_VkHandle, VkExtent3D p_Size, VkImageType p_Type, VkImageLayout p_Layout);
 
-	void setBoundMemory(const MemoryChunk::MemoryBlock& memoryRegion);
+	void setBoundMemory(const MemoryChunk::MemoryBlock& p_MemoryRegion);
 
-	MemoryChunk::MemoryBlock m_memoryRegion;
-	VkExtent3D m_size{};
-	VkImageType m_type;
-	VkImageLayout m_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+	MemoryChunk::MemoryBlock m_MemoryRegion;
+	VkExtent3D m_Size{};
+	VkImageType m_Type;
+	VkImageLayout m_Layout = VK_IMAGE_LAYOUT_UNDEFINED;
 	
-	VkImage m_vkHandle = VK_NULL_HANDLE;
+	VkImage m_VkHandle = VK_NULL_HANDLE;
 
-	std::vector<VkImageView> m_imageViews;
-    std::vector<VkSampler> m_samplers;
+	std::vector<VkImageView> m_ImageViews;
+    std::vector<VkSampler> m_Samplers;
 
 	friend class VulkanDevice;
 	friend class VulkanCommandBuffer;

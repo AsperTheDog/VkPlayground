@@ -1,6 +1,6 @@
 #pragma once
 #include "utils/identifiable.hpp"
-#include <vulkan/vulkan.h>
+#include <Volk/volk.h>
 
 class VulkanDevice;
 
@@ -12,10 +12,10 @@ public:
 private:
 	void free() override;
 
-	VulkanFramebuffer(uint32_t device, VkFramebuffer handle);
+	VulkanFramebuffer(ResourceID p_Device, VkFramebuffer p_Handle);
 
 private:
-    VkFramebuffer m_vkHandle = VK_NULL_HANDLE;
+    VkFramebuffer m_VkHandle = VK_NULL_HANDLE;
 
 	friend class VulkanDevice;
 	friend class VulkanCommandBuffer;

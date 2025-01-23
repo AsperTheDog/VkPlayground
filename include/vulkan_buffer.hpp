@@ -1,6 +1,4 @@
 #pragma once
-#include <vulkan/vulkan.h>
-
 #include "vulkan_memory.hpp"
 #include "utils/identifiable.hpp"
 
@@ -11,10 +9,10 @@ class VulkanBuffer final : public VulkanDeviceSubresource
 public:
 	[[nodiscard]] VkMemoryRequirements getMemoryRequirements() const;
 	
-	void allocateFromIndex(uint32_t memoryIndex);
-	void allocateFromFlags(VulkanMemoryAllocator::MemoryPropertyPreferences memoryProperties);
+	void allocateFromIndex(uint32_t p_MemoryIndex);
+	void allocateFromFlags(VulkanMemoryAllocator::MemoryPropertyPreferences p_MemoryProperties);
 
-	void* map(VkDeviceSize size, VkDeviceSize offset);
+	void* map(VkDeviceSize p_Size, VkDeviceSize p_Offset);
 	void unmap();
 
 	[[nodiscard]] bool isMemoryMapped() const;
@@ -25,20 +23,21 @@ public:
 
 	[[nodiscard]] bool isMemoryBound() const;
 	[[nodiscard]] uint32_t getBoundMemoryType() const;
+    [[nodiscard]] VkDeviceAddress getDeviceAddress() const;
 
 private:
 	void free() override;
 
-	VulkanBuffer(uint32_t device, VkBuffer vkHandle, VkDeviceSize size);
+	VulkanBuffer(ResourceID p_Device, VkBuffer p_VkHandle, VkDeviceSize p_Size);
 
-	void setBoundMemory(const MemoryChunk::MemoryBlock& memoryRegion);
+	void setBoundMemory(const MemoryChunk::MemoryBlock& p_MemoryRegion);
 
 private:
-    VkBuffer m_vkHandle = VK_NULL_HANDLE;
+    VkBuffer m_VkHandle = VK_NULL_HANDLE;
 
-	MemoryChunk::MemoryBlock m_memoryRegion;
-	VkDeviceSize m_size = 0;
-	void* m_mappedData = nullptr;
+	MemoryChunk::MemoryBlock m_MemoryRegion;
+	VkDeviceSize m_Size = 0;
+	void* m_MappedData = nullptr;
 
 	friend class VulkanDevice;
 	friend class VulkanCommandBuffer;

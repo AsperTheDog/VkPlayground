@@ -2,11 +2,11 @@
 #include <optional>
 #include <string>
 #include <vector>
-#include <vulkan/vulkan.h>
+#include <Volk/volk.h>
 
 #include "vulkan_gpu.hpp"
 
-class QueueFamily;
+struct QueueFamily;
 
 enum QueueFamilyTypeBits
 {
@@ -25,38 +25,37 @@ class GPUQueueStructure
 {
 public:
 	[[nodiscard]] uint32_t getQueueFamilyCount() const;
-	[[nodiscard]] QueueFamily getQueueFamily(uint32_t index) const;
-	[[nodiscard]] QueueFamily findQueueFamily(VkQueueFlags flags, bool exactMatch = false) const;
-	[[nodiscard]] QueueFamily findPresentQueueFamily(VkSurfaceKHR surface) const;
+	[[nodiscard]] QueueFamily getQueueFamily(uint32_t p_Index) const;
+	[[nodiscard]] QueueFamily findQueueFamily(VkQueueFlags p_Flags, bool p_ExactMatch = false) const;
+	[[nodiscard]] QueueFamily findPresentQueueFamily(VkSurfaceKHR p_Surface) const;
 
 	[[nodiscard]] std::string toString() const;
 	
-	[[nodiscard]] bool areQueueFlagsSupported(VkQueueFlags flags, bool singleQueue = false) const;
-	[[nodiscard]] bool isQueueFlagSupported(VkQueueFlagBits flag) const;
-	[[nodiscard]] bool isPresentSupported(VkSurfaceKHR surface) const;
+	[[nodiscard]] bool areQueueFlagsSupported(VkQueueFlags p_Flags, bool SingleQueue = false) const;
+	[[nodiscard]] bool isQueueFlagSupported(VkQueueFlagBits p_Flag) const;
+	[[nodiscard]] bool isPresentSupported(VkSurfaceKHR p_Surface) const;
 
 private:
 	GPUQueueStructure() = default;
-	explicit GPUQueueStructure(VulkanGPU gpu);
+	explicit GPUQueueStructure(VulkanGPU p_GPU);
 
-	std::vector<QueueFamily> queueFamilies;
-	VulkanGPU gpu;
+	std::vector<QueueFamily> m_QueueFamilies;
+	VulkanGPU m_GPU;
 
 	friend class VulkanGPU;
 	friend class QueueFamilySelector;
 };
 
-class QueueFamily
+struct QueueFamily
 {
-public:
 	VkQueueFamilyProperties properties;
 	uint32_t index;
 	VulkanGPU gpu;
 
-	bool isPresentSupported(VkSurfaceKHR surface) const;
+	bool isPresentSupported(VkSurfaceKHR p_Surface) const;
 
 private:
-	QueueFamily(const VkQueueFamilyProperties& properties, uint32_t index, VulkanGPU gpu);
+	QueueFamily(const VkQueueFamilyProperties& p_Properties, uint32_t p_Index, VulkanGPU p_GPU);
 
 	friend class GPUQueueStructure;
 };
@@ -69,9 +68,9 @@ public:
 	VkQueue operator*() const;
 
 private:
-	explicit VulkanQueue(VkQueue queue);
+	explicit VulkanQueue(VkQueue p_Queue);
 
-	VkQueue m_vkHandle;
+	VkQueue m_VkHandle;
 
 	friend class VulkanDevice;
 	friend class VulkanCommandBuffer;
@@ -87,16 +86,16 @@ struct QueueSelection
 class QueueFamilySelector
 {
 public:
-	explicit QueueFamilySelector(const GPUQueueStructure& structure);
+	explicit QueueFamilySelector(const GPUQueueStructure& p_Structure);
 
-	void selectQueueFamily(const QueueFamily& family, QueueFamilyTypes typeMask);
-	QueueSelection getOrAddQueue(const QueueFamily& family, float priority);
-	QueueSelection addQueue(const QueueFamily& family, float priority);
+	void selectQueueFamily(const QueueFamily& p_Family, QueueFamilyTypes p_TypeMask);
+	QueueSelection getOrAddQueue(const QueueFamily& p_Family, float p_Priority);
+	QueueSelection addQueue(const QueueFamily& p_Family, float p_Priority);
 
-	[[nodiscard]] std::optional<QueueFamily> getQueueFamilyByType(QueueFamilyTypes type);
+	[[nodiscard]] std::optional<QueueFamily> getQueueFamilyByType(QueueFamilyTypes p_Type);
 	[[nodiscard]] std::vector<uint32_t> getUniqueIndices() const;
 
-	static QueueFamilyTypes getTypesFromFlags(VkQueueFlags flags);
+	static QueueFamilyTypes getTypesFromFlags(VkQueueFlags P_Flags);
 
 private:
 	struct QueueSelections
@@ -104,9 +103,9 @@ private:
 		QueueFamilyTypes familyFlags;
 		std::vector<float> priorities;
 	};
-	GPUQueueStructure m_structure;
+	GPUQueueStructure m_Structure;
 
-	std::vector<QueueSelections> m_selections;
+	std::vector<QueueSelections> m_Selections;
 
 	friend class GPUQueueStructure;
 	friend class VulkanContext;

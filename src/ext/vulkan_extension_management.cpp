@@ -3,42 +3,42 @@
 
 VulkanExtensionChain::~VulkanExtensionChain()
 {
-    for (VulkanExtensionElem* pNext : m_pNext)
+    for (VkBaseInStructure* l_Next : m_Next)
     {
-        free(pNext);
+        free(l_Next);
     }
 }
 
-VulkanExtensionChain& VulkanExtensionChain::addExtensionPointer(const VulkanExtensionElem* pNext)
+VulkanExtensionChain& VulkanExtensionChain::addExtensionPointer(const VkBaseInStructure* p_Next)
 {
-    m_pNext.push_back(const_cast<VulkanExtensionElem*>(pNext));
+    m_Next.push_back(const_cast<VkBaseInStructure*>(p_Next));
     return *this;
 }
 
 void* VulkanExtensionChain::getChain() const
 {
-    VulkanExtensionElem* pNext = nullptr;
-    VulkanExtensionElem* pFirst = nullptr;
-    for (VulkanExtensionElem* const pNextElem : m_pNext)
+    VkBaseInStructure* l_Next = nullptr;
+    VkBaseInStructure* l_First = nullptr;
+    for (VkBaseInStructure* const l_NextElem : m_Next)
     {
-        if (pNext != nullptr)
+        if (l_Next != nullptr)
         {
-            pNext->pNext = pNextElem;
+            l_Next->pNext = l_NextElem;
         }
         else
         {
-            pFirst = pNextElem;
+            l_First = l_NextElem;
         }
-        pNext = pNextElem;
+        l_Next = l_NextElem;
     }
-    return pFirst;
+    return l_First;
 }
 
 bool VulkanExtensionChain::containsExtensionStruct(const VkStructureType p_StructType) const
 {
-    for (const VulkanExtensionElem* pNext : m_pNext)
+    for (const VkBaseInStructure* l_Next : m_Next)
     {
-        if (pNext->sType == p_StructType)
+        if (l_Next->sType == p_StructType)
         {
             return true;
         }

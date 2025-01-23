@@ -9,7 +9,7 @@ public:
 
     explicit VulkanShaderClockExtension(ResourceID p_DeviceID, bool p_EnableDeviceClock, bool p_EnableSubgroupClock);
 
-    [[nodiscard]] VulkanExtensionElem* getExtensionStruct() const override;
+    [[nodiscard]] VkBaseInStructure* getExtensionStruct() const override;
     [[nodiscard]] VkStructureType getExtensionStructType() const override { return VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CLOCK_FEATURES_KHR; }
 
     void free() override {}

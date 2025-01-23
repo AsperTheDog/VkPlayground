@@ -10,46 +10,46 @@ class Signal {
 public:
     using FunctionType = std::function<void(Args...)>;
 
-    void connect(FunctionType func, std::string name = "") {
-        if (name.empty())
-            m_functions.push_back(func);
+    void connect(FunctionType p_Func, std::string p_Name = "") {
+        if (p_Name.empty())
+            m_Functions.push_back(p_Func);
         else
-            m_namedFunctions[name] = func;
+            m_namedFunctions[p_Name] = p_Func;
     }
 
     template<typename T>
-    void connect(T* instance, void (T::*method)(Args...), std::string name = "") {
-        FunctionType func = [=](Args... args) { return (instance->*method)(args...); };
-        if (name.empty())
-            m_functions.push_back(func);
+    void connect(T* p_Instance, void (T::*p_Method)(Args...), std::string p_Name = "") {
+        FunctionType func = [=](Args... p_Args) { return (p_Instance->*p_Method)(p_Args...); };
+        if (p_Name.empty())
+            m_Functions.push_back(func);
         else
-            m_namedFunctions[name] = func;
+            m_namedFunctions[p_Name] = func;
     }
 
-    bool disconnect(std::string name) {
-        return m_namedFunctions.erase(name) != 0;
+    bool disconnect(std::string p_Name) {
+        return m_namedFunctions.erase(p_Name) != 0;
     }
 
-    void emit(Args... args) {
-        for (const FunctionType& func : m_functions) {
-            func(args...);
+    void emit(Args... p_Args) {
+        for (const FunctionType& func : m_Functions) {
+            func(p_Args...);
         }
         for (const FunctionType& func : m_namedFunctions | std::views::values) {
-            func(args...);
+            func(p_Args...);
         }
     }
 
     size_t isEmpty()
     {
-        return m_functions.empty() && m_namedFunctions.empty();
+        return m_Functions.empty() && m_namedFunctions.empty();
     }
 
     void reset() {
-        m_functions.clear();
+        m_Functions.clear();
         m_namedFunctions.clear();
     }
 
 private:
-    std::vector<FunctionType> m_functions;
+    std::vector<FunctionType> m_Functions;
     std::unordered_map<std::string, FunctionType> m_namedFunctions;
 };

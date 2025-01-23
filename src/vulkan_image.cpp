@@ -10,198 +10,211 @@
 
 VkMemoryRequirements VulkanImage::getMemoryRequirements() const
 {
-	VkMemoryRequirements requirements;
-	vkGetImageMemoryRequirements(VulkanContext::getDevice(getDeviceID()).m_VkHandle, m_vkHandle, &requirements);
-	return requirements;
+    const VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
+
+	VkMemoryRequirements l_Requirements;
+	l_Device.getTable().vkGetImageMemoryRequirements(l_Device.m_VkHandle, m_VkHandle, &l_Requirements);
+	return l_Requirements;
 }
 
-void VulkanImage::allocateFromIndex(const uint32_t memoryIndex)
+void VulkanImage::allocateFromIndex(const uint32_t p_MemoryIndex)
 {
 	Logger::pushContext("Image memory (from index)");
-	const VkMemoryRequirements requirements = getMemoryRequirements();
-	setBoundMemory(VulkanContext::getDevice(getDeviceID()).getMemoryAllocator().allocate(requirements.size, requirements.alignment, memoryIndex));
+	const VkMemoryRequirements l_Requirements = getMemoryRequirements();
+	setBoundMemory(VulkanContext::getDevice(getDeviceID()).getMemoryAllocator().allocate(l_Requirements.size, l_Requirements.alignment, p_MemoryIndex));
 	Logger::popContext();
 }
 
-void VulkanImage::allocateFromFlags(const VulkanMemoryAllocator::MemoryPropertyPreferences memoryProperties)
+void VulkanImage::allocateFromFlags(const VulkanMemoryAllocator::MemoryPropertyPreferences p_MemoryProperties)
 {
 	Logger::pushContext("Image memory (from flags)");
-	const VkMemoryRequirements requirements = getMemoryRequirements();
-	setBoundMemory(VulkanContext::getDevice(getDeviceID()).getMemoryAllocator().searchAndAllocate(requirements.size, requirements.alignment, memoryProperties, requirements.memoryTypeBits));
+	const VkMemoryRequirements l_Requirements = getMemoryRequirements();
+	setBoundMemory(VulkanContext::getDevice(getDeviceID()).getMemoryAllocator().searchAndAllocate(l_Requirements.size, l_Requirements.alignment, p_MemoryProperties, l_Requirements.memoryTypeBits));
 	Logger::popContext();
 }
 
 VkExtent3D VulkanImage::getSize() const
 {
-	return m_size;
+	return m_Size;
 }
 
 VkImageType VulkanImage::getType() const
 {
-	return m_type;
+	return m_Type;
 }
 
 VkImageLayout VulkanImage::getLayout() const
 {
-	return m_layout;
+	return m_Layout;
 }
 
 VkImage VulkanImage::operator*() const
 {
-	return m_vkHandle;
+	return m_VkHandle;
 }
 
-VkImageView VulkanImage::createImageView(const VkFormat format, const VkImageAspectFlags aspectFlags)
+VkImageView VulkanImage::createImageView(const VkFormat p_Format, const VkImageAspectFlags p_AspectFlags)
 {
-	VkImageViewType type = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
-	switch (m_type)
+	VkImageViewType l_Type = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+	switch (m_Type)
 	{
 	case VK_IMAGE_TYPE_1D:
-		type = VK_IMAGE_VIEW_TYPE_1D;
+		l_Type = VK_IMAGE_VIEW_TYPE_1D;
 		break;
 	case VK_IMAGE_TYPE_2D:
-		type = VK_IMAGE_VIEW_TYPE_2D;
+		l_Type = VK_IMAGE_VIEW_TYPE_2D;
 		break;
 	case VK_IMAGE_TYPE_3D:
-		type = VK_IMAGE_VIEW_TYPE_3D;
+		l_Type = VK_IMAGE_VIEW_TYPE_3D;
 		break;
 	default: 
-        throw std::invalid_argument("Invalid image type on create view, requested: " + std::to_string(type));
+        throw std::invalid_argument("Invalid image type on create view, requested: " + std::to_string(l_Type));
     }
 
-	VkImageViewCreateInfo createInfo = {};
-	createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	createInfo.image = m_vkHandle;
-	createInfo.viewType = type;
-	createInfo.format = format;
-	createInfo.subresourceRange.aspectMask = aspectFlags;
-	createInfo.subresourceRange.baseMipLevel = 0;
-	createInfo.subresourceRange.levelCount = 1;
-	createInfo.subresourceRange.baseArrayLayer = 0;
-	createInfo.subresourceRange.layerCount = 1;
+	VkImageViewCreateInfo l_CreateInfo = {};
+	l_CreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	l_CreateInfo.image = m_VkHandle;
+	l_CreateInfo.viewType = l_Type;
+	l_CreateInfo.format = p_Format;
+	l_CreateInfo.subresourceRange.aspectMask = p_AspectFlags;
+	l_CreateInfo.subresourceRange.baseMipLevel = 0;
+	l_CreateInfo.subresourceRange.levelCount = 1;
+	l_CreateInfo.subresourceRange.baseArrayLayer = 0;
+	l_CreateInfo.subresourceRange.layerCount = 1;
 
-	VkImageView imageView;
-	if (const VkResult ret = vkCreateImageView(VulkanContext::getDevice(getDeviceID()).m_VkHandle, &createInfo, nullptr, &imageView); ret != VK_SUCCESS)
+    const VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
+
+	VkImageView l_ImageView;
+	if (const VkResult ret = l_Device.getTable().vkCreateImageView(l_Device.m_VkHandle, &l_CreateInfo, nullptr, &l_ImageView); ret != VK_SUCCESS)
 	{
 		throw std::runtime_error(std::string("Failed to create image view, error: ") + string_VkResult(ret));
 	}
 
-	m_imageViews.push_back(imageView);
-	return imageView;
+	m_ImageViews.push_back(l_ImageView);
+	return l_ImageView;
 }
 
-void VulkanImage::freeImageView(const VkImageView imageView)
+void VulkanImage::freeImageView(const VkImageView p_ImageView)
 {
-	vkDestroyImageView(VulkanContext::getDevice(getDeviceID()).m_VkHandle, imageView, nullptr);
-    Logger::print("Freed image view of image " + std::to_string(m_ID), Logger::DEBUG);
-	std::erase(m_imageViews, imageView);
+    const VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
+
+	l_Device.getTable().vkDestroyImageView(l_Device.m_VkHandle, p_ImageView, nullptr);
+    LOG_DEBUG("Freed image view of image ", m_ID);
+	std::erase(m_ImageViews, p_ImageView);
 }
 
-VkSampler VulkanImage::createSampler(const VkFilter filter, const VkSamplerAddressMode samplerAddressMode)
+VkSampler VulkanImage::createSampler(const VkFilter p_Filter, const VkSamplerAddressMode p_SamplerAddressMode)
 {
-    VkSamplerCreateInfo createInfo = {};
-    createInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-    createInfo.magFilter = filter;
-    createInfo.minFilter = filter;
-    createInfo.addressModeU = samplerAddressMode;
-    createInfo.addressModeV = samplerAddressMode;
-    createInfo.addressModeW = samplerAddressMode;
-    createInfo.anisotropyEnable = VK_FALSE;
-    createInfo.maxAnisotropy = 0;
-    createInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-    createInfo.unnormalizedCoordinates = VK_FALSE;
-    createInfo.compareEnable = VK_FALSE;
-    createInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-    createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-    createInfo.mipLodBias = 0.0f;
-    createInfo.minLod = 0.0f;
-    createInfo.maxLod = 0.0f;
+    VkSamplerCreateInfo l_CreateInfo = {};
+    l_CreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    l_CreateInfo.magFilter = p_Filter;
+    l_CreateInfo.minFilter = p_Filter;
+    l_CreateInfo.addressModeU = p_SamplerAddressMode;
+    l_CreateInfo.addressModeV = p_SamplerAddressMode;
+    l_CreateInfo.addressModeW = p_SamplerAddressMode;
+    l_CreateInfo.anisotropyEnable = VK_FALSE;
+    l_CreateInfo.maxAnisotropy = 0;
+    l_CreateInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+    l_CreateInfo.unnormalizedCoordinates = VK_FALSE;
+    l_CreateInfo.compareEnable = VK_FALSE;
+    l_CreateInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+    l_CreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    l_CreateInfo.mipLodBias = 0.0f;
+    l_CreateInfo.minLod = 0.0f;
+    l_CreateInfo.maxLod = 0.0f;
 
-    VkSampler sampler;
-    if (const VkResult ret = vkCreateSampler(VulkanContext::getDevice(getDeviceID()).m_VkHandle, &createInfo, nullptr, &sampler); ret != VK_SUCCESS)
+    const VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
+
+    VkSampler l_Sampler;
+    if (const VkResult l_Ret = l_Device.getTable().vkCreateSampler(l_Device.m_VkHandle, &l_CreateInfo, nullptr, &l_Sampler); l_Ret != VK_SUCCESS)
     {
-        throw std::runtime_error(std::string("Failed to create sampler, error: ") + string_VkResult(ret));
+        throw std::runtime_error(std::string("Failed to create sampler, error: ") + string_VkResult(l_Ret));
     }
 
-    m_samplers.push_back(sampler);
-    return sampler;
+    m_Samplers.push_back(l_Sampler);
+    return l_Sampler;
 }
 
-void VulkanImage::freeSampler(const VkSampler sampler)
+void VulkanImage::freeSampler(const VkSampler p_Sampler)
 {
-    if (std::ranges::find(m_samplers, sampler) == m_samplers.end())
+    if (std::ranges::find(m_Samplers, p_Sampler) == m_Samplers.end())
     {
-        Logger::print("Tried to free sampler that doesn't belong to image " + std::to_string(m_ID), Logger::WARN);
+        LOG_WARN("Tried to free sampler that doesn't belong to image ", m_ID);
         return;
     }
-    vkDestroySampler(VulkanContext::getDevice(getDeviceID()).m_VkHandle, sampler, nullptr);
-    Logger::print("Freed sampler of image " + std::to_string(m_ID), Logger::DEBUG);
-    std::erase(m_samplers, sampler);
+
+    const VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
+
+    l_Device.getTable().vkDestroySampler(l_Device.m_VkHandle, p_Sampler, nullptr);
+    LOG_DEBUG("Freed sampler of image ", m_ID);
+    std::erase(m_Samplers, p_Sampler);
 }
 
-void VulkanImage::transitionLayout(const VkImageLayout layout, const uint32_t threadID)
+void VulkanImage::transitionLayout(const VkImageLayout p_Layout, const uint32_t p_ThreadID)
 {
-	VulkanDevice& device = VulkanContext::getDevice(getDeviceID());
-	VulkanCommandBuffer& commandBuffer = device.getCommandBuffer(device.createOneTimeCommandBuffer(threadID), threadID);
-	commandBuffer.beginRecording(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-	commandBuffer.cmdSimpleTransitionImageLayout(m_ID, layout);
-	commandBuffer.endRecording();
-	const VulkanQueue queue = device.getQueue(device.m_OneTimeQueue);
-	commandBuffer.submit(queue, {}, {});
+	VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
+	VulkanCommandBuffer& l_CommandBuffer = l_Device.getCommandBuffer(l_Device.createOneTimeCommandBuffer(p_ThreadID), p_ThreadID);
+	l_CommandBuffer.beginRecording(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+	l_CommandBuffer.cmdSimpleTransitionImageLayout(m_ID, p_Layout);
+	l_CommandBuffer.endRecording();
+	const VulkanQueue l_Queue = l_Device.getQueue(l_Device.m_OneTimeQueue);
+	l_CommandBuffer.submit(l_Queue, {}, {});
 
-	m_layout = layout;
+	m_Layout = p_Layout;
 
-	queue.waitIdle();
-	device.freeCommandBuffer(commandBuffer, threadID);
-    Logger::print(std::string("Transitioned image layout to ") + string_VkImageLayout(layout) + " on image " + std::to_string(m_ID), Logger::DEBUG);
+	l_Queue.waitIdle();
+	l_Device.freeCommandBuffer(l_CommandBuffer, p_ThreadID);
+    LOG_DEBUG("Transitioned image layout to ", string_VkImageLayout(p_Layout), " on image ", m_ID);
 }
 
-VulkanImage::VulkanImage(const uint32_t device, const VkImage vkHandle, const VkExtent3D size, const VkImageType type, const VkImageLayout layout)
-	: VulkanDeviceSubresource(device), m_size(size), m_type(type), m_layout(layout), m_vkHandle(vkHandle)
+VulkanImage::VulkanImage(const ResourceID p_Device, const VkImage p_VkHandle, const VkExtent3D p_Size, const VkImageType p_Type, const VkImageLayout p_Layout)
+	: VulkanDeviceSubresource(p_Device), m_Size(p_Size), m_Type(p_Type), m_Layout(p_Layout), m_VkHandle(p_VkHandle)
 {
 
 }
 
-void VulkanImage::setBoundMemory(const MemoryChunk::MemoryBlock& memoryRegion)
+void VulkanImage::setBoundMemory(const MemoryChunk::MemoryBlock& p_MemoryRegion)
 {
-	if (m_memoryRegion.size > 0)
+	if (m_MemoryRegion.size > 0)
 	{
 		throw std::runtime_error("Tried to bind memory to buffer (ID: " + std::to_string(m_ID) + ") but it already has memory bound to it");
 	}
-	m_memoryRegion = memoryRegion;
+	m_MemoryRegion = p_MemoryRegion;
 
-	if (const VkResult ret = vkBindImageMemory(VulkanContext::getDevice(getDeviceID()).m_VkHandle, m_vkHandle, VulkanContext::getDevice(getDeviceID()).getMemoryHandle(m_memoryRegion.chunk), m_memoryRegion.offset); ret != VK_SUCCESS)
+    const VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
+
+	if (const VkResult ret = l_Device.getTable().vkBindImageMemory(l_Device.m_VkHandle, m_VkHandle, l_Device.getMemoryHandle(m_MemoryRegion.chunk), m_MemoryRegion.offset); ret != VK_SUCCESS)
 	{
 	    throw std::runtime_error("Failed to bind memory to image (ID: " + std::to_string(m_ID) + "), error: " + string_VkResult(ret));
 	}
-    Logger::print("Bound memory to image " + std::to_string(m_ID) + " with size " + std::to_string(m_memoryRegion.size) + " and offset " + std::to_string(m_memoryRegion.offset), Logger::DEBUG);
+    LOG_DEBUG("Bound memory to image ", m_ID, " with size ", m_MemoryRegion.size, " and offset ", m_MemoryRegion.offset);
 }
 
 void VulkanImage::free()
 {
-	VulkanDevice& device = VulkanContext::getDevice(getDeviceID());
+	VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
 
-    for (const VkSampler sampler : m_samplers)
+    for (const VkSampler l_Sampler : m_Samplers)
     {
-        vkDestroySampler(device.m_VkHandle, sampler, nullptr);
+        l_Device.getTable().vkDestroySampler(l_Device.m_VkHandle, l_Sampler, nullptr);
     }
 
-	for (const VkImageView imageView : m_imageViews)
+	for (const VkImageView l_ImageView : m_ImageViews)
 	{
-		vkDestroyImageView(device.m_VkHandle, imageView, nullptr);
+		l_Device.getTable().vkDestroyImageView(l_Device.m_VkHandle, l_ImageView, nullptr);
 	}
-	Logger::print("Freed image (ID: " + std::to_string(m_ID) + ") with " + std::to_string(m_imageViews.size()) + " image views and " + std::to_string(m_samplers.size()) + " samplers", Logger::DEBUG);
+    LOG_DEBUG("Freed image (ID: ", m_ID, ") with ", m_ImageViews.size(), " image views and ", m_Samplers.size(), " samplers");
 	Logger::pushContext("Image memory free");
-	m_imageViews.clear();
-    m_samplers.clear();
+	m_ImageViews.clear();
+    m_Samplers.clear();
 
-	vkDestroyImage(device.m_VkHandle, m_vkHandle, nullptr);
-	m_vkHandle = VK_NULL_HANDLE;
+	l_Device.getTable().vkDestroyImage(l_Device.m_VkHandle, m_VkHandle, nullptr);
+	m_VkHandle = VK_NULL_HANDLE;
 
-	if (m_memoryRegion.size > 0)
+	if (m_MemoryRegion.size > 0)
 	{
-		device.m_MemoryAllocator.deallocate(m_memoryRegion);
-		m_memoryRegion = {};
+		l_Device.m_MemoryAllocator.deallocate(m_MemoryRegion);
+		m_MemoryRegion = {};
 	}
 	Logger::popContext();
 }

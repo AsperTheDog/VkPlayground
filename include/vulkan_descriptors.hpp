@@ -1,5 +1,5 @@
 #pragma once
-#include <vulkan/vulkan.h>
+#include <Volk/volk.h>
 
 #include "utils/identifiable.hpp"
 
@@ -14,11 +14,11 @@ public:
 private:
 	void free() override;
 
-	VulkanDescriptorPool(uint32_t device, VkDescriptorPool descriptorPool, VkDescriptorPoolCreateFlags flags);
+	VulkanDescriptorPool(ResourceID p_Device, VkDescriptorPool p_DescriptorPool, VkDescriptorPoolCreateFlags p_Flags);
 
-	VkDescriptorPool m_vkHandle = VK_NULL_HANDLE;
+	VkDescriptorPool m_VkHandle = VK_NULL_HANDLE;
 
-	VkDescriptorPoolCreateFlags m_flags = 0;
+	VkDescriptorPoolCreateFlags m_Flags = 0;
 
 	friend class VulkanDevice;
 	friend class VulkanDescriptorSet;
@@ -32,9 +32,9 @@ public:
 private:
 	void free() override;
 
-	VulkanDescriptorSetLayout(uint32_t device, VkDescriptorSetLayout descriptorSetLayout);
+	VulkanDescriptorSetLayout(ResourceID p_Device, VkDescriptorSetLayout p_DescriptorSetLayout);
 
-	VkDescriptorSetLayout m_vkHandle = VK_NULL_HANDLE;
+	VkDescriptorSetLayout m_VkHandle = VK_NULL_HANDLE;
 
 	friend class VulkanDevice;
 };
@@ -44,17 +44,17 @@ class VulkanDescriptorSet final : public VulkanDeviceSubresource
 public:
 	[[nodiscard]] VkDescriptorSet operator*() const;
 
-	void updateDescriptorSet(const VkWriteDescriptorSet& writeDescriptorSet) const;
+	void updateDescriptorSet(const VkWriteDescriptorSet& p_WriteDescriptorSet) const;
 
 private:
 	void free() override;
 
-	VulkanDescriptorSet(uint32_t device, uint32_t pool, VkDescriptorSet descriptorSet);
+	VulkanDescriptorSet(ResourceID p_Device, ResourceID p_Pool, VkDescriptorSet p_DescriptorSet);
 
-	VkDescriptorSet m_vkHandle = VK_NULL_HANDLE;
+	VkDescriptorSet m_VkHandle = VK_NULL_HANDLE;
 
-	uint32_t m_pool = UINT32_MAX;
-	bool m_canBeFreed = false;
+	ResourceID m_Pool = UINT32_MAX;
+	bool m_CanBeFreed = false;
 
 	friend class VulkanDevice;
 	friend class VulkanDescriptorPool;

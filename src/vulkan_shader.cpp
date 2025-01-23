@@ -10,35 +10,35 @@
 
 #include "spirv_cross/spirv_glsl.hpp"
 
-VulkanShader::ReflectionManager::ReflectionManager(spirv_cross::CompilerGLSL* compiler, const bool isCompilerLocal)
- : compiler(compiler), isCompilerLocal(isCompilerLocal) {}
+VulkanShader::ReflectionManager::ReflectionManager(spirv_cross::CompilerGLSL* p_Compiler, const bool p_IsCompilerLocal)
+ : compiler(p_Compiler), isCompilerLocal(p_IsCompilerLocal) {}
 
-VulkanShader::ReflectionManager::ReflectionManager(ReflectionManager&& other) noexcept : compiler(other.compiler), isCompilerLocal(other.isCompilerLocal)
+VulkanShader::ReflectionManager::ReflectionManager(ReflectionManager&& p_Other) noexcept : compiler(p_Other.compiler), isCompilerLocal(p_Other.isCompilerLocal)
 {
-    other.compiler = nullptr;
+    p_Other.compiler = nullptr;
 }
 
-VulkanShader::ReflectionManager& VulkanShader::ReflectionManager::operator=(ReflectionManager&& other) noexcept
+VulkanShader::ReflectionManager& VulkanShader::ReflectionManager::operator=(ReflectionManager&& p_Other) noexcept
 {
-    compiler = other.compiler;
-    isCompilerLocal = other.isCompilerLocal;
-    other.compiler = nullptr;
+    compiler = p_Other.compiler;
+    isCompilerLocal = p_Other.isCompilerLocal;
+    p_Other.compiler = nullptr;
     return *this;
 }
 
-std::string VulkanShader::ReflectionManager::getName(const spirv_cross::ID id, const std::string& nameField) const
+std::string VulkanShader::ReflectionManager::getName(const spirv_cross::ID p_ID, const std::string& p_NameField) const
 {
-    std::string name = nameField;
-    if (name.empty())
-        name = compiler->get_name(id);
-    if (name.empty())
-        name = compiler->get_fallback_name(id);
-    return name;
+    std::string l_Name = p_NameField;
+    if (l_Name.empty())
+        l_Name = compiler->get_name(p_ID);
+    if (l_Name.empty())
+        l_Name = compiler->get_fallback_name(p_ID);
+    return l_Name;
 }
 
-shaderc_shader_kind VulkanShader::getKindFromStage(const VkShaderStageFlagBits stage)
+shaderc_shader_kind VulkanShader::getKindFromStage(const VkShaderStageFlagBits p_Stage)
 {
-    switch (stage)
+    switch (p_Stage)
     {
     case VK_SHADER_STAGE_VERTEX_BIT: return shaderc_vertex_shader;
     case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT: return shaderc_tess_control_shader;
@@ -54,148 +54,149 @@ shaderc_shader_kind VulkanShader::getKindFromStage(const VkShaderStageFlagBits s
     case VK_SHADER_STAGE_CALLABLE_BIT_KHR: return shaderc_callable_shader;
     case VK_SHADER_STAGE_TASK_BIT_EXT: return shaderc_task_shader;
     case VK_SHADER_STAGE_MESH_BIT_EXT: return shaderc_mesh_shader;
-    default: throw std::runtime_error(std::string("Unsupported shader stage ") + string_VkShaderStageFlagBits(stage));
+    default: throw std::runtime_error(std::string("Unsupported shader stage ") + string_VkShaderStageFlagBits(p_Stage));
     }
 }
 
 VkShaderModule VulkanShader::operator*() const
 {
-    return m_vkHandle;
+    return m_VkHandle;
 }
 
 VulkanShader::ReflectionManager VulkanShader::getReflectionData() const
 {
-    if (m_compiler == nullptr)
+    if (m_Compiler == nullptr)
     {
-        Logger::print("No reflection data available for shader (ID: " + std::to_string(m_ID) + ")", Logger::DEBUG, false);
+        LOG_DEBUG("No reflection data available for shader (ID: ", m_ID, ")");
         return {};
     }
 
-    return VulkanShader::ReflectionManager{m_compiler, false};
+    return VulkanShader::ReflectionManager{m_Compiler, false};
 }
 
 void VulkanShader::printReflectionData() const
 {
-        if (m_compiler == nullptr)
+    if (m_Compiler == nullptr)
     {
-        Logger::print("No reflection data available for shader (ID: " + std::to_string(m_ID) + ")", Logger::DEBUG, false);
+        LOG_DEBUG("No reflection data available for shader (ID: ", m_ID, ")");
         return;
     }
 
-    Logger::print("Reflection data for shader (ID: " + std::to_string(m_ID) + ")", Logger::DEBUG, false);
-    Logger::print("Inputs:", Logger::DEBUG, false);
-    for (const auto& input : m_compiler->get_shader_resources().stage_inputs)
+    LOG_DEBUG("Reflection data for shader (ID: ", m_ID, ")");
+    LOG_DEBUG("Inputs:");
+    for (const spirv_cross::Resource& l_Input : m_Compiler->get_shader_resources().stage_inputs)
     {
-        Logger::print("  " + input.name + " (" + std::to_string(input.type_id) + ")", Logger::DEBUG, false);
+        LOG_DEBUG("  ", l_Input.name, " (", l_Input.type_id, ")");
     }
 
-    Logger::print("Outputs:", Logger::DEBUG, false);
-    for (const auto& output : m_compiler->get_shader_resources().stage_outputs)
+    LOG_DEBUG("Outputs:");
+    for (const spirv_cross::Resource& l_Output : m_Compiler->get_shader_resources().stage_outputs)
     {
-        Logger::print("  " + output.name + " (" + std::to_string(output.type_id) + ")", Logger::DEBUG, false);
+        LOG_DEBUG("  ", l_Output.name, " (", l_Output.type_id, ")");
     }
 
-    Logger::print("Uniform buffers:", Logger::DEBUG, false);
-    for (const auto& uniformBuffer : m_compiler->get_shader_resources().uniform_buffers)
+    LOG_DEBUG("Uniform buffers:");
+    for (const spirv_cross::Resource& l_UniformBuffer : m_Compiler->get_shader_resources().uniform_buffers)
     {
-        Logger::print("  " + uniformBuffer.name + " (" + std::to_string(uniformBuffer.type_id) + ")", Logger::DEBUG, false);
+        LOG_DEBUG("  ", l_UniformBuffer.name, " (", l_UniformBuffer.type_id, ")");
     }
 
-    Logger::print("Storage buffers:", Logger::DEBUG, false);
-    for (const auto& storageBuffer : m_compiler->get_shader_resources().storage_buffers)
+    LOG_DEBUG("Storage buffers:");
+    for (const spirv_cross::Resource& l_StorageBuffer : m_Compiler->get_shader_resources().storage_buffers)
     {
-        Logger::print("  " + storageBuffer.name + " (" + std::to_string(storageBuffer.type_id) + ")", Logger::DEBUG, false);
+        LOG_DEBUG("  ", l_StorageBuffer.name, " (", l_StorageBuffer.type_id, ")");
     }
 
-    Logger::print("Subpass inputs:", Logger::DEBUG, false);
-    for (const auto& subpassInput : m_compiler->get_shader_resources().subpass_inputs)
+    LOG_DEBUG("Subpass inputs:");
+    for (const spirv_cross::Resource& l_SubpassInput : m_Compiler->get_shader_resources().subpass_inputs)
     {
-        Logger::print("  " + subpassInput.name + " (" + std::to_string(subpassInput.type_id) + ")", Logger::DEBUG, false);
+        LOG_DEBUG("  ", l_SubpassInput.name, " (", l_SubpassInput.type_id, ")");
     }
 
-    Logger::print("Storage images:", Logger::DEBUG, false);
-    for (const auto& storageImage : m_compiler->get_shader_resources().storage_images)
+    LOG_DEBUG("Storage images:");
+    for (const spirv_cross::Resource& l_StorageImage : m_Compiler->get_shader_resources().storage_images)
     {
-        Logger::print("  " + storageImage.name + " (" + std::to_string(storageImage.type_id) + ")", Logger::DEBUG, false);
+        LOG_DEBUG("  ", l_StorageImage.name, " (", l_StorageImage.type_id, ")");
     }
 
-    Logger::print("Sampled images:", Logger::DEBUG, false);
-    for (const auto& sampledImage : m_compiler->get_shader_resources().sampled_images)
+    LOG_DEBUG("Push constants:");
+    for (const spirv_cross::Resource& l_SampledImage : m_Compiler->get_shader_resources().sampled_images)
     {
-        Logger::print("  " + sampledImage.name + " (" + std::to_string(sampledImage.type_id) + ")", Logger::DEBUG, false);
+        LOG_DEBUG("  ", l_SampledImage.name, " (", l_SampledImage.type_id, ")");
     }
 }
 
-VulkanShader::ReflectionManager VulkanShader::getReflectionDataFromFile(const std::string& filepath, const VkShaderStageFlagBits stage)
+VulkanShader::ReflectionManager VulkanShader::getReflectionDataFromFile(const std::string& p_Filepath, const VkShaderStageFlagBits p_Stage)
 {
-    const VulkanShader::Result result = VulkanShader::compileFile(filepath, VulkanShader::getKindFromStage(stage), VulkanShader::readFile(filepath), false, {});
-    if (!result.success)
+    const VulkanShader::Result l_Result = VulkanShader::compileFile(p_Filepath, VulkanShader::getKindFromStage(p_Stage), VulkanShader::readFile(p_Filepath), false, {});
+    if (!l_Result.success)
     {
-        Logger::print("Failed to compile shader file " + filepath + ": " + result.error, Logger::ERR);
+        LOG_ERR("Failed to compile shader file ", p_Filepath, ": ", l_Result.error);
         return {};
     }
-    spirv_cross::CompilerGLSL* compiler = new spirv_cross::CompilerGLSL(result.code);
-    return VulkanShader::ReflectionManager{compiler};
+    spirv_cross::CompilerGLSL* l_Compiler = new spirv_cross::CompilerGLSL(l_Result.code);
+    return VulkanShader::ReflectionManager{l_Compiler};
 }
 
 void VulkanShader::free()
 {
-    if (m_vkHandle != VK_NULL_HANDLE)
+    if (m_VkHandle != VK_NULL_HANDLE)
     {
-        vkDestroyShaderModule(VulkanContext::getDevice(getDeviceID()).m_VkHandle, m_vkHandle, nullptr);
-        Logger::print("Freed shader module (ID: " + std::to_string(m_ID) + ")", Logger::DEBUG);
-        m_vkHandle = VK_NULL_HANDLE;
+        const VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
+
+	    l_Device.getTable().vkDestroyShaderModule(l_Device.m_VkHandle, m_VkHandle, nullptr);
+        LOG_DEBUG("Freed shader module (ID: ", m_ID, ")");
+        m_VkHandle = VK_NULL_HANDLE;
     }
 
-    if (m_compiler != nullptr)
+    if (m_Compiler != nullptr)
     {
-        delete m_compiler;
-        m_compiler = nullptr;
+        delete m_Compiler;
+        m_Compiler = nullptr;
     }
 }
 
-VulkanShader::VulkanShader(const uint32_t device, const VkShaderModule handle, const VkShaderStageFlagBits stage)
-    : VulkanDeviceSubresource(device), m_vkHandle(handle), m_stage(stage)
+VulkanShader::VulkanShader(const ResourceID p_Device, const VkShaderModule p_Handle, const VkShaderStageFlagBits p_Stage)
+    : VulkanDeviceSubresource(p_Device), m_VkHandle(p_Handle), m_Stage(p_Stage)
 {
 }
 
-void VulkanShader::reflect(const std::vector<uint32_t>& code)
+void VulkanShader::reflect(const std::vector<uint32_t>& p_Code)
 {
-    m_compiler  = new spirv_cross::CompilerGLSL(code);
+    m_Compiler  = new spirv_cross::CompilerGLSL(p_Code);
     printReflectionData();
 }
 
-std::string VulkanShader::readFile(const std::string& p_filename)
+std::string VulkanShader::readFile(const std::string& p_Filename)
 {
-    std::ifstream shaderFile(p_filename.data());
-    if (!shaderFile.is_open()) throw std::runtime_error("failed to open shader file " + std::string(p_filename));
-    std::string str((std::istreambuf_iterator(shaderFile)), std::istreambuf_iterator<char>());
+    std::ifstream l_ShaderFile(p_Filename.data());
+    if (!l_ShaderFile.is_open()) throw std::runtime_error("failed to open shader file " + std::string(p_Filename));
+    std::string str((std::istreambuf_iterator(l_ShaderFile)), std::istreambuf_iterator<char>());
     return str;
 }
 
-VulkanShader::Result VulkanShader::compileFile(const std::string& p_source_name, const shaderc_shader_kind p_kind, const std::string& p_source, const bool p_optimize, const std::vector<MacroDef>& macros)
+VulkanShader::Result VulkanShader::compileFile(const std::string& p_Source_name, const shaderc_shader_kind p_Kind, const std::string& p_Source, const bool p_Optimize, const std::vector<MacroDef>& p_Macros)
 {
-    const shaderc::Compiler compiler;
-    shaderc::CompileOptions options;
+    const shaderc::Compiler l_Compiler;
+    shaderc::CompileOptions l_Options;
 
-    for (const MacroDef& macro : macros)
-        options.AddMacroDefinition(macro.name, macro.value);
+    for (const MacroDef& l_Macro : p_Macros)
+        l_Options.AddMacroDefinition(l_Macro.name, l_Macro.value);
 
-    if (p_optimize)
-        options.SetOptimizationLevel(shaderc_optimization_level_performance);
+    if (p_Optimize)
+        l_Options.SetOptimizationLevel(shaderc_optimization_level_performance);
     else
     {
-        options.SetOptimizationLevel(shaderc_optimization_level_zero);
-        options.SetGenerateDebugInfo();
+        l_Options.SetOptimizationLevel(shaderc_optimization_level_zero);
+        l_Options.SetGenerateDebugInfo();
     }
 
-    const shaderc::SpvCompilationResult module =
-        compiler.CompileGlslToSpv(p_source, p_kind, p_source_name.data(), options);
+    const shaderc::SpvCompilationResult l_Module = l_Compiler.CompileGlslToSpv(p_Source, p_Kind, p_Source_name.data(), l_Options);
 
-    if (module.GetCompilationStatus() != shaderc_compilation_status_success)
+    if (l_Module.GetCompilationStatus() != shaderc_compilation_status_success)
     {
-        return { false, {}, module.GetErrorMessage() };
+        return { false, {}, l_Module.GetErrorMessage() };
     }
 
-    return { true, { module.cbegin(), module.cend() }, "" };
+    return { true, { l_Module.cbegin(), l_Module.cend() }, "" };
 }

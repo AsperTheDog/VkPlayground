@@ -143,12 +143,13 @@ public:
 
     VkDevice operator*() const { return m_VkHandle; }
 
+    VulkanMemoryAllocator& getMemoryAllocator() { return m_MemoryAllocator; }
+	[[nodiscard]] VkDeviceMemory getMemoryHandle(uint32_t p_ChunkID) const;
+    const VolkDeviceTable& getTable() const { return m_VolkDeviceTable; }
+
 private:
 	bool free();
 
-    VulkanMemoryAllocator& getMemoryAllocator() { return m_MemoryAllocator; }
-
-	[[nodiscard]] VkDeviceMemory getMemoryHandle(uint32_t p_ChunkID) const;
     VkCommandPool getCommandPool(uint32_t p_QueueFamilyIndex, uint32_t p_ThreadID, VulkanCommandBuffer::TypeFlags p_Flags);
 
 	VulkanDevice(VulkanGPU p_PhysicalDevice, VkDevice p_Device, VulkanDeviceExtensionManager* p_ExtensionManager);
@@ -179,6 +180,8 @@ private:
 	QueueSelection m_OneTimeQueue{UINT32_MAX, UINT32_MAX};
 
     VulkanDeviceExtensionManager* m_ExtensionManager = nullptr;
+
+    VolkDeviceTable m_VolkDeviceTable;
 
 	friend class VulkanContext;
 	friend class VulkanGPU;

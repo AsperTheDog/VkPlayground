@@ -19,7 +19,8 @@ VulkanSwapchainExtension* VulkanSwapchainExtension::get(const ResourceID p_Devic
 
 ResourceID VulkanSwapchainExtension::createSwapchain(const VkSurfaceKHR p_Surface, const VkExtent2D p_Extent, const VkSurfaceFormatKHR p_DesiredFormat, const uint32_t p_OldSwapchain)
 {
-    const VulkanGPU l_PhysicalDevice = VulkanContext::getDevice(getDeviceID()).getGPU();
+    const VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
+    const VulkanGPU l_PhysicalDevice = l_Device.getGPU();
 	const VkSurfaceFormatKHR l_SelectedFormat = l_PhysicalDevice.getClosestFormat(p_Surface, p_DesiredFormat);
 
 	const VkSurfaceCapabilitiesKHR l_Capabilities = l_PhysicalDevice.getCapabilities(p_Surface);
@@ -44,7 +45,7 @@ ResourceID VulkanSwapchainExtension::createSwapchain(const VkSurfaceKHR p_Surfac
 		l_CreateInfo.oldSwapchain = *getSwapchain(p_OldSwapchain);
 
 	VkSwapchainKHR l_SwapchainHandle;
-	if (const VkResult l_Ret = vkCreateSwapchainKHR(*VulkanContext::getDevice(getDeviceID()), &l_CreateInfo, nullptr, &l_SwapchainHandle); l_Ret != VK_SUCCESS)
+	if (const VkResult l_Ret = l_Device.getTable().vkCreateSwapchainKHR(*l_Device, &l_CreateInfo, nullptr, &l_SwapchainHandle); l_Ret != VK_SUCCESS)
 	{
 		throw std::runtime_error(std::string("failed to create swap chain, error: ") + string_VkResult(l_Ret));
 	}
@@ -54,7 +55,7 @@ ResourceID VulkanSwapchainExtension::createSwapchain(const VkSurfaceKHR p_Surfac
 
     VulkanSwapchain* l_NewRes = new VulkanSwapchain{ getDeviceID(), l_SwapchainHandle, p_Extent, l_SelectedFormat, l_CreateInfo.minImageCount };
     m_Swapchains[l_NewRes->getID()] = l_NewRes;
-	Logger::print("Created swapchain (ID: " + std::to_string(l_NewRes->getID()) + ")", Logger::DEBUG);
+    LOG_DEBUG("Created swapchain (ID: ", l_NewRes->getID(), ")");
 	return l_NewRes->getID();
 }
 
@@ -98,94 +99,96 @@ void VulkanSwapchainExtension::free()
 
 VkSwapchainKHR VulkanSwapchain::operator*() const
 {
-	return m_vkHandle;
+	return m_VkHandle;
 }
 
 uint32_t VulkanSwapchain::getMinImageCount() const
 {
-    return m_minImageCount;
+    return m_MinImageCount;
 }
 
 uint32_t VulkanSwapchain::getImageCount() const
 {
-    return static_cast<uint32_t>(m_images.size());
+    return static_cast<uint32_t>(m_Images.size());
 }
 
 VkExtent2D VulkanSwapchain::getExtent() const
 {
-    return m_extent;
+    return m_Extent;
 }
 
 VkSurfaceFormatKHR VulkanSwapchain::getFormat() const
 {
-    return m_format;
+    return m_Format;
 }
 
-uint32_t VulkanSwapchain::acquireNextImage(const uint32_t fence)
+uint32_t VulkanSwapchain::acquireNextImage(const uint32_t p_Fence)
 {
-    if (m_vkHandle == nullptr)
+    if (m_VkHandle == nullptr)
 		throw std::runtime_error("Swapchain not created");
 
-	uint32_t imageIndex;
-	VulkanDevice& device = VulkanContext::getDevice(getDeviceID());
-	const VulkanSemaphore& semaphore = device.getSemaphore(m_imageAvailableSemaphore);
-	const VkResult result = vkAcquireNextImageKHR(*device, m_vkHandle, UINT64_MAX, *semaphore, fence != UINT32_MAX ? *device.getFence(fence) : nullptr, &imageIndex);
-	if (result == VK_ERROR_OUT_OF_DATE_KHR)
+	uint32_t l_ImageIndex;
+	VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
+	const VulkanSemaphore& l_Semaphore = l_Device.getSemaphore(m_ImageAvailableSemaphore);
+	const VkResult l_Result = l_Device.getTable().vkAcquireNextImageKHR(*l_Device, m_VkHandle, UINT64_MAX, *l_Semaphore, p_Fence != UINT32_MAX ? *l_Device.getFence(p_Fence) : nullptr, &l_ImageIndex);
+	if (l_Result == VK_ERROR_OUT_OF_DATE_KHR)
 	{
 		return UINT32_MAX;
 	}
-	if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
+	if (l_Result != VK_SUCCESS && l_Result != VK_SUBOPTIMAL_KHR)
 	{
 		throw std::runtime_error("failed to acquire swap chain image!");
 	}
-	m_nextImage = imageIndex;
-	m_wasAcquired = true;
-	return imageIndex;
+	m_NextImage = l_ImageIndex;
+	m_WasAcquired = true;
+	return l_ImageIndex;
 }
 
-VulkanImage& VulkanSwapchain::getImage(const uint32_t index)
+VulkanImage& VulkanSwapchain::getImage(const uint32_t p_Index)
 {
-	return m_images[index];
+	return m_Images[p_Index];
 }
 
-VkImageView VulkanSwapchain::getImageView(const uint32_t index) const
+VkImageView VulkanSwapchain::getImageView(const uint32_t p_Index) const
 {
-	return m_imageViews[index];
+	return m_ImageViews[p_Index];
 }
 
 uint32_t VulkanSwapchain::getNextImage() const
 {
-	return m_nextImage;
+	return m_NextImage;
 }
 
 uint32_t VulkanSwapchain::getImgSemaphore() const
 {
-	return m_imageAvailableSemaphore;
+	return m_ImageAvailableSemaphore;
 }
 
-bool VulkanSwapchain::present(const QueueSelection queue, const std::vector<uint32_t>& semaphores)
+bool VulkanSwapchain::present(const QueueSelection p_Queue, const std::vector<ResourceID>& p_Semaphores)
 {
-	if (!m_wasAcquired)
+	if (!m_WasAcquired)
 		throw std::runtime_error("Tried to present swpachain, but image was not acquired");
-	m_wasAcquired = false;
+	m_WasAcquired = false;
 
-	std::vector<VkSemaphore> vkSemaphores{semaphores.size()};
-	for (uint32_t i = 0; i < semaphores.size(); i++)
-		vkSemaphores[i] = *VulkanContext::getDevice(getDeviceID()).getSemaphore(semaphores[i]);
+    VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
 
-	VkPresentInfoKHR presentInfo{};
-	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-	presentInfo.waitSemaphoreCount = static_cast<uint32_t>(vkSemaphores.size());
-	presentInfo.pWaitSemaphores = vkSemaphores.data();
-	presentInfo.swapchainCount = 1;
-	presentInfo.pSwapchains = &m_vkHandle;
-	presentInfo.pImageIndices = &m_nextImage;
+	std::vector<VkSemaphore> l_SemaphoreHandles{p_Semaphores.size()};
+	for (uint32_t i = 0; i < p_Semaphores.size(); i++)
+		l_SemaphoreHandles[i] = *l_Device.getSemaphore(p_Semaphores[i]);
 
-	const VulkanQueue queueObj = VulkanContext::getDevice(getDeviceID()).getQueue(queue);
-	const VkResult result = vkQueuePresentKHR(*queueObj, &presentInfo);
-	if (result == VK_ERROR_OUT_OF_DATE_KHR) 
+	VkPresentInfoKHR l_PresentInfo{};
+	l_PresentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	l_PresentInfo.waitSemaphoreCount = static_cast<uint32_t>(l_SemaphoreHandles.size());
+	l_PresentInfo.pWaitSemaphores = l_SemaphoreHandles.data();
+	l_PresentInfo.swapchainCount = 1;
+	l_PresentInfo.pSwapchains = &m_VkHandle;
+	l_PresentInfo.pImageIndices = &m_NextImage;
+
+	const VulkanQueue l_Queue = l_Device.getQueue(p_Queue);
+	const VkResult l_Result = l_Device.getTable().vkQueuePresentKHR(*l_Queue, &l_PresentInfo);
+	if (l_Result == VK_ERROR_OUT_OF_DATE_KHR) 
 		return false;
-	if (result != VK_SUCCESS)
+	if (l_Result != VK_SUCCESS)
 	{
 		throw std::runtime_error("failed to present swap chain image!");
 	}
@@ -194,42 +197,45 @@ bool VulkanSwapchain::present(const QueueSelection queue, const std::vector<uint
 
 void VulkanSwapchain::free()
 {
-	if (m_vkHandle != VK_NULL_HANDLE)
+	if (m_VkHandle != VK_NULL_HANDLE)
 	{
-        for (uint32_t i = 0; i < m_imageViews.size(); i++)
+        for (uint32_t l_ImageViewIdx = 0; l_ImageViewIdx < m_ImageViews.size(); l_ImageViewIdx++)
         {
-	        m_images[i].freeImageView(m_imageViews[i]);
+	        m_Images[l_ImageViewIdx].freeImageView(m_ImageViews[l_ImageViewIdx]);
 		}
-        m_imageViews.clear();
-		m_images.clear();
+        m_ImageViews.clear();
+		m_Images.clear();
 
-		VulkanContext::getDevice(getDeviceID()).freeSemaphore(m_imageAvailableSemaphore);
+        VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
 
-		vkDestroySwapchainKHR(VulkanContext::getDevice(getDeviceID()).m_VkHandle, m_vkHandle, nullptr);
-        Logger::print("Freed Swapchain (ID: " + std::to_string(m_ID) + ")", Logger::DEBUG);
-		m_vkHandle = VK_NULL_HANDLE;
+		l_Device.freeSemaphore(m_ImageAvailableSemaphore);
+
+		l_Device.getTable().vkDestroySwapchainKHR(l_Device.m_VkHandle, m_VkHandle, nullptr);
+        LOG_DEBUG("Freed Swapchain (ID: ", m_ID, ")");
+		m_VkHandle = VK_NULL_HANDLE;
 	}
 }
 
-VulkanSwapchain::VulkanSwapchain(const uint32_t device, const VkSwapchainKHR handle, const VkExtent2D extent, const VkSurfaceFormatKHR format, const uint32_t minImageCount)
-	: VulkanDeviceSubresource(device), m_extent(extent), m_format(format), m_minImageCount(minImageCount), m_vkHandle(handle)
+VulkanSwapchain::VulkanSwapchain(ResourceID p_Device, const VkSwapchainKHR p_Handle, const VkExtent2D p_Extent, const VkSurfaceFormatKHR p_Format, const uint32_t p_MinImageCount)
+	: VulkanDeviceSubresource(p_Device), m_Extent(p_Extent), m_Format(p_Format), m_MinImageCount(p_MinImageCount), m_VkHandle(p_Handle)
 {
-	uint32_t imageCount;
-	VulkanDevice& deviceObj = VulkanContext::getDevice(device);
-	std::vector<VkImage> images;
-	vkGetSwapchainImagesKHR(deviceObj.m_VkHandle, m_vkHandle, &imageCount, nullptr);
-    images.resize(imageCount);
-    vkGetSwapchainImagesKHR(deviceObj.m_VkHandle, m_vkHandle, &imageCount, images.data());
+	VulkanDevice& l_Device = VulkanContext::getDevice(p_Device);
 
-	for (const VkImage image : images)
-		m_images.push_back({device, image, VkExtent3D{ extent.width, extent.height, 1 }, VK_IMAGE_TYPE_2D, VK_IMAGE_LAYOUT_UNDEFINED});
+	uint32_t l_ImageCount;
+	std::vector<VkImage> l_Images;
+	l_Device.getTable().vkGetSwapchainImagesKHR(l_Device.m_VkHandle, m_VkHandle, &l_ImageCount, nullptr);
+    l_Images.resize(l_ImageCount);
+    l_Device.getTable().vkGetSwapchainImagesKHR(l_Device.m_VkHandle, m_VkHandle, &l_ImageCount, l_Images.data());
 
-	m_imageViews.reserve(m_images.size());
-    for (auto& m_image : m_images)
+	for (const VkImage l_Image : l_Images)
+		m_Images.push_back({p_Device, l_Image, VkExtent3D{ p_Extent.width, p_Extent.height, 1 }, VK_IMAGE_TYPE_2D, VK_IMAGE_LAYOUT_UNDEFINED});
+
+	m_ImageViews.reserve(m_Images.size());
+    for (VulkanImage& l_Image : m_Images)
     {
-		m_imageViews.push_back(m_image.createImageView(format.format, VK_IMAGE_ASPECT_COLOR_BIT));
-		Logger::print("Created swapchain image view", Logger::DEBUG);
+		m_ImageViews.push_back(l_Image.createImageView(p_Format.format, VK_IMAGE_ASPECT_COLOR_BIT));
+        LOG_DEBUG("Created swapchain image view");
     }
 
-	m_imageAvailableSemaphore = deviceObj.createSemaphore();
+	m_ImageAvailableSemaphore = l_Device.createSemaphore();
 }

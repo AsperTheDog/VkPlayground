@@ -17,13 +17,13 @@ public:
 
     explicit VulkanSwapchainExtension(const ResourceID p_DeviceID) : VulkanDeviceExtension(p_DeviceID) {}
 
-    [[nodiscard]] VulkanExtensionElem* getExtensionStruct() const override { return nullptr; }
+    [[nodiscard]] VkBaseInStructure* getExtensionStruct() const override { return nullptr; }
     [[nodiscard]] VkStructureType getExtensionStructType() const override { return VK_STRUCTURE_TYPE_MAX_ENUM; }
 
     ResourceID createSwapchain(VkSurfaceKHR p_Surface, VkExtent2D p_Extent, VkSurfaceFormatKHR p_DesiredFormat, uint32_t p_OldSwapchain = UINT32_MAX);
     VulkanSwapchain& getSwapchain(ResourceID p_ID);
     [[nodiscard]] const VulkanSwapchain& getSwapchain(ResourceID p_ID) const;
-    bool freeSwapchain(const ResourceID p_ID);
+    bool freeSwapchain(ResourceID p_ID);
     bool freeSwapchain(const VulkanSwapchain& p_Swapchain);
 
     void free() override;
@@ -42,30 +42,30 @@ public:
 	[[nodiscard]] VkExtent2D getExtent() const;
 	[[nodiscard]] VkSurfaceFormatKHR getFormat() const;
 
-	uint32_t acquireNextImage(uint32_t fence = UINT32_MAX);
-	[[nodiscard]] VulkanImage& getImage(uint32_t index);
-	[[nodiscard]] VkImageView getImageView(uint32_t index) const;
+	uint32_t acquireNextImage(ResourceID p_Fence = UINT32_MAX);
+	[[nodiscard]] VulkanImage& getImage(uint32_t p_Index);
+	[[nodiscard]] VkImageView getImageView(uint32_t p_Index) const;
 	[[nodiscard]] uint32_t getNextImage() const;
 	[[nodiscard]] uint32_t getImgSemaphore() const;
 
-	bool present(QueueSelection queue, const std::vector<uint32_t>& semaphores);
+	bool present(QueueSelection p_Queue, const std::vector<ResourceID>& p_Semaphores);
 
 private:
 	void free() override;
 
-	VulkanSwapchain(uint32_t device, VkSwapchainKHR handle, VkExtent2D extent, VkSurfaceFormatKHR format, uint32_t minImageCount);
+	VulkanSwapchain(ResourceID p_Device, VkSwapchainKHR p_Handle, VkExtent2D p_Extent, VkSurfaceFormatKHR p_Format, uint32_t p_MinImageCount);
 	
-	VkExtent2D m_extent;
-	VkSurfaceFormatKHR m_format;
-	std::vector<VulkanImage> m_images;
-	std::vector<VkImageView> m_imageViews;
-	uint32_t m_minImageCount = 0;
+	VkExtent2D m_Extent;
+	VkSurfaceFormatKHR m_Format;
+	std::vector<VulkanImage> m_Images;
+	std::vector<VkImageView> m_ImageViews;
+	uint32_t m_MinImageCount = 0;
 
-	uint32_t m_nextImage = 0;
-	uint32_t m_imageAvailableSemaphore = UINT32_MAX;
-	bool m_wasAcquired = false;
+	uint32_t m_NextImage = 0;
+	uint32_t m_ImageAvailableSemaphore = UINT32_MAX;
+	bool m_WasAcquired = false;
 
-	VkSwapchainKHR m_vkHandle = VK_NULL_HANDLE;
+	VkSwapchainKHR m_VkHandle = VK_NULL_HANDLE;
 
     friend class VulkanSwapchainExtension;
 };

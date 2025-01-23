@@ -8,281 +8,284 @@
 #include "utils/logger.hpp"
 
 
-VulkanPipelineBuilder::VulkanPipelineBuilder(VulkanDevice* device)
-	: m_device(device)
+VulkanPipelineBuilder::VulkanPipelineBuilder(const ResourceID p_Device)
+	: m_Device(p_Device)
 {
-	m_vertexInputState.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	m_vertexInputState.vertexBindingDescriptionCount = 0;
-	m_vertexInputState.vertexAttributeDescriptionCount = 0;
+	m_VertexInputState.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	m_VertexInputState.vertexBindingDescriptionCount = 0;
+	m_VertexInputState.vertexAttributeDescriptionCount = 0;
 
-	m_inputAssemblyState.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-	m_inputAssemblyState.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-	m_inputAssemblyState.primitiveRestartEnable = VK_FALSE;
+	m_InputAssemblyState.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+	m_InputAssemblyState.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	m_InputAssemblyState.primitiveRestartEnable = VK_FALSE;
 
-	m_tessellationState.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
-	m_tessellationState.patchControlPoints = 1;
-	m_tesellationStateEnabled = false;
+	m_TessellationState.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
+	m_TessellationState.patchControlPoints = 1;
+	m_TesellationStateEnabled = false;
 
-	m_viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-	m_viewportState.viewportCount = 1;
-	m_viewportState.scissorCount = 1;
+	m_ViewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+	m_ViewportState.viewportCount = 1;
+	m_ViewportState.scissorCount = 1;
 
-	m_rasterizationState.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-	m_rasterizationState.depthClampEnable = VK_FALSE;
-	m_rasterizationState.rasterizerDiscardEnable = VK_FALSE;
-	m_rasterizationState.polygonMode = VK_POLYGON_MODE_FILL;
-	m_rasterizationState.lineWidth = 1.0f;
-	m_rasterizationState.cullMode = VK_CULL_MODE_BACK_BIT;
-	m_rasterizationState.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-	m_rasterizationState.depthBiasEnable = VK_FALSE;
+	m_RasterizationState.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+	m_RasterizationState.depthClampEnable = VK_FALSE;
+	m_RasterizationState.rasterizerDiscardEnable = VK_FALSE;
+	m_RasterizationState.polygonMode = VK_POLYGON_MODE_FILL;
+	m_RasterizationState.lineWidth = 1.0f;
+	m_RasterizationState.cullMode = VK_CULL_MODE_BACK_BIT;
+	m_RasterizationState.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+	m_RasterizationState.depthBiasEnable = VK_FALSE;
 
-	m_multisampleState.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-	m_multisampleState.sampleShadingEnable = VK_FALSE;
-	m_multisampleState.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+	m_MultisampleState.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+	m_MultisampleState.sampleShadingEnable = VK_FALSE;
+	m_MultisampleState.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 
-	m_depthStencilState.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-	m_depthStencilState.depthTestEnable = VK_TRUE;
-	m_depthStencilState.depthWriteEnable = VK_TRUE;
-	m_depthStencilState.depthCompareOp = VK_COMPARE_OP_LESS;
-	m_depthStencilState.depthBoundsTestEnable = VK_FALSE;
-	m_depthStencilState.stencilTestEnable = VK_FALSE;
+	m_DepthStencilState.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+	m_DepthStencilState.depthTestEnable = VK_TRUE;
+	m_DepthStencilState.depthWriteEnable = VK_TRUE;
+	m_DepthStencilState.depthCompareOp = VK_COMPARE_OP_LESS;
+	m_DepthStencilState.depthBoundsTestEnable = VK_FALSE;
+	m_DepthStencilState.stencilTestEnable = VK_FALSE;
 
-	m_colorBlendState.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-	m_colorBlendState.logicOpEnable = VK_FALSE;
-	m_colorBlendState.logicOp = VK_LOGIC_OP_COPY;
-	m_colorBlendState.attachmentCount = 0;
-	m_colorBlendState.blendConstants[0] = 0.0f;
-	m_colorBlendState.blendConstants[1] = 0.0f;
-	m_colorBlendState.blendConstants[2] = 0.0f;
-	m_colorBlendState.blendConstants[3] = 0.0f;
+	m_ColorBlendState.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+	m_ColorBlendState.logicOpEnable = VK_FALSE;
+	m_ColorBlendState.logicOp = VK_LOGIC_OP_COPY;
+	m_ColorBlendState.attachmentCount = 0;
+	m_ColorBlendState.blendConstants[0] = 0.0f;
+	m_ColorBlendState.blendConstants[1] = 0.0f;
+	m_ColorBlendState.blendConstants[2] = 0.0f;
+	m_ColorBlendState.blendConstants[3] = 0.0f;
 
-	m_dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-	m_dynamicState.dynamicStateCount = 0;
+	m_DynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+	m_DynamicState.dynamicStateCount = 0;
 }
 
-void VulkanPipelineBuilder::addVertexBinding(const VulkanBinding& binding)
+void VulkanPipelineBuilder::addVertexBinding(const VulkanBinding& p_Binding)
 {
-	m_vertexInputBindings.push_back(binding.getBindingDescription());
-	for (auto& attr : binding.getAttributeDescriptions())
+	m_VertexInputBindings.push_back(p_Binding.getBindingDescription());
+	for (VkVertexInputAttributeDescription& l_Attr : p_Binding.getAttributeDescriptions())
 	{
-		m_vertexInputAttributes.push_back(attr);
+		m_VertexInputAttributes.push_back(l_Attr);
 	}
-	m_vertexInputState.vertexBindingDescriptionCount = static_cast<uint32_t>(m_vertexInputBindings.size());
-	m_vertexInputState.pVertexBindingDescriptions = m_vertexInputBindings.data();
-	m_vertexInputState.vertexAttributeDescriptionCount = static_cast<uint32_t>(m_vertexInputAttributes.size());
-	m_vertexInputState.pVertexAttributeDescriptions = m_vertexInputAttributes.data();
+	m_VertexInputState.vertexBindingDescriptionCount = static_cast<uint32_t>(m_VertexInputBindings.size());
+	m_VertexInputState.pVertexBindingDescriptions = m_VertexInputBindings.data();
+	m_VertexInputState.vertexAttributeDescriptionCount = static_cast<uint32_t>(m_VertexInputAttributes.size());
+	m_VertexInputState.pVertexAttributeDescriptions = m_VertexInputAttributes.data();
 }
 
-void VulkanPipelineBuilder::setInputAssemblyState(const VkPrimitiveTopology topology, const VkBool32 primitiveRestartEnable)
+void VulkanPipelineBuilder::setInputAssemblyState(const VkPrimitiveTopology p_Topology, const VkBool32 p_PrimitiveRestartEnable)
 {
-	m_inputAssemblyState.topology = topology;
-	m_inputAssemblyState.primitiveRestartEnable = primitiveRestartEnable;
+	m_InputAssemblyState.topology = p_Topology;
+	m_InputAssemblyState.primitiveRestartEnable = p_PrimitiveRestartEnable;
 }
 
-void VulkanPipelineBuilder::setTessellationState(const uint32_t patchControlPoints)
+void VulkanPipelineBuilder::setTessellationState(const uint32_t p_PatchControlPoints)
 {
-	m_tessellationState.patchControlPoints = patchControlPoints;
-	m_tesellationStateEnabled = true;
+	m_TessellationState.patchControlPoints = p_PatchControlPoints;
+	m_TesellationStateEnabled = true;
 }
 
-void VulkanPipelineBuilder::setViewportState(const uint32_t viewportCount, const uint32_t scissorCount)
+void VulkanPipelineBuilder::setViewportState(const uint32_t p_ViewportCount, const uint32_t p_ScissorCount)
 {
-	m_viewportState.viewportCount = viewportCount;
-	m_viewportState.scissorCount = scissorCount;
+	m_ViewportState.viewportCount = p_ViewportCount;
+	m_ViewportState.scissorCount = p_ScissorCount;
 }
 
-void VulkanPipelineBuilder::setViewportState(const std::vector<VkViewport>& viewports, const std::vector<VkRect2D>& scissors)
+void VulkanPipelineBuilder::setViewportState(const std::vector<VkViewport>& p_Viewports, const std::vector<VkRect2D>& p_Scissors)
 {
-	m_viewports = std::vector<VkViewport>(viewports);
-	m_scissors = std::vector<VkRect2D>(scissors);
-	m_viewportState.viewportCount = static_cast<uint32_t>(m_viewports.size());
-	m_viewportState.pViewports = m_viewports.data();
-	m_viewportState.scissorCount = static_cast<uint32_t>(m_scissors.size());
-	m_viewportState.pScissors = m_scissors.data();
+	m_Viewports = std::vector<VkViewport>(p_Viewports);
+	m_Scissors = std::vector<VkRect2D>(p_Scissors);
+	m_ViewportState.viewportCount = static_cast<uint32_t>(m_Viewports.size());
+	m_ViewportState.pViewports = m_Viewports.data();
+	m_ViewportState.scissorCount = static_cast<uint32_t>(m_Scissors.size());
+	m_ViewportState.pScissors = m_Scissors.data();
 }
 
-void VulkanPipelineBuilder::setRasterizationState(const VkPolygonMode polygonMode, const VkCullModeFlags cullMode, const VkFrontFace frontFace)
+void VulkanPipelineBuilder::setRasterizationState(const VkPolygonMode p_PolygonMode, const VkCullModeFlags p_CullMode, const VkFrontFace p_FrontFace)
 {
-	m_rasterizationState.polygonMode = polygonMode;
-	m_rasterizationState.cullMode = cullMode;
-	m_rasterizationState.frontFace = frontFace;
+	m_RasterizationState.polygonMode = p_PolygonMode;
+	m_RasterizationState.cullMode = p_CullMode;
+	m_RasterizationState.frontFace = p_FrontFace;
 }
 
-void VulkanPipelineBuilder::setMultisampleState(const VkSampleCountFlagBits rasterizationSamples, const VkBool32 sampleShadingEnable, const float minSampleShading)
+void VulkanPipelineBuilder::setMultisampleState(const VkSampleCountFlagBits p_RasterizationSamples, const VkBool32 p_SampleShadingEnable, const float p_MinSampleShading)
 {
-	m_multisampleState.rasterizationSamples = rasterizationSamples;
-	m_multisampleState.sampleShadingEnable = sampleShadingEnable;
-	m_multisampleState.minSampleShading = minSampleShading;
+	m_MultisampleState.rasterizationSamples = p_RasterizationSamples;
+	m_MultisampleState.sampleShadingEnable = p_SampleShadingEnable;
+	m_MultisampleState.minSampleShading = p_MinSampleShading;
 }
 
-void VulkanPipelineBuilder::setDepthStencilState(const VkBool32 depthTestEnable, const VkBool32 depthWriteEnable, const VkCompareOp depthCompareOp)
+void VulkanPipelineBuilder::setDepthStencilState(const VkBool32 p_DepthTestEnable, const VkBool32 p_DepthWriteEnable, const VkCompareOp p_DepthCompareOp)
 {
-	m_depthStencilState.depthTestEnable = depthTestEnable;
-	m_depthStencilState.depthWriteEnable = depthWriteEnable;
-	m_depthStencilState.depthCompareOp = depthCompareOp;
+	m_DepthStencilState.depthTestEnable = p_DepthTestEnable;
+	m_DepthStencilState.depthWriteEnable = p_DepthWriteEnable;
+	m_DepthStencilState.depthCompareOp = p_DepthCompareOp;
 }
 
-void VulkanPipelineBuilder::setColorBlendState(const VkBool32 logicOpEnable, const VkLogicOp logicOp, const std::array<float, 4> colorBlendConstants)
+void VulkanPipelineBuilder::setColorBlendState(const VkBool32 p_LogicOpEnable, const VkLogicOp p_LogicOp, const std::array<float, 4> p_ColorBlendConstants)
 {
-	m_colorBlendState.logicOpEnable = logicOpEnable;
-	m_colorBlendState.logicOp = logicOp;
-	m_colorBlendState.blendConstants[0] = colorBlendConstants[0];
-	m_colorBlendState.blendConstants[1] = colorBlendConstants[1];
-	m_colorBlendState.blendConstants[2] = colorBlendConstants[2];
-	m_colorBlendState.blendConstants[3] = colorBlendConstants[3];
+	m_ColorBlendState.logicOpEnable = p_LogicOpEnable;
+	m_ColorBlendState.logicOp = p_LogicOp;
+	m_ColorBlendState.blendConstants[0] = p_ColorBlendConstants[0];
+	m_ColorBlendState.blendConstants[1] = p_ColorBlendConstants[1];
+	m_ColorBlendState.blendConstants[2] = p_ColorBlendConstants[2];
+	m_ColorBlendState.blendConstants[3] = p_ColorBlendConstants[3];
 }
 
-void VulkanPipelineBuilder::addColorBlendAttachment(const VkPipelineColorBlendAttachmentState& attachment)
+void VulkanPipelineBuilder::addColorBlendAttachment(const VkPipelineColorBlendAttachmentState& p_Attachment)
 {
-	m_attachments.push_back(attachment);
-	m_colorBlendState.attachmentCount = static_cast<uint32_t>(m_attachments.size());
-	m_colorBlendState.pAttachments = m_attachments.data();
+	m_Attachments.push_back(p_Attachment);
+	m_ColorBlendState.attachmentCount = static_cast<uint32_t>(m_Attachments.size());
+	m_ColorBlendState.pAttachments = m_Attachments.data();
 }
 
-void VulkanPipelineBuilder::setDynamicState(const std::vector<VkDynamicState>& dynamicStates)
+void VulkanPipelineBuilder::setDynamicState(const std::vector<VkDynamicState>& p_DynamicStates)
 {
-	m_dynamicStates = std::vector<VkDynamicState>(dynamicStates);
-	m_dynamicState.dynamicStateCount = static_cast<uint32_t>(m_dynamicStates.size());
-	m_dynamicState.pDynamicStates = m_dynamicStates.data();
+	m_DynamicStates = std::vector<VkDynamicState>(p_DynamicStates);
+	m_DynamicState.dynamicStateCount = static_cast<uint32_t>(m_DynamicStates.size());
+	m_DynamicState.pDynamicStates = m_DynamicStates.data();
 }
 
-void VulkanPipelineBuilder::addShaderStage(const uint32_t shader)
+void VulkanPipelineBuilder::addShaderStage(const ResourceID p_Shader, const std::string& p_Entrypoint)
 {
-	m_shaderStages.push_back(shader);
+	m_ShaderStages.push_back({p_Shader, p_Entrypoint});
 }
 
 void VulkanPipelineBuilder::resetShaderStages()
 {
-	m_shaderStages.clear();
+	m_ShaderStages.clear();
 }
 
-void VulkanPipelineBuilder::setVertexInputState(const VkPipelineVertexInputStateCreateInfo& state)
+void VulkanPipelineBuilder::setVertexInputState(const VkPipelineVertexInputStateCreateInfo& p_State)
 {
-	m_vertexInputState = state;
-	m_vertexInputState.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	m_vertexInputBindings.clear();
-	m_vertexInputAttributes.clear();
+	m_VertexInputState = p_State;
+	m_VertexInputState.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	m_VertexInputBindings.clear();
+	m_VertexInputAttributes.clear();
 }
 
-void VulkanPipelineBuilder::setInputAssemblyState(const VkPipelineInputAssemblyStateCreateInfo& state)
+void VulkanPipelineBuilder::setInputAssemblyState(const VkPipelineInputAssemblyStateCreateInfo& p_State)
 {
-	m_inputAssemblyState = state;
-	m_inputAssemblyState.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+	m_InputAssemblyState = p_State;
+	m_InputAssemblyState.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 }
 
-void VulkanPipelineBuilder::setTessellationState(const VkPipelineTessellationStateCreateInfo& state)
+void VulkanPipelineBuilder::setTessellationState(const VkPipelineTessellationStateCreateInfo& p_State)
 {
-	m_tessellationState = state;
-	m_tessellationState.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
-	m_tesellationStateEnabled = true;
+	m_TessellationState = p_State;
+	m_TessellationState.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
+	m_TesellationStateEnabled = true;
 }
 
-void VulkanPipelineBuilder::setViewportState(const VkPipelineViewportStateCreateInfo& state)
+void VulkanPipelineBuilder::setViewportState(const VkPipelineViewportStateCreateInfo& p_State)
 {
-	m_viewportState = state;
-	m_viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+	m_ViewportState = p_State;
+	m_ViewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 }
 
-void VulkanPipelineBuilder::setRasterizationState(const VkPipelineRasterizationStateCreateInfo& state)
+void VulkanPipelineBuilder::setRasterizationState(const VkPipelineRasterizationStateCreateInfo& P_State)
 {
-	m_rasterizationState = state;
-	m_rasterizationState.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+	m_RasterizationState = P_State;
+	m_RasterizationState.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 }
 
-void VulkanPipelineBuilder::setMultisampleState(const VkPipelineMultisampleStateCreateInfo& state)
+void VulkanPipelineBuilder::setMultisampleState(const VkPipelineMultisampleStateCreateInfo& p_State)
 {
-	m_multisampleState = state;
-	m_multisampleState.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+	m_MultisampleState = p_State;
+	m_MultisampleState.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 }
 
-void VulkanPipelineBuilder::setDepthStencilState(const VkPipelineDepthStencilStateCreateInfo& state)
+void VulkanPipelineBuilder::setDepthStencilState(const VkPipelineDepthStencilStateCreateInfo& p_State)
 {
-	m_depthStencilState = state;
-	m_depthStencilState.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+	m_DepthStencilState = p_State;
+	m_DepthStencilState.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
 }
 
-void VulkanPipelineBuilder::setColorBlendState(const VkPipelineColorBlendStateCreateInfo& state)
+void VulkanPipelineBuilder::setColorBlendState(const VkPipelineColorBlendStateCreateInfo& p_State)
 {
-	m_colorBlendState = state;
-	m_colorBlendState.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-	m_attachments.clear();
+	m_ColorBlendState = p_State;
+	m_ColorBlendState.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+	m_Attachments.clear();
 }
 
-void VulkanPipelineBuilder::setDynamicState(const VkPipelineDynamicStateCreateInfo& state)
+void VulkanPipelineBuilder::setDynamicState(const VkPipelineDynamicStateCreateInfo& p_State)
 {
-	m_dynamicState = state;
-	m_dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+	m_DynamicState = p_State;
+	m_DynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
 }
 
 std::vector<VkPipelineShaderStageCreateInfo> VulkanPipelineBuilder::createShaderStages() const
 {
-	static std::string name = "main";
-	std::vector<VkPipelineShaderStageCreateInfo> shaderStagesInfo;
-	shaderStagesInfo.reserve(m_shaderStages.size());
-	for (const auto& shaderStage : m_shaderStages)
+	std::vector<VkPipelineShaderStageCreateInfo> l_ShaderStagesInfo;
+	l_ShaderStagesInfo.reserve(m_ShaderStages.size());
+	for (const ShaderData& l_ShaderStage : m_ShaderStages)
 	{
-		VkPipelineShaderStageCreateInfo stageInfo{};
-		const VulkanShader& shader = m_device->getShader(shaderStage);
-		stageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-		stageInfo.stage = shader.m_stage;
-		stageInfo.module = shader.m_vkHandle;
-		stageInfo.pName = name.c_str();
-		shaderStagesInfo.push_back(stageInfo);
+		VkPipelineShaderStageCreateInfo l_StageInfo{};
+		const VulkanShader& l_Shader = VulkanContext::getDevice(m_Device).getShader(l_ShaderStage.shader);
+		l_StageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		l_StageInfo.stage = l_Shader.m_Stage;
+		l_StageInfo.module = l_Shader.m_VkHandle;
+		l_StageInfo.pName = l_ShaderStage.entrypoint.c_str();
+		l_ShaderStagesInfo.push_back(l_StageInfo);
 	}
-	return shaderStagesInfo;
+	return l_ShaderStagesInfo;
 }
 
 void VulkanPipeline::free()
 {
-	if (m_vkHandle != VK_NULL_HANDLE)
+	if (m_VkHandle != VK_NULL_HANDLE)
 	{
-		vkDestroyPipeline(VulkanContext::getDevice(getDeviceID()).m_VkHandle, m_vkHandle, nullptr);
-        Logger::print("Freed pipeline (ID: " + std::to_string(m_ID) + ")", Logger::DEBUG);
-		m_vkHandle = VK_NULL_HANDLE;
+        const VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
+
+		l_Device.getTable().vkDestroyPipeline(l_Device.m_VkHandle, m_VkHandle, nullptr);
+        LOG_DEBUG("Freed pipeline (ID: ", m_ID, ")");
+		m_VkHandle = VK_NULL_HANDLE;
 	}
 }
 
-uint32_t VulkanPipeline::getLayout() const
+ResourceID VulkanPipeline::getLayout() const
 {
-	return m_layout;
+	return m_Layout;
 }
 
-uint32_t VulkanPipeline::getRenderPass() const
+ResourceID VulkanPipeline::getRenderPass() const
 {
-	return m_renderPass;
+	return m_RenderPass;
 }
 
-uint32_t VulkanPipeline::getSubpass() const
+ResourceID VulkanPipeline::getSubpass() const
 {
-	return m_subpass;
+	return m_Subpass;
 }
 
 VkPipeline VulkanPipeline::operator*() const
 {
-	return m_vkHandle;
+	return m_VkHandle;
 }
 
-VulkanPipeline::VulkanPipeline(const ResourceID device, const VkPipeline handle, const uint32_t layout, const uint32_t renderPass, const uint32_t subpass)
-	: VulkanDeviceSubresource(device), m_vkHandle(handle), m_layout(layout), m_renderPass(renderPass), m_subpass(subpass)
+VulkanPipeline::VulkanPipeline(const ResourceID p_Device, const VkPipeline p_Handle, const ResourceID p_Layout, const ResourceID p_RenderPass, const ResourceID p_Subpass)
+	: VulkanDeviceSubresource(p_Device), m_VkHandle(p_Handle), m_Layout(p_Layout), m_RenderPass(p_RenderPass), m_Subpass(p_Subpass)
 {
 }
 
 VkPipelineLayout VulkanPipelineLayout::operator*() const
 {
-	return m_vkHandle;
+	return m_VkHandle;
 }
 
 void VulkanPipelineLayout::free()
 {
-	if (m_vkHandle != VK_NULL_HANDLE)
+	if (m_VkHandle != VK_NULL_HANDLE)
 	{
-		vkDestroyPipelineLayout(VulkanContext::getDevice(getDeviceID()).m_VkHandle, m_vkHandle, nullptr);
-        Logger::print("Freed pipeline layout (ID: " + std::to_string(m_ID) + ")", Logger::DEBUG);
-		m_vkHandle = VK_NULL_HANDLE;
+        const VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
+
+		l_Device.getTable().vkDestroyPipelineLayout(l_Device.m_VkHandle, m_VkHandle, nullptr);
+        LOG_DEBUG("Freed pipeline layout (ID: ", m_ID, ")");
+		m_VkHandle = VK_NULL_HANDLE;
 	}
 }
 
 VulkanPipelineLayout::VulkanPipelineLayout(const uint32_t device, const VkPipelineLayout handle)
-	: VulkanDeviceSubresource(device), m_vkHandle(handle)
+	: VulkanDeviceSubresource(device), m_VkHandle(handle)
 {
 }
