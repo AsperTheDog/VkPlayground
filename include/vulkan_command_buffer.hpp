@@ -1,4 +1,5 @@
 #pragma once
+#include <map>
 #include <vector>
 #include <Volk/volk.h>
 
@@ -11,6 +12,8 @@ class VulkanQueue;
 class VulkanFence;
 class VulkanRenderPass;
 class VulkanDevice;
+
+//TODO: Make a proper memory barrier system (builder?)
 
 class VulkanCommandBuffer final : public VulkanDeviceSubresource
 {
@@ -59,6 +62,15 @@ private:
         SECONDARY = 1,
         ONE_TIME = 2
     };
+
+    struct AccessData
+    {
+        VkAccessFlags srcAccessMask;
+        VkPipelineStageFlags srcStageMask;
+        VkAccessFlags dstAccessMask;
+        VkPipelineStageFlags dstStageMask;
+    };
+
     typedef uint32_t TypeFlags;
     void free() override;
 
@@ -72,6 +84,8 @@ private:
 	uint32_t m_ThreadID = 0;
 
     bool m_CanBeReset = false;
+
+    static std::map<VkImageLayout, ::VulkanCommandBuffer::AccessData> s_TransitionMapping;
 
 	friend class VulkanDevice;
 };
