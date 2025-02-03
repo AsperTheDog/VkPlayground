@@ -149,7 +149,7 @@ VulkanImage& VulkanSwapchain::getImage(const uint32_t p_Index)
 	return m_Images[p_Index];
 }
 
-VkImageView VulkanSwapchain::getImageView(const uint32_t p_Index) const
+ResourceID VulkanSwapchain::getImageView(const uint32_t p_Index) const
 {
 	return m_ImageViews[p_Index];
 }

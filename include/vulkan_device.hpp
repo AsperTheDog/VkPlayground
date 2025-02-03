@@ -47,7 +47,7 @@ public:
 
     [[nodiscard]] std::vector<VulkanFramebuffer*> getFramebuffers() const;
     [[nodiscard]] uint32_t getFramebufferCount() const;
-	ResourceID createFramebuffer(VkExtent3D p_Size, const VulkanRenderPass& p_RenderPass, const std::vector<VkImageView>& p_Attachments);
+	ResourceID createFramebuffer(VkExtent3D p_Size, ResourceID p_RenderPass, const std::vector<VkImageView>& p_Attachments);
     VulkanFramebuffer& getFramebuffer(const ResourceID p_ID) { return *getSubresource<VulkanFramebuffer>(p_ID); }
     [[nodiscard]] const VulkanFramebuffer& getFramebuffer(const ResourceID p_ID) const { return *getSubresource<VulkanFramebuffer>(p_ID); }
     bool freeFramebuffer(const ResourceID p_ID) { return freeSubresource<VulkanFramebuffer>(p_ID); }
@@ -136,6 +136,8 @@ public:
 	void dumpStagingBuffer(ResourceID p_Buffer, VkDeviceSize p_Size, VkDeviceSize p_Offset, ThreadID p_ThreadID);
 	void dumpStagingBuffer(ResourceID p_Buffer, const std::vector<VkBufferCopy>& p_Regions, ThreadID p_ThreadID);
     void dumpStagingBufferToImage(ResourceID p_Image, VkExtent3D p_Size, VkOffset3D p_Offset, ThreadID p_ThreadID, bool p_KeepLayout = false);
+    void dumpDataIntoBuffer(ResourceID p_DestBuffer, const uint8_t* p_Data, VkDeviceSize p_Size, ThreadID p_ThreadID);
+    void dumpDataIntoImage(ResourceID p_DestImage, const uint8_t* p_Data, VkExtent3D p_Extent, uint32_t p_BytesPerPixel, ThreadID p_ThreadID, bool p_KeepLayout);
 
 	[[nodiscard]] VulkanQueue getQueue(const QueueSelection& p_QueueSelection) const;
     [[nodiscard]] VulkanGPU getGPU() const { return m_PhysicalDevice; }

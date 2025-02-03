@@ -23,6 +23,38 @@ public:
 		AttachmentType type;
 		uint32_t attachment;
 		VkImageLayout layout;
+
+        AttachmentReference(const AttachmentType p_Type, const uint32_t p_Attachment, const VkImageLayout p_Layout)
+            : type(p_Type), attachment(p_Attachment), layout(p_Layout)
+        {
+        }
+
+        AttachmentReference(const AttachmentType p_Type, const uint32_t p_Attachment)
+            : type(p_Type), attachment(p_Attachment)
+        {
+            switch (p_Type)
+            {
+            case COLOR:
+                layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                break;
+
+            case DEPTH_STENCIL:
+                layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+                break;
+
+            case INPUT:
+                layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                break;
+
+            case RESOLVE:
+                layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                break;
+
+            case PRESERVE:
+                layout = VK_IMAGE_LAYOUT_UNDEFINED;
+                break;
+            }
+        }
 	};
 
 	VulkanRenderPassBuilder& addAttachment(const VkAttachmentDescription& p_Attachment);

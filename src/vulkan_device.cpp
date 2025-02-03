@@ -217,11 +217,11 @@ uint32_t VulkanDevice::getFramebufferCount() const
     return l_Count;
 }
 
-ResourceID VulkanDevice::createFramebuffer(const VkExtent3D p_Size, const VulkanRenderPass& p_RenderPass, const std::vector<VkImageView>& p_Attachments)
+ResourceID VulkanDevice::createFramebuffer(const VkExtent3D p_Size, const ResourceID p_RenderPass, const std::vector<VkImageView>& p_Attachments)
 {
 	VkFramebufferCreateInfo l_FramebufferInfo{};
 	l_FramebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-	l_FramebufferInfo.renderPass = p_RenderPass.m_VkHandle;
+	l_FramebufferInfo.renderPass = *getRenderPass(p_RenderPass);
 	l_FramebufferInfo.attachmentCount = static_cast<uint32_t>(p_Attachments.size());
 	l_FramebufferInfo.pAttachments = p_Attachments.data();
 	l_FramebufferInfo.width = p_Size.width;
@@ -430,6 +430,45 @@ void VulkanDevice::dumpStagingBufferToImage(const uint32_t p_Image, const VkExte
 	
 	l_Queue.waitIdle();
 	freeCommandBuffer(l_CommandBuffer, p_ThreadID);
+}
+
+void VulkanDevice::dumpDataIntoBuffer(const ResourceID p_DestBuffer, const uint8_t* p_Data, const VkDeviceSize p_Size, const ThreadID p_ThreadID)
+{
+	const VkDeviceSize l_StagingBufferSize = getBuffer(m_StagingBufferInfo.stagingBuffer).getSize();
+
+	VkDeviceSize l_Offset = 0;
+	while (l_Offset < p_Size)
+	{
+		const VkDeviceSize nextSize = std::min(l_StagingBufferSize, p_Size - l_Offset);
+		void* stagePtr = mapStagingBuffer(nextSize, p_ThreadID);
+		memcpy(stagePtr, p_Data + l_Offset, nextSize);
+		dumpStagingBuffer(p_DestBuffer, nextSize, l_Offset, p_ThreadID);
+		l_Offset += nextSize;
+	}
+}
+
+void VulkanDevice::dumpDataIntoImage(const ResourceID p_DestImage, const uint8_t* p_Data, const VkExtent3D p_Extent, const uint32_t p_BytesPerPixel, const ThreadID p_ThreadID, const bool p_KeepLayout)
+{
+	const uint32_t l_InitStagingBufferSize = getBuffer(m_StagingBufferInfo.stagingBuffer).getSize();
+	uint32_t l_StagingBufferSize = l_InitStagingBufferSize;
+	if (l_StagingBufferSize < p_Extent.width * p_Extent.height * p_BytesPerPixel)
+	{
+		freeStagingBuffer();
+		configureStagingBuffer(p_Extent.width * p_Extent.height * p_BytesPerPixel, m_StagingBufferInfo.queue);
+		l_StagingBufferSize = getBuffer(m_StagingBufferInfo.stagingBuffer).getSize();
+	}
+
+	const uint32_t l_Size = std::min(l_StagingBufferSize, p_Extent.width * p_Extent.height * p_BytesPerPixel);
+
+	void* stagePtr = mapStagingBuffer(l_Size, p_ThreadID);
+	memcpy(stagePtr, p_Data, l_Size);
+	dumpStagingBufferToImage(p_DestImage, p_Extent, { 0, 0, 0 }, p_ThreadID, p_KeepLayout);
+
+	if (l_InitStagingBufferSize != l_StagingBufferSize)
+	{
+		freeStagingBuffer();
+		configureStagingBuffer(l_InitStagingBufferSize, m_StagingBufferInfo.queue);
+	}
 }
 
 void VulkanDevice::disallowMemoryType(const uint32_t p_Type)

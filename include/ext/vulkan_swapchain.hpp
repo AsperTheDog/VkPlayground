@@ -44,7 +44,7 @@ public:
 
 	uint32_t acquireNextImage(ResourceID p_Fence = UINT32_MAX);
 	[[nodiscard]] VulkanImage& getImage(uint32_t p_Index);
-	[[nodiscard]] VkImageView getImageView(uint32_t p_Index) const;
+	[[nodiscard]] ResourceID getImageView(uint32_t p_Index) const;
 	[[nodiscard]] uint32_t getNextImage() const;
 	[[nodiscard]] uint32_t getImgSemaphore() const;
 
@@ -58,7 +58,7 @@ private:
 	VkExtent2D m_Extent;
 	VkSurfaceFormatKHR m_Format;
 	std::vector<VulkanImage> m_Images;
-	std::vector<VkImageView> m_ImageViews;
+	std::vector<ResourceID> m_ImageViews;
 	uint32_t m_MinImageCount = 0;
 
 	uint32_t m_NextImage = 0;

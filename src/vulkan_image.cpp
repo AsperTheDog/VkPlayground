@@ -1,5 +1,6 @@
 #include "vulkan_image.hpp"
 
+#include <ranges>
 #include <stdexcept>
 #include <vulkan/vk_enum_string_helper.h>
 
@@ -7,6 +8,30 @@
 #include "vulkan_command_buffer.hpp"
 #include "vulkan_context.hpp"
 #include "vulkan_device.hpp"
+
+VulkanImageView::VulkanImageView(const ResourceID p_Device, const VkImageView p_VkHandle)
+    : VulkanDeviceSubresource(p_Device), m_VkHandle(p_VkHandle)
+{
+}
+
+VulkanImageSampler::VulkanImageSampler(const ResourceID p_Device, const VkSampler p_VkHandle)
+    : VulkanDeviceSubresource(p_Device), m_VkHandle(p_VkHandle)
+{
+}
+
+void VulkanImageSampler::free()
+{
+    const VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
+    l_Device.getTable().vkDestroySampler(*l_Device, m_VkHandle, nullptr);
+    Logger::print(Logger::DEBUG, "Destroyed image sampler ", m_ID);
+}
+
+void VulkanImageView::free()
+{
+    const VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
+    l_Device.getTable().vkDestroyImageView(*l_Device, m_VkHandle, nullptr);
+    Logger::print(Logger::DEBUG, "Destroyed image view ", m_ID);
+}
 
 VkMemoryRequirements VulkanImage::getMemoryRequirements() const
 {
@@ -53,7 +78,7 @@ VkImage VulkanImage::operator*() const
 	return m_VkHandle;
 }
 
-VkImageView VulkanImage::createImageView(const VkFormat p_Format, const VkImageAspectFlags p_AspectFlags)
+ResourceID VulkanImage::createImageView(const VkFormat p_Format, const VkImageAspectFlags p_AspectFlags)
 {
 	VkImageViewType l_Type = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
 	switch (m_Type)
@@ -90,20 +115,75 @@ VkImageView VulkanImage::createImageView(const VkFormat p_Format, const VkImageA
 		throw std::runtime_error(std::string("Failed to create image view, error: ") + string_VkResult(ret));
 	}
 
-	m_ImageViews.push_back(l_ImageView);
-	return l_ImageView;
+    VulkanImageView* l_ImageViewObj = new VulkanImageView(getDeviceID(), l_ImageView);
+	m_ImageViews.emplace(l_ImageViewObj->getID(), l_ImageViewObj);
+    Logger::print(Logger::DEBUG, "Created image view ", l_ImageViewObj->getID(), " for image ", m_ID);
+	return l_ImageViewObj->getID();
 }
 
-void VulkanImage::freeImageView(const VkImageView p_ImageView)
+VulkanImageView& VulkanImage::getImageView(const ResourceID p_ImageView)
 {
-    const VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
-
-	l_Device.getTable().vkDestroyImageView(l_Device.m_VkHandle, p_ImageView, nullptr);
-    LOG_DEBUG("Freed image view of image ", m_ID);
-	std::erase(m_ImageViews, p_ImageView);
+    if (m_ImageViews.contains(p_ImageView))
+    {
+        return *m_ImageViews.at(p_ImageView);
+    }
+    throw std::runtime_error("Tried to get image view that doesn't belong to image " + std::to_string(m_ID));
 }
 
-VkSampler VulkanImage::createSampler(const VkFilter p_Filter, const VkSamplerAddressMode p_SamplerAddressMode)
+const VulkanImageView& VulkanImage::getImageView(const ResourceID p_ImageView) const
+{
+    if (m_ImageViews.contains(p_ImageView))
+    {
+        return *m_ImageViews.at(p_ImageView);
+    }
+    throw std::runtime_error("Tried to get image view that doesn't belong to image " + std::to_string(m_ID));
+}
+
+VulkanImageSampler& VulkanImage::getSampler(const ResourceID p_Sampler)
+{
+    if (m_Samplers.contains(p_Sampler))
+    {
+        return *m_Samplers.at(p_Sampler);
+    }
+    throw std::runtime_error("Tried to get sampler that doesn't belong to image " + std::to_string(m_ID));
+}
+
+const VulkanImageSampler& VulkanImage::getSampler(const ResourceID p_Sampler) const
+{
+    if (m_Samplers.contains(p_Sampler))
+    {
+        return *m_Samplers.at(p_Sampler);
+    }
+    throw std::runtime_error("Tried to get sampler that doesn't belong to image " + std::to_string(m_ID));
+}
+
+VulkanImageView* VulkanImage::getImageViewPtr(const ResourceID p_ImageView) const
+{
+    if (m_ImageViews.contains(p_ImageView))
+    {
+        return m_ImageViews.at(p_ImageView);
+    }
+    return nullptr;
+}
+
+void VulkanImage::freeImageView(const ResourceID p_ImageView)
+{
+    VulkanImageView* l_ImageView = getImageViewPtr(p_ImageView);
+    if (l_ImageView == nullptr)
+    {
+        throw std::runtime_error("Tried to free image view that doesn't belong to image " + std::to_string(m_ID));
+    }
+    l_ImageView->free();
+    delete l_ImageView;
+    m_ImageViews.erase(p_ImageView);
+}
+
+void VulkanImage::freeImageView(const VulkanImageView& p_ImageView)
+{
+    freeImageView(p_ImageView.getID());
+}
+
+ResourceID VulkanImage::createSampler(const VkFilter p_Filter, const VkSamplerAddressMode p_SamplerAddressMode)
 {
     VkSamplerCreateInfo l_CreateInfo = {};
     l_CreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -131,23 +211,35 @@ VkSampler VulkanImage::createSampler(const VkFilter p_Filter, const VkSamplerAdd
         throw std::runtime_error(std::string("Failed to create sampler, error: ") + string_VkResult(l_Ret));
     }
 
-    m_Samplers.push_back(l_Sampler);
-    return l_Sampler;
+    VulkanImageSampler* l_SamplerObj = new VulkanImageSampler(getDeviceID(), l_Sampler);
+    m_Samplers.emplace(l_SamplerObj->getID(), l_SamplerObj);
+    return l_SamplerObj->getID();
 }
 
-void VulkanImage::freeSampler(const VkSampler p_Sampler)
+VulkanImageSampler* VulkanImage::getSamplerPtr(const ResourceID p_Sampler) const
 {
-    if (std::ranges::find(m_Samplers, p_Sampler) == m_Samplers.end())
+    if (m_Samplers.contains(p_Sampler))
     {
-        LOG_WARN("Tried to free sampler that doesn't belong to image ", m_ID);
-        return;
+        return m_Samplers.at(p_Sampler);
     }
+    return nullptr;
+}
 
-    const VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
+void VulkanImage::freeSampler(const ResourceID p_Sampler)
+{
+    VulkanImageSampler* l_Sampler = getSamplerPtr(p_Sampler);
+    if (l_Sampler == nullptr)
+    {
+        throw std::runtime_error("Tried to free sampler that doesn't belong to image " + std::to_string(m_ID));
+    }
+    l_Sampler->free();
+    delete l_Sampler;
+    m_Samplers.erase(p_Sampler);
+}
 
-    l_Device.getTable().vkDestroySampler(l_Device.m_VkHandle, p_Sampler, nullptr);
-    LOG_DEBUG("Freed sampler of image ", m_ID);
-    std::erase(m_Samplers, p_Sampler);
+void VulkanImage::freeSampler(const VulkanImageSampler& p_Sampler)
+{
+    freeSampler(p_Sampler.getID());
 }
 
 void VulkanImage::transitionLayout(const VkImageLayout p_Layout, const uint32_t p_ThreadID)
@@ -194,15 +286,20 @@ void VulkanImage::free()
 {
 	VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
 
-    for (const VkSampler l_Sampler : m_Samplers)
+    for (const auto& l_ImageView : m_ImageViews | std::views::values)
     {
-        l_Device.getTable().vkDestroySampler(l_Device.m_VkHandle, l_Sampler, nullptr);
+        l_ImageView->free();
+        delete l_ImageView;
     }
+    m_ImageViews.clear();
 
-	for (const VkImageView l_ImageView : m_ImageViews)
-	{
-		l_Device.getTable().vkDestroyImageView(l_Device.m_VkHandle, l_ImageView, nullptr);
-	}
+    for (const auto& l_Sampler : m_Samplers | std::views::values)
+    {
+        l_Sampler->free();
+        delete l_Sampler;
+    }
+    m_Samplers.clear();
+
     LOG_DEBUG("Freed image (ID: ", m_ID, ") with ", m_ImageViews.size(), " image views and ", m_Samplers.size(), " samplers");
 	Logger::pushContext("Image memory free");
 	m_ImageViews.clear();
