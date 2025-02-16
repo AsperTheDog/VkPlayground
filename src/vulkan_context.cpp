@@ -1,5 +1,6 @@
 #include "vulkan_context.hpp"
 
+#include <array>
 #include <cassert>
 #include <iostream>
 #include <stdexcept>
@@ -12,7 +13,7 @@
 #include "ext/vulkan_extension_management.hpp"
 #include "utils/logger.hpp"
 
-std::vector<const char*> g_ValidationLayers = {
+std::array<const char*, 1> g_ValidationLayers = {
 	"VK_LAYER_KHRONOS_validation"
 };
 
@@ -61,7 +62,7 @@ void VulkanContext::setupDebugMessenger() {
     LOG_DEBUG("Created debug messenger for vulkan context");
 }
 
-void VulkanContext::init(const uint32_t p_VulkanApiVersion, const bool p_EnableValidationLayers, const bool p_AssertOnError, std::vector<const char*> p_Extensions)
+void VulkanContext::init(const uint32_t p_VulkanApiVersion, const bool p_EnableValidationLayers, const bool p_AssertOnError, const std::span<const char*> p_Extensions)
 {
     const VkResult ret = volkInitialize();
     if (ret != VK_SUCCESS)
@@ -96,12 +97,16 @@ void VulkanContext::init(const uint32_t p_VulkanApiVersion, const bool p_EnableV
 	l_InstanceCreateInfo.pApplicationInfo = &l_AppInfo;
 
 	VkDebugUtilsMessengerCreateInfoEXT l_DebugCreateInfo{};
+    TRANS_VECTOR(l_Extensions, const char*);
+    l_Extensions.reserve(p_Extensions.size() + 1);
+    for (const char* l_Ext : p_Extensions)
+        l_Extensions.push_back(l_Ext);
 	if (p_EnableValidationLayers)
 	{
 		l_InstanceCreateInfo.enabledLayerCount = static_cast<uint32_t>(g_ValidationLayers.size());
 		l_InstanceCreateInfo.ppEnabledLayerNames = g_ValidationLayers.data();
 
-		p_Extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+        l_Extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
 		populateDebugMessengerCreateInfo(l_DebugCreateInfo);
 		l_InstanceCreateInfo.pNext = &l_DebugCreateInfo;
@@ -110,8 +115,8 @@ void VulkanContext::init(const uint32_t p_VulkanApiVersion, const bool p_EnableV
 	{
 		l_InstanceCreateInfo.enabledLayerCount = 0;
 	}
-	l_InstanceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(p_Extensions.size());
-	l_InstanceCreateInfo.ppEnabledExtensionNames = p_Extensions.data();
+	l_InstanceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(l_Extensions.size());
+	l_InstanceCreateInfo.ppEnabledExtensionNames = l_Extensions.data();
 
 	if (const VkResult l_Ret = vkCreateInstance(&l_InstanceCreateInfo, nullptr, &m_VkHandle); l_Ret != VK_SUCCESS)
 	{
@@ -126,6 +131,25 @@ void VulkanContext::init(const uint32_t p_VulkanApiVersion, const bool p_EnableV
 		setupDebugMessenger();
 }
 
+void VulkanContext::initializeTransientMemory(const size_t p_Size)
+{
+    m_TransientAllocator.initialize(p_Size);
+}
+
+void VulkanContext::initializeTransientMemory(uint8_t* p_Container, const size_t p_Size, const bool p_ShouldDelete)
+{
+    m_TransientAllocator.initialize(p_Container, p_Size, p_ShouldDelete);
+}
+
+void VulkanContext::initializeArenaMemory(const size_t p_Size)
+{
+    m_ArenaAllocator.initialize(p_Size);
+    ARENA_VECTOR(l_Devices, VulkanDevice*);
+    l_Devices.reserve(m_Devices.size());
+    std::ranges::move(m_Devices, std::back_inserter(l_Devices));
+    m_Devices.swap(l_Devices);
+}
+
 uint32_t VulkanContext::getGPUCount()
 {
 	uint32_t l_GPUCount = 0;
@@ -133,20 +157,18 @@ uint32_t VulkanContext::getGPUCount()
 	return l_GPUCount;
 }
 
-std::vector<VulkanGPU> VulkanContext::getGPUs()
+void VulkanContext::getGPUs(VulkanGPU p_Container[])
 {
 	uint32_t l_GPUCount = 0;
 	vkEnumeratePhysicalDevices(m_VkHandle, &l_GPUCount, nullptr);
-	std::vector<VkPhysicalDevice> l_PhysicalDevices(l_GPUCount);
+    TRANS_VECTOR(l_PhysicalDevices, VkPhysicalDevice);
+    l_PhysicalDevices.resize(l_GPUCount);
 	vkEnumeratePhysicalDevices(m_VkHandle, &l_GPUCount, l_PhysicalDevices.data());
 
-	std::vector<VulkanGPU> l_GPUs;
-	l_GPUs.reserve(l_PhysicalDevices.size());
-	for (const auto& l_PhysicalDevice : l_PhysicalDevices)
-	{
-		l_GPUs.push_back(VulkanGPU(l_PhysicalDevice));
-	}
-	return l_GPUs;
+    for (uint32_t i = 0; i < l_GPUCount; i++)
+    {
+        p_Container[i] = VulkanGPU{ l_PhysicalDevices[i] };
+    }
 }
 
 uint32_t VulkanContext::createDevice(const VulkanGPU p_GPU, const QueueFamilySelector& p_Queues, const VulkanDeviceExtensionManager* p_Extensions, const VkPhysicalDeviceFeatures& p_Features)
@@ -175,10 +197,11 @@ uint32_t VulkanContext::createDevice(const VulkanGPU p_GPU, const QueueFamilySel
 	{
 		l_DeviceCreateInfo.enabledLayerCount = 0;
 	}
-    std::vector<const char*> l_ExtensionNames{};
+    TRANS_VECTOR(l_ExtensionNames, const char*);
+    l_ExtensionNames.resize(p_Extensions->getExtensionCount());
 	if (p_Extensions != nullptr && !p_Extensions->isEmpty())
 	{
-        p_Extensions->populateExtensionNames(l_ExtensionNames);
+        p_Extensions->populateExtensionNames(l_ExtensionNames.data());
 		l_DeviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(l_ExtensionNames.size());
 		l_DeviceCreateInfo.ppEnabledExtensionNames = l_ExtensionNames.data();
 	}
@@ -187,8 +210,10 @@ uint32_t VulkanContext::createDevice(const VulkanGPU p_GPU, const QueueFamilySel
 		l_DeviceCreateInfo.enabledExtensionCount = 0;
 	}
 
-	std::vector<VkDeviceQueueCreateInfo> l_QueueCreateInfos;
-	for (const uint32_t l_Index : p_Queues.getUniqueIndices())
+    TRANS_VECTOR(l_QueueCreateInfos, VkDeviceQueueCreateInfo);
+    const std::vector<uint32_t> l_QueueFamilyIndices = p_Queues.getUniqueIndices();
+    l_QueueCreateInfos.reserve(l_QueueFamilyIndices.size());
+	for (const uint32_t l_Index : l_QueueFamilyIndices)
 	{
 		VkDeviceQueueCreateInfo l_QueueCreateInfo{};
 		l_QueueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
@@ -213,8 +238,8 @@ uint32_t VulkanContext::createDevice(const VulkanGPU p_GPU, const QueueFamilySel
 	}
     VulkanDeviceExtensionManager* l_ExtManager = nullptr;
     if (p_Extensions != nullptr)
-        l_ExtManager = new VulkanDeviceExtensionManager{ *p_Extensions };
-	m_Devices.push_back(new VulkanDevice{ p_GPU, l_Device, l_ExtManager });
+        l_ExtManager = ARENA_ALLOC(VulkanDeviceExtensionManager){ *p_Extensions };
+    m_Devices.push_back(ARENA_ALLOC(VulkanDevice){ p_GPU, l_Device, l_ExtManager });
     return m_Devices.back()->getID();
 }
 
@@ -241,7 +266,7 @@ void VulkanContext::freeDevice(const ResourceID p_Index)
             VulkanDevice* l_Device = *l_It;
 			l_Device->free();
 			m_Devices.erase(l_It);
-            delete l_Device;
+            ARENA_FREE(l_Device, sizeof(VulkanDevice));
 			break;
 		}
 	}
@@ -257,7 +282,7 @@ void VulkanContext::free()
 	for (VulkanDevice* l_Device : m_Devices)
 	{
 		l_Device->free();
-        delete l_Device;
+        ARENA_FREE(l_Device, sizeof(VulkanDevice));
 	}
 	m_Devices.clear();
 
@@ -277,17 +302,28 @@ VkInstance VulkanContext::getHandle()
 	return m_VkHandle;
 }
 
+void VulkanContext::resetTransMemory()
+{
+    m_TransientAllocator.reset();
+}
+
+void VulkanContext::resetArenaMemory()
+{
+    m_ArenaAllocator.reset();
+}
+
 bool VulkanContext::checkValidationLayerSupport()
 {
 	uint32_t l_LayerCount;
 	vkEnumerateInstanceLayerProperties(&l_LayerCount, nullptr);
-	std::vector<VkLayerProperties> availableLayers(l_LayerCount);
-	vkEnumerateInstanceLayerProperties(&l_LayerCount, availableLayers.data());
+    TRANS_VECTOR(l_AvailableLayers, VkLayerProperties);
+    l_AvailableLayers.resize(l_LayerCount);
+	vkEnumerateInstanceLayerProperties(&l_LayerCount, l_AvailableLayers.data());
 
 	for (const char* l_LayerName : g_ValidationLayers)
 	{
 		bool layerFound = false;
-		for (const VkLayerProperties& layerProperties : availableLayers)
+		for (const VkLayerProperties& layerProperties : l_AvailableLayers)
 		{
 			if (strcmp(l_LayerName, layerProperties.layerName) == 0)
 			{
@@ -303,11 +339,12 @@ bool VulkanContext::checkValidationLayerSupport()
 	return true;
 }
 
-bool VulkanContext::areExtensionsSupported(const std::vector<const char*>& p_Extensions)
+bool VulkanContext::areExtensionsSupported(const std::span<const char*> p_Extensions)
 {
 	uint32_t l_ExtensionCount;
 	vkEnumerateInstanceExtensionProperties(nullptr, &l_ExtensionCount, nullptr);
-	std::vector<VkExtensionProperties> l_AvailableExtensions(l_ExtensionCount);
+    TRANS_VECTOR(l_AvailableExtensions, VkExtensionProperties);
+    l_AvailableExtensions.resize(l_ExtensionCount);
 	vkEnumerateInstanceExtensionProperties(nullptr, &l_ExtensionCount, l_AvailableExtensions.data());
 
 	for (const char* l_ExtensionName : p_Extensions)

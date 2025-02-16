@@ -1,4 +1,5 @@
 #pragma once
+#include <span>
 #include <vector>
 #include <Volk/volk.h>
 
@@ -58,7 +59,7 @@ public:
 	};
 
 	VulkanRenderPassBuilder& addAttachment(const VkAttachmentDescription& p_Attachment);
-	VulkanRenderPassBuilder& addSubpass(VkPipelineBindPoint bindPoint, const std::vector<AttachmentReference>& p_Attachments, VkSubpassDescriptionFlags p_Flags);
+	VulkanRenderPassBuilder& addSubpass(VkPipelineBindPoint bindPoint, std::span<const AttachmentReference> p_Attachments, VkSubpassDescriptionFlags p_Flags);
 	VulkanRenderPassBuilder& addDependency(const VkSubpassDependency& p_Dependency);
 
 	static VkAttachmentDescription createAttachment(VkFormat p_Format, VkAttachmentLoadOp p_LoadOp, VkAttachmentStoreOp p_StoreOp, VkImageLayout p_InitialLayout, VkImageLayout p_FinalLayout);

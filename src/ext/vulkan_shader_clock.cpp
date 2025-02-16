@@ -1,6 +1,6 @@
 #include "ext/vulkan_shader_clock.hpp"
 
-#include "vulkan_context.hpp"
+#include "vulkan_device.hpp"
 
 
 VulkanShaderClockExtension* VulkanShaderClockExtension::get(const VulkanDevice& p_Device)
@@ -8,7 +8,7 @@ VulkanShaderClockExtension* VulkanShaderClockExtension::get(const VulkanDevice& 
     return p_Device.getExtensionManager()->getExtension<VulkanShaderClockExtension>(VK_KHR_SHADER_CLOCK_EXTENSION_NAME);
 }
 
-VulkanShaderClockExtension* VulkanShaderClockExtension::get(ResourceID p_DeviceID)
+VulkanShaderClockExtension* VulkanShaderClockExtension::get(const ResourceID p_DeviceID)
 {
     return VulkanContext::getDevice(p_DeviceID).getExtensionManager()->getExtension<VulkanShaderClockExtension>(VK_KHR_SHADER_CLOCK_EXTENSION_NAME);
 }
@@ -20,7 +20,7 @@ VulkanShaderClockExtension::VulkanShaderClockExtension(const ResourceID p_Device
 
 VkBaseInStructure* VulkanShaderClockExtension::getExtensionStruct() const
 {
-    VkPhysicalDeviceShaderClockFeaturesKHR* l_Struct = new VkPhysicalDeviceShaderClockFeaturesKHR{};
+    VkPhysicalDeviceShaderClockFeaturesKHR* l_Struct = TRANS_ALLOC(VkPhysicalDeviceShaderClockFeaturesKHR){};
     l_Struct->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CLOCK_FEATURES_KHR;
     l_Struct->pNext = nullptr;
     l_Struct->shaderSubgroupClock = m_EnableSubgroupClock;

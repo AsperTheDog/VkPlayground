@@ -26,9 +26,9 @@ VulkanShader::ReflectionManager& VulkanShader::ReflectionManager::operator=(Refl
     return *this;
 }
 
-std::string VulkanShader::ReflectionManager::getName(const spirv_cross::ID p_ID, const std::string& p_NameField) const
+std::string VulkanShader::ReflectionManager::getName(const spirv_cross::ID p_ID, const std::string_view p_NameField) const
 {
-    std::string l_Name = p_NameField;
+    std::string l_Name = std::string(p_NameField);
     if (l_Name.empty())
         l_Name = compiler->get_name(p_ID);
     if (l_Name.empty())
@@ -76,6 +76,8 @@ VulkanShader::ReflectionManager VulkanShader::getReflectionData() const
 
 void VulkanShader::printReflectionData() const
 {
+    if (!Logger::isLevelActive(Logger::DEBUG)) return;
+
     if (m_Compiler == nullptr)
     {
         LOG_DEBUG("No reflection data available for shader (ID: ", m_ID, ")");
@@ -126,7 +128,7 @@ void VulkanShader::printReflectionData() const
     }
 }
 
-VulkanShader::ReflectionManager VulkanShader::getReflectionDataFromFile(const std::string& p_Filepath, const VkShaderStageFlagBits p_Stage)
+VulkanShader::ReflectionManager VulkanShader::getReflectionDataFromFile(const std::string_view p_Filepath, const VkShaderStageFlagBits p_Stage)
 {
     const VulkanShader::Result l_Result = VulkanShader::compileFile(p_Filepath, VulkanShader::getKindFromStage(p_Stage), VulkanShader::readFile(p_Filepath), false, {});
     if (!l_Result.success)
@@ -134,7 +136,7 @@ VulkanShader::ReflectionManager VulkanShader::getReflectionDataFromFile(const st
         LOG_ERR("Failed to compile shader file ", p_Filepath, ": ", l_Result.error);
         return {};
     }
-    spirv_cross::CompilerGLSL* l_Compiler = new spirv_cross::CompilerGLSL(l_Result.code);
+    spirv_cross::CompilerGLSL* l_Compiler = ARENA_ALLOC(spirv_cross::CompilerGLSL)(l_Result.code);
     return VulkanShader::ReflectionManager{l_Compiler};
 }
 
@@ -151,7 +153,7 @@ void VulkanShader::free()
 
     if (m_Compiler != nullptr)
     {
-        delete m_Compiler;
+        ARENA_FREE(m_Compiler, sizeof(spirv_cross::CompilerGLSL));
         m_Compiler = nullptr;
     }
 }
@@ -163,11 +165,11 @@ VulkanShader::VulkanShader(const ResourceID p_Device, const VkShaderModule p_Han
 
 void VulkanShader::reflect(const std::vector<uint32_t>& p_Code)
 {
-    m_Compiler  = new spirv_cross::CompilerGLSL(p_Code);
+    m_Compiler = ARENA_ALLOC(spirv_cross::CompilerGLSL)(p_Code);
     printReflectionData();
 }
 
-std::string VulkanShader::readFile(const std::string& p_Filename)
+std::string VulkanShader::readFile(const std::string_view p_Filename)
 {
     std::ifstream l_ShaderFile(p_Filename.data());
     if (!l_ShaderFile.is_open()) throw std::runtime_error("failed to open shader file " + std::string(p_Filename));
@@ -175,7 +177,7 @@ std::string VulkanShader::readFile(const std::string& p_Filename)
     return str;
 }
 
-VulkanShader::Result VulkanShader::compileFile(const std::string& p_Source_name, const shaderc_shader_kind p_Kind, const std::string& p_Source, const bool p_Optimize, const std::vector<MacroDef>& p_Macros)
+VulkanShader::Result VulkanShader::compileFile(const std::string_view p_Source_name, const shaderc_shader_kind p_Kind, const std::string_view p_Source, const bool p_Optimize, const std::span<const MacroDef> p_Macros)
 {
     const shaderc::Compiler l_Compiler;
     shaderc::CompileOptions l_Options;
@@ -191,7 +193,7 @@ VulkanShader::Result VulkanShader::compileFile(const std::string& p_Source_name,
         l_Options.SetGenerateDebugInfo();
     }
 
-    const shaderc::SpvCompilationResult l_Module = l_Compiler.CompileGlslToSpv(p_Source, p_Kind, p_Source_name.data(), l_Options);
+    const shaderc::SpvCompilationResult l_Module = l_Compiler.CompileGlslToSpv(p_Source.data(), p_Kind, p_Source_name.data(), l_Options);
 
     if (l_Module.GetCompilationStatus() != shaderc_compilation_status_success)
     {

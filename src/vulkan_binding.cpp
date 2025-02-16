@@ -40,13 +40,15 @@ VkVertexInputBindingDescription VulkanBinding::getBindingDescription() const
 	return l_BindingDescription;
 }
 
-std::vector<VkVertexInputAttributeDescription> VulkanBinding::getAttributeDescriptions() const
+size_t VulkanBinding::getAttributeDescriptionCount() const
 {
-	std::vector<VkVertexInputAttributeDescription> l_AttributeDescriptions;
-	l_AttributeDescriptions.reserve(m_Attributes.size());
-	for (const AttributeData& l_Attr : m_Attributes)
-	{
-		l_AttributeDescriptions.push_back(l_Attr.getAttributeDescription(m_Binding));
-	}
-	return l_AttributeDescriptions;
+    return m_Attributes.size();
+}
+
+void VulkanBinding::getAttributeDescriptions(VkVertexInputAttributeDescription p_Container[]) const
+{
+    for (size_t i = 0; i < m_Attributes.size(); i++)
+    {
+        p_Container[i] = m_Attributes[i].getAttributeDescription(m_Binding);
+    }
 }

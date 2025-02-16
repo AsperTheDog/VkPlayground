@@ -1,4 +1,5 @@
 #pragma once
+#include <span>
 #include <string>
 #include <vector>
 #include <Volk/volk.h>
@@ -30,7 +31,7 @@ public:
         [[nodiscard]] spirv_cross::ShaderResources getResources() const { return compiler->get_shader_resources(); }
         [[nodiscard]] bool isValid() const { return compiler != nullptr; }
 
-        [[nodiscard]] std::string getName(spirv_cross::ID p_ID, const std::string& p_NameField) const;
+        [[nodiscard]] std::string getName(spirv_cross::ID p_ID, std::string_view p_NameField) const;
 
         spirv_cross::CompilerGLSL* compiler = nullptr;
         bool isCompilerLocal = false;
@@ -48,7 +49,7 @@ public:
 
     void printReflectionData() const;
 
-    static ReflectionManager getReflectionDataFromFile(const std::string& p_Filepath, VkShaderStageFlagBits p_Stage);
+    static ReflectionManager getReflectionDataFromFile(std::string_view p_Filepath, VkShaderStageFlagBits p_Stage);
 
 private:
 	void free() override;
@@ -63,8 +64,8 @@ private:
 	VulkanShader(ResourceID p_Device, VkShaderModule p_Handle, VkShaderStageFlagBits p_Stage);
     void reflect(const std::vector<uint32_t>& p_Code);
 
-	static std::string readFile(const std::string& p_Filename);
-	static [[nodiscard]] Result compileFile(const std::string& p_Source_name, shaderc_shader_kind p_Kind, const std::string& p_Source, bool p_Optimize, const std::vector<MacroDef>& p_Macros);
+	static std::string readFile(std::string_view p_Filename);
+	static [[nodiscard]] Result compileFile(std::string_view p_Source_name, shaderc_shader_kind p_Kind, std::string_view p_Source, bool p_Optimize, std::span<const MacroDef> p_Macros);
     
 	VkShaderModule m_VkHandle = VK_NULL_HANDLE;
 	VkShaderStageFlagBits m_Stage = VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;

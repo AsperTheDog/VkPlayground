@@ -1,10 +1,9 @@
 #pragma once
-#include <string>
-#include <unordered_map>
 #include <vector>
 #include <Volk/volk.h>
 
 #include "utils/identifiable.hpp"
+#include "utils/string_utils.hpp"
 
 class VulkanExtensionChain
 {
@@ -18,6 +17,8 @@ public:
     [[nodiscard]] bool containsExtensionStruct(VkStructureType p_StructType) const;
 
 private:
+    [[nodiscard]] void* allocFromContext(size_t p_Bytes) const;
+
     // TAKES OWNERSHIP OF POINTER
     VulkanExtensionChain& addExtensionPointer(const VkBaseInStructure* p_Next);
 
@@ -64,11 +65,11 @@ public:
     void addExtension(const std::string& p_ExtensionName, VulkanDeviceExtension* p_Extension, bool p_ForceReplace = false);
 
     [[nodiscard]] VulkanDeviceExtension* getExtension(const std::string& p_ExtensionName) const;
-    [[nodiscard]] bool containsExtension(const std::string& p_ExtensionName) const;
+    [[nodiscard]] bool containsExtension(std::string_view p_ExtensionName) const;
     [[nodiscard]] bool isEmpty() const { return m_Extensions.empty(); }
     [[nodiscard]] size_t getExtensionCount() const { return m_Extensions.size(); }
     [[nodiscard]] bool isValid() const { return m_DeviceID != -1; }
-    void populateExtensionNames(std::vector<const char*>& p_Container) const;
+    void populateExtensionNames(const char* p_Container[]) const;
 
     template <typename T>
     T* getExtension(const std::string& p_ExtensionName);
@@ -79,7 +80,7 @@ public:
 private:
     void setDevice(ResourceID p_Device);
 
-    std::unordered_map<std::string, VulkanDeviceExtension*> m_Extensions{};
+    StringUMap<VulkanDeviceExtension*> m_Extensions{};
 
     ResourceID m_DeviceID = -1;
 
@@ -94,7 +95,7 @@ VulkanExtensionChain& VulkanExtensionChain::addExtension(const T& p_Extension)
 {
     static_assert(std::is_trivially_destructible_v<T>, "T must have a trivial or no destructor!");
     
-    T* pNext = new T(p_Extension);
+    T* pNext = new (allocFromContext(sizeof(T))) T(p_Extension);
     m_Next.push_back(reinterpret_cast<VkBaseInStructure*>(pNext));
     return *this;
 }

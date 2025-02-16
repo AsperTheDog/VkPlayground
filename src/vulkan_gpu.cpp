@@ -1,7 +1,9 @@
 #include "vulkan_gpu.hpp"
 
+#include <span>
 #include <stdexcept>
 
+#include "vulkan_context.hpp"
 #include "vulkan_queues.hpp"
 
 VkPhysicalDeviceProperties VulkanGPU::getProperties() const
@@ -32,14 +34,17 @@ VkSurfaceCapabilitiesKHR VulkanGPU::getCapabilities(const VkSurfaceKHR& p_Surfac
 	return l_Capabilities;
 }
 
-std::vector<VkExtensionProperties> VulkanGPU::getSupportedExtensions() const
+uint32_t VulkanGPU::getSupportedExtensionCount() const
 {
-	std::vector<VkExtensionProperties> l_Extensions;
-	uint32_t l_ExtensionCount;
-	vkEnumerateDeviceExtensionProperties(m_VkHandle, nullptr, &l_ExtensionCount, nullptr);
-	l_Extensions.resize(l_ExtensionCount);
-	vkEnumerateDeviceExtensionProperties(m_VkHandle, nullptr, &l_ExtensionCount, l_Extensions.data());
-	return l_Extensions;
+    uint32_t l_ExtensionCount;
+    vkEnumerateDeviceExtensionProperties(m_VkHandle, nullptr, &l_ExtensionCount, nullptr);
+    return l_ExtensionCount;
+}
+
+void VulkanGPU::getSupportedExtensions(VkExtensionProperties p_Container[]) const
+{
+	uint32_t l_ExtensionCount = getSupportedExtensionCount();
+	vkEnumerateDeviceExtensionProperties(m_VkHandle, nullptr, &l_ExtensionCount, p_Container);
 }
 
 GPUQueueStructure VulkanGPU::getQueueFamilies() const
@@ -51,7 +56,8 @@ bool VulkanGPU::isFormatSupported(const VkSurfaceKHR p_Surface, const VkSurfaceF
 {
 	uint32_t l_FormatCount;
 	vkGetPhysicalDeviceSurfaceFormatsKHR(m_VkHandle, p_Surface, &l_FormatCount, nullptr);
-	std::vector<VkSurfaceFormatKHR> l_Formats(l_FormatCount);
+    TRANS_VECTOR(l_Formats, VkSurfaceFormatKHR);
+    l_Formats.resize(l_FormatCount);
 	vkGetPhysicalDeviceSurfaceFormatsKHR(m_VkHandle, p_Surface, &l_FormatCount, l_Formats.data());
 	for (const VkSurfaceFormatKHR& l_AvailableFormat : l_Formats)
 	{
@@ -67,7 +73,8 @@ VkSurfaceFormatKHR VulkanGPU::getClosestFormat(const VkSurfaceKHR& p_Surface, co
 {
 	uint32_t l_FormatCount;
 	vkGetPhysicalDeviceSurfaceFormatsKHR(m_VkHandle, p_Surface, &l_FormatCount, nullptr);
-	std::vector<VkSurfaceFormatKHR> l_Formats(l_FormatCount);
+    TRANS_VECTOR(l_Formats, VkSurfaceFormatKHR);
+    l_Formats.resize(l_FormatCount);
 	vkGetPhysicalDeviceSurfaceFormatsKHR(m_VkHandle, p_Surface, &l_FormatCount, l_Formats.data());
 	std::optional<VkSurfaceFormatKHR> l_FormatMatch = std::nullopt;
 	std::optional<VkSurfaceFormatKHR> l_ColorMatch = std::nullopt;
@@ -95,7 +102,7 @@ VkSurfaceFormatKHR VulkanGPU::getFirstFormat(const VkSurfaceKHR& p_Surface) cons
 {
 	uint32_t l_FormatCount;
 	vkGetPhysicalDeviceSurfaceFormatsKHR(m_VkHandle, p_Surface, &l_FormatCount, nullptr);
-	std::vector<VkSurfaceFormatKHR> l_Formats(l_FormatCount);
+    TRANS_VECTOR(l_Formats, VkSurfaceFormatKHR);
 	vkGetPhysicalDeviceSurfaceFormatsKHR(m_VkHandle, p_Surface, &l_FormatCount, l_Formats.data());
 	return l_Formats[0];
 }
@@ -107,7 +114,7 @@ VkFormatProperties VulkanGPU::getFormatProperties(const VkFormat P_Format) const
 	return l_FormatProperties;
 }
 
-VkFormat VulkanGPU::findSupportedFormat(const std::vector<VkFormat>& P_Candidates, const VkImageTiling p_Tiling, const VkFormatFeatureFlags p_Features) const
+VkFormat VulkanGPU::findSupportedFormat(const std::span<const VkFormat> P_Candidates, const VkImageTiling p_Tiling, const VkFormatFeatureFlags p_Features) const
 {
 	for (const VkFormat l_Format : P_Candidates)
 	{

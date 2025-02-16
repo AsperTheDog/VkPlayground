@@ -39,7 +39,10 @@ private:
 	VkDeviceSize m_Size = 0;
 	void* m_MappedData = nullptr;
 
+    uint32_t m_QueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+
 	friend class VulkanDevice;
 	friend class VulkanCommandBuffer;
+    friend class VulkanMemoryBarrierBuilder;
 };
 

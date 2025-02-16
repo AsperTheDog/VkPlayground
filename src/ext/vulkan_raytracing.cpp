@@ -1,6 +1,6 @@
 ﻿#include "ext/vulkan_raytracing.hpp"
 
-#include "vulkan_context.hpp"
+#include "vulkan_device.hpp"
 
 VulkanRayTracingPipelineExtension* VulkanRayTracingPipelineExtension::get(const VulkanDevice& p_Device)
 {
@@ -20,7 +20,7 @@ VulkanRayTracingPipelineExtension::VulkanRayTracingPipelineExtension(const Resou
 
 VkBaseInStructure* VulkanRayTracingPipelineExtension::getExtensionStruct() const
 {
-    VkPhysicalDeviceRayTracingPipelineFeaturesKHR* l_Struct = new VkPhysicalDeviceRayTracingPipelineFeaturesKHR{};
+    VkPhysicalDeviceRayTracingPipelineFeaturesKHR* l_Struct = TRANS_ALLOC(VkPhysicalDeviceRayTracingPipelineFeaturesKHR){};
     l_Struct->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
     l_Struct->pNext = nullptr;
     l_Struct->rayTracingPipeline = m_EnablePipeline;

@@ -2,8 +2,9 @@
 
 #include <functional>
 #include <vector>
+
+#include "string_utils.hpp"
 #include <ranges>
-#include <string>
 
 template<typename... Args>
 class Signal {
@@ -51,5 +52,5 @@ public:
 
 private:
     std::vector<FunctionType> m_Functions;
-    std::unordered_map<std::string, FunctionType> m_namedFunctions;
+    StringUMap<FunctionType> m_namedFunctions;
 };

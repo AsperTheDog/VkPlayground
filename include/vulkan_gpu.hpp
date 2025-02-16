@@ -1,5 +1,5 @@
 #pragma once
-#include <vector>
+#include <span>
 #include <Volk/volk.h>
 
 class SDLWindow;
@@ -15,7 +15,9 @@ public:
 	[[nodiscard]] VkPhysicalDeviceFeatures getFeatures() const;
 	[[nodiscard]] VkPhysicalDeviceMemoryProperties getMemoryProperties() const;
 	[[nodiscard]] VkSurfaceCapabilitiesKHR getCapabilities(const VkSurfaceKHR& p_Surface) const;
-	[[nodiscard]] std::vector<VkExtensionProperties> getSupportedExtensions() const;
+
+    [[nodiscard]] uint32_t getSupportedExtensionCount() const;
+    [[nodiscard]] void getSupportedExtensions(VkExtensionProperties p_Container[]) const;
 
 	[[nodiscard]] GPUQueueStructure getQueueFamilies() const;
 
@@ -23,7 +25,7 @@ public:
 	[[nodiscard]] VkSurfaceFormatKHR getClosestFormat(const VkSurfaceKHR& p_Surface, VkSurfaceFormatKHR p_Format) const;
 	[[nodiscard]] VkSurfaceFormatKHR getFirstFormat(const VkSurfaceKHR& p_Surface) const;
 	[[nodiscard]] VkFormatProperties getFormatProperties(VkFormat P_Format) const;
-	[[nodiscard]] VkFormat findSupportedFormat(const std::vector<VkFormat>& P_Candidates, VkImageTiling p_Tiling, VkFormatFeatureFlags p_Features) const;
+	[[nodiscard]] VkFormat findSupportedFormat(std::span<const VkFormat> P_Candidates, VkImageTiling p_Tiling, VkFormatFeatureFlags p_Features) const;
 
     [[nodiscard]] VkPhysicalDevice getHandle() const { return m_VkHandle; }
 

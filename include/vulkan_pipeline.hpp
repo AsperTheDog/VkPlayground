@@ -1,4 +1,5 @@
 #pragma once
+#include <span>
 #include <string>
 #include <vector>
 #include <Volk/volk.h>
@@ -12,7 +13,7 @@ struct VulkanPipelineBuilder
 {
 	explicit VulkanPipelineBuilder(ResourceID p_Device);
 
-	void addShaderStage(ResourceID p_Shader, const std::string& p_Entrypoint = "main");
+	void addShaderStage(ResourceID p_Shader, std::string_view p_Entrypoint = "main");
 	void resetShaderStages();
 
 	void setVertexInputState(const VkPipelineVertexInputStateCreateInfo& p_State);
@@ -26,7 +27,7 @@ struct VulkanPipelineBuilder
 
 	void setViewportState(const VkPipelineViewportStateCreateInfo& p_State);
 	void setViewportState(uint32_t p_ViewportCount, uint32_t p_ScissorCount);
-	void setViewportState(const std::vector<VkViewport>& p_Viewports, const std::vector<VkRect2D>& p_Scissors);
+	void setViewportState(std::span<const VkViewport> p_Viewports, std::span<const VkRect2D> p_Scissors);
 
 	void setRasterizationState(const VkPipelineRasterizationStateCreateInfo& P_State);
 	void setRasterizationState(VkPolygonMode p_PolygonMode, VkCullModeFlags p_CullMode = VK_CULL_MODE_BACK_BIT, VkFrontFace p_FrontFace = VK_FRONT_FACE_CLOCKWISE);
@@ -42,8 +43,9 @@ struct VulkanPipelineBuilder
 	void addColorBlendAttachment(const VkPipelineColorBlendAttachmentState& p_Attachment);
 
 	void setDynamicState(const VkPipelineDynamicStateCreateInfo& p_State);
-	void setDynamicState(const std::vector<VkDynamicState>& p_DynamicStates);
+	void setDynamicState(std::span<VkDynamicState> p_DynamicStates);
 
+    [[nodiscard]] size_t getShaderStageCount() const { return m_ShaderStages.size(); }
 
 private:
 	VkPipelineVertexInputStateCreateInfo m_VertexInputState{};
@@ -62,6 +64,9 @@ private:
     {
         ResourceID shader;
         std::string entrypoint;
+
+        ShaderData(const ResourceID p_Shader, const std::string_view p_Entrypoint) : shader(p_Shader), entrypoint(p_Entrypoint) {}
+        explicit ShaderData(const ResourceID p_Shader) : shader(p_Shader), entrypoint("main") {}
     };
 
 	std::vector<ShaderData> m_ShaderStages;
@@ -74,7 +79,7 @@ private:
 
 	ResourceID m_Device;
 
-	[[nodiscard]] std::vector<VkPipelineShaderStageCreateInfo> createShaderStages() const;
+	void createShaderStages(VkPipelineShaderStageCreateInfo p_Container[]) const;
 
 	friend class VulkanDevice;
 };

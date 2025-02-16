@@ -1,5 +1,6 @@
 #pragma once
 #include <map>
+#include <span>
 #include <vector>
 #include <Volk/volk.h>
 
@@ -15,33 +16,65 @@ class VulkanDevice;
 
 //TODO: Make a proper memory barrier system (builder?)
 
+class VulkanMemoryBarrierBuilder
+{
+public:
+    VulkanMemoryBarrierBuilder(ResourceID p_Device, VkPipelineStageFlags p_SrcStageMask, VkPipelineStageFlags p_DstStageMask, VkDependencyFlags p_DependencyFlags);
+
+    void addAbsoluteMemoryBarrier();
+
+    void addMemoryBarrier(VkAccessFlags p_SrcAccessMask, VkAccessFlags p_DstAccessMask);
+    void addBufferMemoryBarrier(ResourceID p_Buffer, VkDeviceSize p_Offset, VkDeviceSize p_Size, uint32_t p_DstQueueFamily = VK_QUEUE_FAMILY_IGNORED, VkAccessFlags p_SrcAccessMask = VK_ACCESS_FLAG_BITS_MAX_ENUM, VkAccessFlags p_DstAccessMask = VK_ACCESS_FLAG_BITS_MAX_ENUM);
+    void addImageMemoryBarrier(ResourceID p_Image, VkImageLayout p_NewLayout, uint32_t p_DstQueueFamily = VK_QUEUE_FAMILY_IGNORED, VkAccessFlags p_SrcAccessMask = VK_ACCESS_FLAG_BITS_MAX_ENUM, VkAccessFlags p_DstAccessMask = VK_ACCESS_FLAG_BITS_MAX_ENUM);
+
+private:
+    ResourceID m_Device;
+
+    VkPipelineStageFlags m_SrcStageMask;
+    VkPipelineStageFlags m_DstStageMask;
+    VkDependencyFlags m_DependencyFlags;
+    std::vector<VkMemoryBarrier> m_MemoryBarriers;
+    std::vector<VkBufferMemoryBarrier> m_BufferMemoryBarriers;
+    std::vector<VkImageMemoryBarrier> m_ImageMemoryBarriers;
+
+    struct AccessData
+    {
+        VkAccessFlags srcAccessMask;
+        VkPipelineStageFlags srcStageMask;
+        VkAccessFlags dstAccessMask;
+        VkPipelineStageFlags dstStageMask;
+    };
+    static std::map<VkImageLayout, AccessData> s_TransitionMapping;
+    friend class VulkanCommandBuffer;
+};
+
 class VulkanCommandBuffer final : public VulkanDeviceSubresource
 {
 public:
+    struct WaitSemaphoreData
+    {
+        ResourceID semaphore;
+        VkSemaphoreWaitFlags flags;
+    };
+
 	void beginRecording(VkCommandBufferUsageFlags p_Flags = 0);
 	void endRecording();
-	void submit(const VulkanQueue& p_Queue, const std::vector<std::pair<ResourceID, VkSemaphoreWaitFlags>>& p_WaitSemaphoreData, const std::vector<ResourceID>& p_SignalSemaphores, ResourceID p_Fence = UINT32_MAX);
+	void submit(const VulkanQueue& p_Queue, std::span<const WaitSemaphoreData> p_WaitSemaphoreData, std::span<const ResourceID> p_SignalSemaphores, ResourceID p_Fence = UINT32_MAX);
 	void reset() const;
 
-	void cmdBeginRenderPass(ResourceID p_RenderPass, ResourceID p_FrameBuffer, VkExtent2D p_Extent, const std::vector<VkClearValue>& p_ClearValues) const;
+	void cmdBeginRenderPass(ResourceID p_RenderPass, ResourceID p_FrameBuffer, VkExtent2D p_Extent, std::span<VkClearValue> p_ClearValues) const;
 	void cmdEndRenderPass() const;
 	void cmdBindPipeline(VkPipelineBindPoint p_BindPoint, ResourceID p_Pipeline) const;
 	void cmdNextSubpass() const;
-	void cmdPipelineBarrier(
-        VkPipelineStageFlags p_SrcStageMask, VkPipelineStageFlags p_DstStageMask, VkDependencyFlags p_DependencyFlags,
-        const std::vector<VkMemoryBarrier>& p_MemoryBarriers,
-        const std::vector<VkBufferMemoryBarrier>& p_BufferMemoryBarriers,
-        const std::vector<VkImageMemoryBarrier>& p_ImageMemoryBarriers) const;
-	void cmdSimpleTransitionImageLayout(ResourceID p_Image, VkImageLayout p_NewLayout, uint32_t p_SrcQueueFamily = VK_QUEUE_FAMILY_IGNORED, uint32_t p_DstQueueFamily = VK_QUEUE_FAMILY_IGNORED) const;
-	void cmdSimpleAbsoluteBarrier() const;
-
+	void cmdPipelineBarrier(const VulkanMemoryBarrierBuilder& p_Builder) const;
+	
 	void cmdBindVertexBuffer(ResourceID p_Buffer, VkDeviceSize p_Offset) const;
-	void cmdBindVertexBuffers(const std::vector<ResourceID>& p_BufferIDs, const std::vector<VkDeviceSize>& p_Offsets) const;
+	void cmdBindVertexBuffers(std::span<const ResourceID> p_BufferIDs, std::span<const VkDeviceSize> p_Offsets) const;
 	void cmdBindIndexBuffer(ResourceID p_BufferID, VkDeviceSize p_Offset, VkIndexType p_IndexType) const;
 
-	void cmdCopyBuffer(ResourceID p_Source, ResourceID p_Destination, const std::vector<VkBufferCopy>& p_CopyRegions) const;
-    void cmdCopyBufferToImage(ResourceID p_Buffer, ResourceID p_Image, VkImageLayout p_ImageLayout, const std::vector<VkBufferImageCopy>& p_CopyRegions) const;
-	void cmdBlitImage(ResourceID p_Source, ResourceID p_Destination, const std::vector<VkImageBlit>& p_Regions, VkFilter p_Filter) const;
+	void cmdCopyBuffer(ResourceID p_Source, ResourceID p_Destination, std::span<const VkBufferCopy> p_CopyRegions) const;
+    void cmdCopyBufferToImage(ResourceID p_Buffer, ResourceID p_Image, VkImageLayout p_ImageLayout, std::span<const VkBufferImageCopy> p_CopyRegions) const;
+	void cmdBlitImage(ResourceID p_Source, ResourceID p_Destination, std::span<const VkImageBlit> p_Regions, VkFilter p_Filter) const;
 	void cmdSimpleBlitImage(ResourceID p_Source, ResourceID p_Destination, VkFilter p_Filter) const;
 	void cmdSimpleBlitImage(const VulkanImage& p_Source, const VulkanImage& p_Destination, VkFilter p_Filter) const;
 
@@ -57,18 +90,10 @@ public:
 	VkCommandBuffer operator*() const;
 
 private:
-    enum TypeFlagBits
+    enum TypeFlagBits : uint8_t
     {
         SECONDARY = 1,
         ONE_TIME = 2
-    };
-
-    struct AccessData
-    {
-        VkAccessFlags srcAccessMask;
-        VkPipelineStageFlags srcStageMask;
-        VkAccessFlags dstAccessMask;
-        VkPipelineStageFlags dstStageMask;
     };
 
     typedef uint32_t TypeFlags;
@@ -84,8 +109,6 @@ private:
 	uint32_t m_ThreadID = 0;
 
     bool m_CanBeReset = false;
-
-    static std::map<VkImageLayout, ::VulkanCommandBuffer::AccessData> s_TransitionMapping;
 
 	friend class VulkanDevice;
 };

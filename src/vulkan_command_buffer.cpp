@@ -6,15 +6,17 @@
 
 #include "vulkan_buffer.hpp"
 #include "vulkan_context.hpp"
+#include "vulkan_descriptors.hpp"
 #include "vulkan_device.hpp"
 #include "vulkan_sync.hpp"
 #include "vulkan_framebuffer.hpp"
+#include "vulkan_image.hpp"
 #include "vulkan_pipeline.hpp"
 #include "vulkan_queues.hpp"
 #include "vulkan_render_pass.hpp"
 #include "utils/logger.hpp"
 
-std::map<VkImageLayout, VulkanCommandBuffer::AccessData> VulkanCommandBuffer::s_TransitionMapping = {
+std::map<VkImageLayout, VulkanMemoryBarrierBuilder::AccessData> VulkanMemoryBarrierBuilder::s_TransitionMapping = {
     {VK_IMAGE_LAYOUT_UNDEFINED,
         {VK_ACCESS_NONE, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
          VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
@@ -126,6 +128,81 @@ std::map<VkImageLayout, VulkanCommandBuffer::AccessData> VulkanCommandBuffer::s_
          VK_PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR}}
 };
 
+VulkanMemoryBarrierBuilder::VulkanMemoryBarrierBuilder(const ResourceID p_Device, const VkPipelineStageFlags p_SrcStageMask, const VkPipelineStageFlags p_DstStageMask, const VkDependencyFlags p_DependencyFlags)
+    : m_Device(p_Device), m_SrcStageMask(p_SrcStageMask), m_DstStageMask(p_DstStageMask), m_DependencyFlags(p_DependencyFlags)
+{
+}
+
+void VulkanMemoryBarrierBuilder::addAbsoluteMemoryBarrier()
+{
+    VkMemoryBarrier l_Barrier{};
+    l_Barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+    l_Barrier.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
+    l_Barrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
+    m_MemoryBarriers.push_back(l_Barrier);
+}
+
+void VulkanMemoryBarrierBuilder::addMemoryBarrier(const VkAccessFlags p_SrcAccessMask, const VkAccessFlags p_DstAccessMask)
+{
+    VkMemoryBarrier l_Barrier{};
+    l_Barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+    l_Barrier.srcAccessMask = p_SrcAccessMask;
+    l_Barrier.dstAccessMask = p_DstAccessMask;
+    m_MemoryBarriers.push_back(l_Barrier);
+}
+
+void VulkanMemoryBarrierBuilder::addBufferMemoryBarrier(const ResourceID p_Buffer, const VkDeviceSize p_Offset, const VkDeviceSize p_Size, const uint32_t p_DstQueueFamily, const VkAccessFlags p_SrcAccessMask, const VkAccessFlags p_DstAccessMask)
+{
+    const VulkanBuffer& l_Buffer = VulkanContext::getDevice(m_Device).getBuffer(p_Buffer);
+
+    VkBufferMemoryBarrier l_Barrier{};
+    l_Barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+    l_Barrier.srcAccessMask = p_SrcAccessMask;
+    l_Barrier.dstAccessMask = p_DstAccessMask;
+    l_Barrier.buffer = *l_Buffer;
+    l_Barrier.offset = p_Offset;
+    l_Barrier.size = p_Size;
+    if (p_DstQueueFamily != VK_QUEUE_FAMILY_IGNORED)
+    {
+        l_Barrier.srcQueueFamilyIndex = l_Buffer.m_QueueFamilyIndex;
+        l_Barrier.dstQueueFamilyIndex = p_DstQueueFamily;
+    }
+    else
+    {
+        l_Barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        l_Barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    }
+    m_BufferMemoryBarriers.push_back(l_Barrier);
+}
+
+void VulkanMemoryBarrierBuilder::addImageMemoryBarrier(const ResourceID p_Image, const VkImageLayout p_NewLayout, const uint32_t p_DstQueueFamily, const VkAccessFlags p_SrcAccessMask, const VkAccessFlags p_DstAccessMask)
+{
+    const VulkanImage& l_Image = VulkanContext::getDevice(m_Device).getImage(p_Image);
+    VkImageMemoryBarrier l_Barrier{};
+    l_Barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    l_Barrier.srcAccessMask = p_SrcAccessMask == VK_ACCESS_FLAG_BITS_MAX_ENUM ? s_TransitionMapping[l_Image.getLayout()].srcAccessMask : p_SrcAccessMask;
+    l_Barrier.dstAccessMask = p_DstAccessMask == VK_ACCESS_FLAG_BITS_MAX_ENUM ? s_TransitionMapping[p_NewLayout].dstAccessMask : p_DstAccessMask;
+    l_Barrier.oldLayout = l_Image.getLayout();
+    l_Barrier.newLayout = p_NewLayout;
+    if (p_DstQueueFamily != VK_QUEUE_FAMILY_IGNORED)
+    {
+        l_Barrier.srcQueueFamilyIndex = l_Image.m_QueueFamilyIndex;
+        l_Barrier.dstQueueFamilyIndex = p_DstQueueFamily;
+    }
+    else
+    {
+        l_Barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        l_Barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    }
+    l_Barrier.image = *l_Image;
+    l_Barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    l_Barrier.subresourceRange.baseMipLevel = 0;
+    l_Barrier.subresourceRange.levelCount = 1;
+    l_Barrier.subresourceRange.baseArrayLayer = 0;
+    l_Barrier.subresourceRange.layerCount = 1;
+    m_ImageMemoryBarriers.push_back(l_Barrier);
+}
+
 void VulkanCommandBuffer::beginRecording(const VkCommandBufferUsageFlags p_Flags)
 {
 	if (m_IsRecording)
@@ -156,7 +233,7 @@ void VulkanCommandBuffer::endRecording()
 	m_IsRecording = false;
 }
 
-void VulkanCommandBuffer::cmdCopyBuffer(const ResourceID p_Source, const ResourceID p_Destination, const std::vector<VkBufferCopy>& p_CopyRegions) const
+void VulkanCommandBuffer::cmdCopyBuffer(const ResourceID p_Source, const ResourceID p_Destination, const std::span<const VkBufferCopy> p_CopyRegions) const
 {
 	if (!m_IsRecording)
 	{
@@ -167,7 +244,7 @@ void VulkanCommandBuffer::cmdCopyBuffer(const ResourceID p_Source, const Resourc
 	l_Device.getTable().vkCmdCopyBuffer(m_VkHandle, *l_Device.getBuffer(p_Source), *l_Device.getBuffer(p_Destination), static_cast<uint32_t>(p_CopyRegions.size()), p_CopyRegions.data());
 }
 
-void VulkanCommandBuffer::cmdCopyBufferToImage(const ResourceID p_Buffer, const ResourceID p_Image, const VkImageLayout p_ImageLayout, const std::vector<VkBufferImageCopy>& p_CopyRegions) const
+void VulkanCommandBuffer::cmdCopyBufferToImage(const ResourceID p_Buffer, const ResourceID p_Image, const VkImageLayout p_ImageLayout, const std::span<const VkBufferImageCopy> p_CopyRegions) const
 {
     if (!m_IsRecording)
     {
@@ -178,7 +255,7 @@ void VulkanCommandBuffer::cmdCopyBufferToImage(const ResourceID p_Buffer, const 
     l_Device.getTable().vkCmdCopyBufferToImage(m_VkHandle, *l_Device.getBuffer(p_Buffer), *l_Device.getImage(p_Image), p_ImageLayout, static_cast<uint32_t>(p_CopyRegions.size()), p_CopyRegions.data());
 }
 
-void VulkanCommandBuffer::cmdBlitImage(const ResourceID p_Source, const ResourceID p_Destination, const std::vector<VkImageBlit>& p_Regions, const VkFilter p_Filter) const
+void VulkanCommandBuffer::cmdBlitImage(const ResourceID p_Source, const ResourceID p_Destination, const std::span<const VkImageBlit> p_Regions, const VkFilter p_Filter) const
 {
 	if (!m_IsRecording)
 	{
@@ -259,7 +336,7 @@ void VulkanCommandBuffer::cmdBindDescriptorSet(const VkPipelineBindPoint p_BindP
 	VulkanContext::getDevice(getDeviceID()).getTable().vkCmdBindDescriptorSets(m_VkHandle, p_BindPoint, l_VkLayout, 0, 1, &l_VkDescriptorSet, 0, nullptr);
 }
 
-void VulkanCommandBuffer::submit(const VulkanQueue& p_Queue, const std::vector<std::pair<ResourceID, VkSemaphoreWaitFlags>>& p_WaitSemaphoreData, const std::vector<ResourceID>& p_SignalSemaphores, const ResourceID p_Fence)
+void VulkanCommandBuffer::submit(const VulkanQueue& p_Queue, const std::span<const WaitSemaphoreData> p_WaitSemaphoreData, const std::span<const ResourceID> p_SignalSemaphores, const ResourceID p_Fence)
 {
 	if (m_IsRecording)
 	{
@@ -269,17 +346,17 @@ void VulkanCommandBuffer::submit(const VulkanQueue& p_Queue, const std::vector<s
 
 	VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
 
-	std::vector<VkSemaphore> l_WaitSemaphores{};
-	std::vector<VkPipelineStageFlags> l_WaitStages{};
+    TRANS_VECTOR(l_WaitSemaphores, VkSemaphore);
 	l_WaitSemaphores.resize(p_WaitSemaphoreData.size());
+    TRANS_VECTOR(l_WaitStages, VkPipelineStageFlags);
 	l_WaitStages.resize(p_WaitSemaphoreData.size());
 	for (size_t i = 0; i < l_WaitSemaphores.size(); i++)
 	{
-		l_WaitSemaphores[i] = l_Device.getSemaphore(p_WaitSemaphoreData[i].first).m_VkHandle;
-		l_WaitStages[i] = p_WaitSemaphoreData[i].second;
+		l_WaitSemaphores[i] = l_Device.getSemaphore(p_WaitSemaphoreData[i].semaphore).m_VkHandle;
+		l_WaitStages[i] = p_WaitSemaphoreData[i].flags;
 	}
 
-	std::vector<VkSemaphore> l_SignalSemaphoresVk{};
+    TRANS_VECTOR(l_SignalSemaphoresVk, VkSemaphore);
 	l_SignalSemaphoresVk.reserve(p_SignalSemaphores.size());
 	for (const ResourceID& l_Semaphore : p_SignalSemaphores)
 	{
@@ -311,7 +388,8 @@ void VulkanCommandBuffer::reset() const
 	}
 }
 
-void VulkanCommandBuffer::cmdBeginRenderPass(const ResourceID p_RenderPass, const ResourceID p_FrameBuffer, const VkExtent2D p_Extent, const std::vector<VkClearValue>& p_ClearValues) const
+void VulkanCommandBuffer::cmdBeginRenderPass(const ResourceID p_RenderPass, const ResourceID p_FrameBuffer, const VkExtent2D p_Extent, const std::span<VkClearValue>
+                                             p_ClearValues) const
 {
     VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
 
@@ -365,73 +443,18 @@ void VulkanCommandBuffer::cmdNextSubpass() const
 	VulkanContext::getDevice(getDeviceID()).getTable().vkCmdNextSubpass(m_VkHandle, VK_SUBPASS_CONTENTS_INLINE);
 }
 
-void VulkanCommandBuffer::cmdPipelineBarrier(
-    const VkPipelineStageFlags p_SrcStageMask, 
-    const VkPipelineStageFlags p_DstStageMask, 
-    const VkDependencyFlags p_DependencyFlags,
-    const std::vector<VkMemoryBarrier>& p_MemoryBarriers,
-    const std::vector<VkBufferMemoryBarrier>& p_BufferMemoryBarriers,
-    const std::vector<VkImageMemoryBarrier>& p_ImageMemoryBarriers
-) const
+void VulkanCommandBuffer::cmdPipelineBarrier(const VulkanMemoryBarrierBuilder& p_Builder) const
 {
 	if (!m_IsRecording)
 	{
 		throw std::runtime_error("Tried to execute command CmdPipelineBarrier, but command buffer (ID:" + std::to_string(m_ID) + ") is not recording");
 	}
 
-	VulkanContext::getDevice(getDeviceID()).getTable().vkCmdPipelineBarrier(m_VkHandle, p_SrcStageMask, p_DstStageMask, p_DependencyFlags, 
-        static_cast<uint32_t>(p_MemoryBarriers.size()), p_MemoryBarriers.data(), 
-        static_cast<uint32_t>(p_BufferMemoryBarriers.size()), p_BufferMemoryBarriers.data(), 
-        static_cast<uint32_t>(p_ImageMemoryBarriers.size()), p_ImageMemoryBarriers.data());
-}
-
-void VulkanCommandBuffer::cmdSimpleTransitionImageLayout(const ResourceID p_Image, const VkImageLayout p_NewLayout, const uint32_t p_SrcQueueFamily, const uint32_t p_DstQueueFamily) const
-{
-    VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
-	const VulkanImage& l_ImageObj = l_Device.getImage(p_Image);
-
-	VkImageMemoryBarrier l_Barrier = {};
-	l_Barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	l_Barrier.oldLayout = l_ImageObj.getLayout();
-	l_Barrier.newLayout = p_NewLayout;
-	if (p_SrcQueueFamily == p_DstQueueFamily)
-	{
-		l_Barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		l_Barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	}
-	else
-	{
-		l_Barrier.srcQueueFamilyIndex = p_SrcQueueFamily;
-		l_Barrier.dstQueueFamilyIndex = p_DstQueueFamily;
-	}
-	l_Barrier.image = *l_ImageObj;
-	l_Barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT; // Assuming color aspect for simplicity
-	l_Barrier.subresourceRange.baseMipLevel = 0;
-	l_Barrier.subresourceRange.levelCount = 1;
-	l_Barrier.subresourceRange.baseArrayLayer = 0;
-	l_Barrier.subresourceRange.layerCount = 1;
-    l_Barrier.srcAccessMask = s_TransitionMapping[l_Barrier.oldLayout].srcAccessMask;
-    l_Barrier.dstAccessMask = s_TransitionMapping[l_Barrier.newLayout].dstAccessMask;
-
-    const VkPipelineStageFlags l_SrcStageMask = s_TransitionMapping[l_Barrier.oldLayout].srcStageMask;
-    const VkPipelineStageFlags l_DstStageMask = s_TransitionMapping[l_Barrier.newLayout].dstStageMask;
-
-	l_Device.getTable().vkCmdPipelineBarrier(m_VkHandle, l_SrcStageMask, l_DstStageMask, 0, 0, nullptr, 0, nullptr, 1, &l_Barrier);
-}
-
-void VulkanCommandBuffer::cmdSimpleAbsoluteBarrier() const
-{
-	if (!m_IsRecording)
-	{
-		throw std::runtime_error("Tried to execute command CmdSimpleAbsoluteBarrier, but command buffer (ID:" + std::to_string(m_ID) + ") is not recording");
-	}
-
-	VkMemoryBarrier l_Barrier{};
-	l_Barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
-	l_Barrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
-	l_Barrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-
-	VulkanContext::getDevice(getDeviceID()).getTable().vkCmdPipelineBarrier(m_VkHandle, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 1, &l_Barrier, 0, nullptr, 0, nullptr);
+	VulkanContext::getDevice(getDeviceID()).getTable().vkCmdPipelineBarrier(m_VkHandle, 
+        p_Builder.m_SrcStageMask, p_Builder.m_DstStageMask, p_Builder.m_DependencyFlags, 
+        static_cast<uint32_t>(p_Builder.m_MemoryBarriers.size()), p_Builder.m_MemoryBarriers.data(), 
+        static_cast<uint32_t>(p_Builder.m_BufferMemoryBarriers.size()), p_Builder.m_BufferMemoryBarriers.data(), 
+        static_cast<uint32_t>(p_Builder.m_ImageMemoryBarriers.size()), p_Builder.m_ImageMemoryBarriers.data());
 }
 
 void VulkanCommandBuffer::cmdBindVertexBuffer(const ResourceID p_Buffer, const VkDeviceSize p_Offset) const
@@ -444,7 +467,7 @@ void VulkanCommandBuffer::cmdBindVertexBuffer(const ResourceID p_Buffer, const V
 	VulkanContext::getDevice(getDeviceID()).getTable().vkCmdBindVertexBuffers(m_VkHandle, 0, 1, &VulkanContext::getDevice(getDeviceID()).getBuffer(p_Buffer).m_VkHandle, &p_Offset);
 }
 
-void VulkanCommandBuffer::cmdBindVertexBuffers(const std::vector<ResourceID>& p_BufferIDs, const std::vector<VkDeviceSize>& p_Offsets) const
+void VulkanCommandBuffer::cmdBindVertexBuffers(const std::span<const ResourceID> p_BufferIDs, const std::span<const VkDeviceSize> p_Offsets) const
 {
 	if (!m_IsRecording)
 	{
@@ -453,7 +476,7 @@ void VulkanCommandBuffer::cmdBindVertexBuffers(const std::vector<ResourceID>& p_
 
     VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
 
-	std::vector<VkBuffer> l_VkBuffers;
+    TRANS_VECTOR(l_VkBuffers, VkBuffer);
 	l_VkBuffers.reserve(p_BufferIDs.size());
 	for (const ResourceID& l_Buffer : p_BufferIDs)
 	{

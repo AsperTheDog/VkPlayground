@@ -13,7 +13,7 @@ typedef uint8_t LoggerLevels;
 class Logger
 {
 public:
-    enum LevelBits
+    enum LevelBits : uint8_t
     {
         NONE = 0,
         DEBUG = 1,
@@ -25,10 +25,10 @@ public:
     
     static void setEnabled(const bool p_Enabled) { m_Enabled = p_Enabled; }
     static void setLevels(const LoggerLevels p_Levels) { m_Levels = p_Levels; }
-    static void setRootContext(const std::string& p_Context) { m_RootContext = p_Context; }
+    static void setRootContext(const std::string_view p_Context) { m_RootContext = p_Context; }
     static void setThreadSafe(const bool p_Activate) { m_ThreadSafeMode = p_Activate; }
 
-    static void pushContext(const std::string& p_Context) { m_Contexts.push_back(p_Context); }
+    static void pushContext(const std::string_view p_Context) { m_Contexts.emplace_back(p_Context); }
 	static void popContext();
 
     static bool isLevelActive(LevelBits p_Level);

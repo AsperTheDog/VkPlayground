@@ -1,6 +1,7 @@
 #include "ext/vulkan_acceleration_structure.hpp"
 
-#include "vulkan_context.hpp"
+#include "vulkan_buffer.hpp"
+#include "vulkan_device.hpp"
 #include "utils/logger.hpp"
 
 VulkanAccelerationStructureExtension* VulkanAccelerationStructureExtension::get(const VulkanDevice& p_Device)
@@ -8,7 +9,7 @@ VulkanAccelerationStructureExtension* VulkanAccelerationStructureExtension::get(
     return p_Device.getExtensionManager()->getExtension<VulkanAccelerationStructureExtension>(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
 }
 
-VulkanAccelerationStructureExtension* VulkanAccelerationStructureExtension::get(ResourceID p_DeviceID)
+VulkanAccelerationStructureExtension* VulkanAccelerationStructureExtension::get(const ResourceID p_DeviceID)
 {
     return VulkanContext::getDevice(p_DeviceID).getExtensionManager()->getExtension<VulkanAccelerationStructureExtension>(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
 }
@@ -20,7 +21,7 @@ VulkanAccelerationStructureExtension::VulkanAccelerationStructureExtension(const
 
 VkBaseInStructure* VulkanAccelerationStructureExtension::getExtensionStruct() const
 {
-    VkPhysicalDeviceAccelerationStructureFeaturesKHR* l_Struct = new VkPhysicalDeviceAccelerationStructureFeaturesKHR{};
+    VkPhysicalDeviceAccelerationStructureFeaturesKHR* l_Struct = TRANS_ALLOC(VkPhysicalDeviceAccelerationStructureFeaturesKHR){};
     l_Struct->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
     l_Struct->pNext = nullptr;
     l_Struct->accelerationStructure = m_EnableStructure;
@@ -31,12 +32,15 @@ VkBaseInStructure* VulkanAccelerationStructureExtension::getExtensionStruct() co
     return reinterpret_cast<VkBaseInStructure*>(l_Struct);
 }
 
-ResourceID VulkanAccelerationStructureExtension::createBLASFromModels(const std::vector<ModelData>& p_Models)
+ResourceID VulkanAccelerationStructureExtension::createBLASFromModels(const std::span<const ModelData> p_Models, uint32_t p_BufferQueueFamilyIndex)
 {
     VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
-    std::vector<VkAccelerationStructureGeometryKHR> l_Geometries;
-    std::vector<VkAccelerationStructureBuildRangeInfoKHR> l_BuildRanges;
-    std::vector<uint32_t> l_MaxPrimitiveCounts;
+    TRANS_VECTOR(l_Geometries, VkAccelerationStructureGeometryKHR);
+    l_Geometries.reserve(p_Models.size());
+    TRANS_VECTOR(l_BuildRanges, VkAccelerationStructureBuildRangeInfoKHR);
+    l_BuildRanges.reserve(p_Models.size());
+    TRANS_VECTOR(l_MaxPrimitiveCounts, uint32_t);
+    l_MaxPrimitiveCounts.reserve(p_Models.size());
     for (const ModelData& l_Model : p_Models)
     {
         VulkanBuffer& l_VertexBuffer = l_Device.getBuffer(l_Model.vertexBuffer.buffer);
@@ -91,9 +95,9 @@ ResourceID VulkanAccelerationStructureExtension::createBLASFromModels(const std:
     VkAccelerationStructureKHR l_Structure;
     l_Device.getTable().vkCreateAccelerationStructureKHR(*l_Device, &l_CreateInfo, nullptr, &l_Structure);
 
-    ResourceID l_Buffer = l_Device.createBuffer(l_SizeInfo.accelerationStructureSize, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR);
+    ResourceID l_Buffer = l_Device.createBuffer(l_SizeInfo.accelerationStructureSize, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR, p_BufferQueueFamilyIndex);
 
-    VulkanAccelerationStructure* l_NewRes = new VulkanAccelerationStructure{ l_Device.getID(), l_Structure, l_Buffer };
+    VulkanAccelerationStructure* l_NewRes = ARENA_ALLOC(VulkanAccelerationStructure){ l_Device.getID(), l_Structure, l_Buffer };
     m_AccStructures[l_NewRes->getID()] = l_NewRes;
     LOG_DEBUG("Created Acceleration Structure (ID:", l_NewRes->getID(), ")");
     return l_NewRes->getID();

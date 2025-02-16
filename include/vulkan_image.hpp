@@ -1,10 +1,12 @@
 #pragma once
 #include <unordered_map>
 
+#include "vulkan_context.hpp"
 #include "utils/identifiable.hpp"
 #include "vulkan_memory.hpp"
 
 class VulkanDevice;
+class VulkanMemoryBarrierBuilder;
 
 class VulkanImageView final : public VulkanDeviceSubresource
 {
@@ -58,8 +60,6 @@ public:
     void freeSampler(ResourceID p_Sampler);
     void freeSampler(const VulkanImageSampler& p_Sampler);
 
-	void transitionLayout(VkImageLayout p_Layout, uint32_t p_ThreadID);
-
 	[[nodiscard]] VkExtent3D getSize() const;
 	[[nodiscard]] VkImageType getType() const;
 	[[nodiscard]] VkImageLayout getLayout() const;
@@ -80,13 +80,16 @@ private:
 	VkExtent3D m_Size{};
 	VkImageType m_Type;
 	VkImageLayout m_Layout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+    uint32_t m_QueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	
 	VkImage m_VkHandle = VK_NULL_HANDLE;
 
-	std::unordered_map<ResourceID, VulkanImageView*> m_ImageViews;
-    std::unordered_map<ResourceID, VulkanImageSampler*> m_Samplers;
+    ARENA_UMAP(m_ImageViews, ResourceID, VulkanImageView*);
+    ARENA_UMAP(m_Samplers, ResourceID, VulkanImageSampler*);
 
 	friend class VulkanDevice;
 	friend class VulkanCommandBuffer;
 	friend class VulkanSwapchain;
+    friend class VulkanMemoryBarrierBuilder;
 };

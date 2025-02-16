@@ -1,6 +1,6 @@
 #include "ext/vulkan_deferred_host_operation.hpp"
 
-#include "vulkan_context.hpp"
+#include "vulkan_device.hpp"
 
 
 VulkanDeferredHostOperationsExtension* VulkanDeferredHostOperationsExtension::get(const VulkanDevice& p_Device)

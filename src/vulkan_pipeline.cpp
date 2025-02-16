@@ -62,8 +62,13 @@ VulkanPipelineBuilder::VulkanPipelineBuilder(const ResourceID p_Device)
 
 void VulkanPipelineBuilder::addVertexBinding(const VulkanBinding& p_Binding)
 {
+    const VulkanDevice& l_Device = VulkanContext::getDevice(m_Device);
+
 	m_VertexInputBindings.push_back(p_Binding.getBindingDescription());
-	for (VkVertexInputAttributeDescription& l_Attr : p_Binding.getAttributeDescriptions())
+    TRANS_VECTOR(l_Attributes, VkVertexInputAttributeDescription);
+    l_Attributes.resize(p_Binding.getAttributeDescriptionCount());
+    p_Binding.getAttributeDescriptions(l_Attributes.data());
+	for (VkVertexInputAttributeDescription& l_Attr : l_Attributes)
 	{
 		m_VertexInputAttributes.push_back(l_Attr);
 	}
@@ -91,10 +96,10 @@ void VulkanPipelineBuilder::setViewportState(const uint32_t p_ViewportCount, con
 	m_ViewportState.scissorCount = p_ScissorCount;
 }
 
-void VulkanPipelineBuilder::setViewportState(const std::vector<VkViewport>& p_Viewports, const std::vector<VkRect2D>& p_Scissors)
+void VulkanPipelineBuilder::setViewportState(const std::span<const VkViewport> p_Viewports, const std::span<const VkRect2D> p_Scissors)
 {
-	m_Viewports = std::vector<VkViewport>(p_Viewports);
-	m_Scissors = std::vector<VkRect2D>(p_Scissors);
+	m_Viewports = std::vector<VkViewport>(p_Viewports.begin(), p_Viewports.end());
+	m_Scissors = std::vector<VkRect2D>(p_Scissors.begin(), p_Scissors.end());
 	m_ViewportState.viewportCount = static_cast<uint32_t>(m_Viewports.size());
 	m_ViewportState.pViewports = m_Viewports.data();
 	m_ViewportState.scissorCount = static_cast<uint32_t>(m_Scissors.size());
@@ -139,16 +144,16 @@ void VulkanPipelineBuilder::addColorBlendAttachment(const VkPipelineColorBlendAt
 	m_ColorBlendState.pAttachments = m_Attachments.data();
 }
 
-void VulkanPipelineBuilder::setDynamicState(const std::vector<VkDynamicState>& p_DynamicStates)
+void VulkanPipelineBuilder::setDynamicState(const std::span<VkDynamicState> p_DynamicStates)
 {
-	m_DynamicStates = std::vector<VkDynamicState>(p_DynamicStates);
+	m_DynamicStates = std::vector<VkDynamicState>(p_DynamicStates.begin(), p_DynamicStates.end());
 	m_DynamicState.dynamicStateCount = static_cast<uint32_t>(m_DynamicStates.size());
 	m_DynamicState.pDynamicStates = m_DynamicStates.data();
 }
 
-void VulkanPipelineBuilder::addShaderStage(const ResourceID p_Shader, const std::string& p_Entrypoint)
+void VulkanPipelineBuilder::addShaderStage(const ResourceID p_Shader, const std::string_view p_Entrypoint)
 {
-	m_ShaderStages.push_back({p_Shader, p_Entrypoint});
+	m_ShaderStages.emplace_back(p_Shader, p_Entrypoint);
 }
 
 void VulkanPipelineBuilder::resetShaderStages()
@@ -214,23 +219,6 @@ void VulkanPipelineBuilder::setDynamicState(const VkPipelineDynamicStateCreateIn
 	m_DynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
 }
 
-std::vector<VkPipelineShaderStageCreateInfo> VulkanPipelineBuilder::createShaderStages() const
-{
-	std::vector<VkPipelineShaderStageCreateInfo> l_ShaderStagesInfo;
-	l_ShaderStagesInfo.reserve(m_ShaderStages.size());
-	for (const ShaderData& l_ShaderStage : m_ShaderStages)
-	{
-		VkPipelineShaderStageCreateInfo l_StageInfo{};
-		const VulkanShader& l_Shader = VulkanContext::getDevice(m_Device).getShader(l_ShaderStage.shader);
-		l_StageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-		l_StageInfo.stage = l_Shader.m_Stage;
-		l_StageInfo.module = l_Shader.m_VkHandle;
-		l_StageInfo.pName = l_ShaderStage.entrypoint.c_str();
-		l_ShaderStagesInfo.push_back(l_StageInfo);
-	}
-	return l_ShaderStagesInfo;
-}
-
 void VulkanPipeline::free()
 {
 	if (m_VkHandle != VK_NULL_HANDLE)
@@ -241,6 +229,20 @@ void VulkanPipeline::free()
         LOG_DEBUG("Freed pipeline (ID: ", m_ID, ")");
 		m_VkHandle = VK_NULL_HANDLE;
 	}
+}
+
+void VulkanPipelineBuilder::createShaderStages(VkPipelineShaderStageCreateInfo p_Container[]) const
+{
+    for (size_t i = 0; i < m_ShaderStages.size(); i++)
+    {
+        VkPipelineShaderStageCreateInfo l_StageInfo{};
+		const VulkanShader& l_Shader = VulkanContext::getDevice(m_Device).getShader(m_ShaderStages[i].shader);
+		l_StageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		l_StageInfo.stage = l_Shader.m_Stage;
+		l_StageInfo.module = l_Shader.m_VkHandle;
+		l_StageInfo.pName = m_ShaderStages[i].entrypoint.c_str();
+        p_Container[i] = l_StageInfo;
+    }
 }
 
 ResourceID VulkanPipeline::getLayout() const

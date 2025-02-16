@@ -1,5 +1,6 @@
 #pragma once
 #include <map>
+#include <span>
 
 #include "vulkan_memory.hpp"
 #include "ext/vulkan_extension_management.hpp"
@@ -41,7 +42,7 @@ public:
     [[nodiscard]] VkBaseInStructure* getExtensionStruct() const override;
     [[nodiscard]] VkStructureType getExtensionStructType() const override { return VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR; }
 
-    ResourceID createBLASFromModels(const std::vector<ModelData>& p_Models);
+    ResourceID createBLASFromModels(std::span<const ModelData> p_Models, uint32_t p_BufferQueueFamilyIndex);
 
     void free() override {}
 private:

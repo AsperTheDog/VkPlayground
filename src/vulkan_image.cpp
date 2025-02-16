@@ -115,7 +115,7 @@ ResourceID VulkanImage::createImageView(const VkFormat p_Format, const VkImageAs
 		throw std::runtime_error(std::string("Failed to create image view, error: ") + string_VkResult(ret));
 	}
 
-    VulkanImageView* l_ImageViewObj = new VulkanImageView(getDeviceID(), l_ImageView);
+    VulkanImageView* l_ImageViewObj = ARENA_ALLOC(VulkanImageView)(getDeviceID(), l_ImageView);
 	m_ImageViews.emplace(l_ImageViewObj->getID(), l_ImageViewObj);
     Logger::print(Logger::DEBUG, "Created image view ", l_ImageViewObj->getID(), " for image ", m_ID);
 	return l_ImageViewObj->getID();
@@ -174,7 +174,7 @@ void VulkanImage::freeImageView(const ResourceID p_ImageView)
         throw std::runtime_error("Tried to free image view that doesn't belong to image " + std::to_string(m_ID));
     }
     l_ImageView->free();
-    delete l_ImageView;
+    ARENA_FREE(l_ImageView, sizeof(VulkanImageView));
     m_ImageViews.erase(p_ImageView);
 }
 
@@ -211,7 +211,7 @@ ResourceID VulkanImage::createSampler(const VkFilter p_Filter, const VkSamplerAd
         throw std::runtime_error(std::string("Failed to create sampler, error: ") + string_VkResult(l_Ret));
     }
 
-    VulkanImageSampler* l_SamplerObj = new VulkanImageSampler(getDeviceID(), l_Sampler);
+    VulkanImageSampler* l_SamplerObj = ARENA_ALLOC(VulkanImageSampler)(getDeviceID(), l_Sampler);
     m_Samplers.emplace(l_SamplerObj->getID(), l_SamplerObj);
     return l_SamplerObj->getID();
 }
@@ -233,30 +233,13 @@ void VulkanImage::freeSampler(const ResourceID p_Sampler)
         throw std::runtime_error("Tried to free sampler that doesn't belong to image " + std::to_string(m_ID));
     }
     l_Sampler->free();
-    delete l_Sampler;
+    ARENA_FREE(l_Sampler, sizeof(VulkanImageSampler));
     m_Samplers.erase(p_Sampler);
 }
 
 void VulkanImage::freeSampler(const VulkanImageSampler& p_Sampler)
 {
     freeSampler(p_Sampler.getID());
-}
-
-void VulkanImage::transitionLayout(const VkImageLayout p_Layout, const uint32_t p_ThreadID)
-{
-	VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
-	VulkanCommandBuffer& l_CommandBuffer = l_Device.getCommandBuffer(l_Device.createOneTimeCommandBuffer(p_ThreadID), p_ThreadID);
-	l_CommandBuffer.beginRecording(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-	l_CommandBuffer.cmdSimpleTransitionImageLayout(m_ID, p_Layout);
-	l_CommandBuffer.endRecording();
-	const VulkanQueue l_Queue = l_Device.getQueue(l_Device.m_OneTimeQueue);
-	l_CommandBuffer.submit(l_Queue, {}, {});
-
-	m_Layout = p_Layout;
-
-	l_Queue.waitIdle();
-	l_Device.freeCommandBuffer(l_CommandBuffer, p_ThreadID);
-    LOG_DEBUG("Transitioned image layout to ", string_VkImageLayout(p_Layout), " on image ", m_ID);
 }
 
 VulkanImage::VulkanImage(const ResourceID p_Device, const VkImage p_VkHandle, const VkExtent3D p_Size, const VkImageType p_Type, const VkImageLayout p_Layout)
@@ -289,14 +272,14 @@ void VulkanImage::free()
     for (const auto& l_ImageView : m_ImageViews | std::views::values)
     {
         l_ImageView->free();
-        delete l_ImageView;
+        ARENA_FREE(l_ImageView, sizeof(VulkanImageView));
     }
     m_ImageViews.clear();
 
     for (const auto& l_Sampler : m_Samplers | std::views::values)
     {
         l_Sampler->free();
-        delete l_Sampler;
+        ARENA_FREE(l_Sampler, sizeof(VulkanImageSampler));
     }
     m_Samplers.clear();
 

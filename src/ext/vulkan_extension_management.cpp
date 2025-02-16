@@ -1,6 +1,8 @@
 ﻿#include <ranges>
 #include <ext/vulkan_extension_management.hpp>
 
+#include "vulkan_context.hpp"
+
 VulkanExtensionChain::~VulkanExtensionChain()
 {
     for (VkBaseInStructure* l_Next : m_Next)
@@ -44,6 +46,11 @@ bool VulkanExtensionChain::containsExtensionStruct(const VkStructureType p_Struc
         }
     }
     return false;
+}
+
+void* VulkanExtensionChain::allocFromContext(const size_t p_Bytes) const
+{
+    return VulkanContext::getArenaAllocator()->allocate(p_Bytes);
 }
 
 VulkanDeviceExtensionManager::VulkanDeviceExtensionManager(VulkanDeviceExtensionManager&& p_Other) noexcept
@@ -102,17 +109,17 @@ VulkanDeviceExtension* VulkanDeviceExtensionManager::getExtension(const std::str
     return nullptr;
 }
 
-bool VulkanDeviceExtensionManager::containsExtension(const std::string& p_ExtensionName) const
+bool VulkanDeviceExtensionManager::containsExtension(const std::string_view p_ExtensionName) const
 {
     return m_Extensions.contains(p_ExtensionName);
 }
 
-void VulkanDeviceExtensionManager::populateExtensionNames(std::vector<const char*>& p_Container) const
+void VulkanDeviceExtensionManager::populateExtensionNames(const char* p_Container[]) const
 {
-    p_Container.reserve(m_Extensions.size());
-    for (const std::string& l_Extension : m_Extensions | std::views::keys)
+    for (const std::string& key : m_Extensions | std::views::keys)
     {
-        p_Container.push_back(l_Extension.c_str());
+        *p_Container = key.c_str();
+        p_Container++;
     }
 }
 

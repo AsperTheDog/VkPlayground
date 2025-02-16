@@ -4,7 +4,8 @@
 #include <ranges>
 #include <vulkan/vk_enum_string_helper.h>
 
-#include "vulkan_context.hpp"
+#include "vulkan_device.hpp"
+#include "vulkan_sync.hpp"
 #include "utils/logger.hpp"
 
 VulkanSwapchainExtension* VulkanSwapchainExtension::get(const VulkanDevice& p_Device)
@@ -53,7 +54,7 @@ ResourceID VulkanSwapchainExtension::createSwapchain(const VkSurfaceKHR p_Surfac
 	if (p_OldSwapchain != UINT32_MAX)
 		freeSwapchain(p_OldSwapchain);
 
-    VulkanSwapchain* l_NewRes = new VulkanSwapchain{ getDeviceID(), l_SwapchainHandle, p_Extent, l_SelectedFormat, l_CreateInfo.minImageCount };
+    VulkanSwapchain* l_NewRes = ARENA_ALLOC(VulkanSwapchain){ getDeviceID(), l_SwapchainHandle, p_Extent, l_SelectedFormat, l_CreateInfo.minImageCount };
     m_Swapchains[l_NewRes->getID()] = l_NewRes;
     LOG_DEBUG("Created swapchain (ID: ", l_NewRes->getID(), ")");
 	return l_NewRes->getID();
@@ -76,7 +77,7 @@ bool VulkanSwapchainExtension::freeSwapchain(const ResourceID p_ID)
     {
         l_Swapchain->free();
         m_Swapchains.erase(p_ID);
-        delete l_Swapchain;
+        ARENA_FREE(l_Swapchain, sizeof(VulkanSwapchain));
         return true;
     }
     return false;
@@ -92,7 +93,7 @@ void VulkanSwapchainExtension::free()
     for (const auto& l_Swapchain : m_Swapchains | std::views::values)
     {
         l_Swapchain->free();
-        delete l_Swapchain;
+        ARENA_FREE(l_Swapchain, sizeof(VulkanSwapchain));
     }
     m_Swapchains.clear();
 }
@@ -164,15 +165,15 @@ uint32_t VulkanSwapchain::getImgSemaphore() const
 	return m_ImageAvailableSemaphore;
 }
 
-bool VulkanSwapchain::present(const QueueSelection p_Queue, const std::vector<ResourceID>& p_Semaphores)
+bool VulkanSwapchain::present(const QueueSelection p_Queue, const std::span<const ResourceID> p_Semaphores)
 {
 	if (!m_WasAcquired)
 		throw std::runtime_error("Tried to present swpachain, but image was not acquired");
 	m_WasAcquired = false;
 
     VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
-
-	std::vector<VkSemaphore> l_SemaphoreHandles{p_Semaphores.size()};
+    TRANS_VECTOR(l_SemaphoreHandles, VkSemaphore);
+    l_SemaphoreHandles.resize(p_Semaphores.size());
 	for (uint32_t i = 0; i < p_Semaphores.size(); i++)
 		l_SemaphoreHandles[i] = *l_Device.getSemaphore(p_Semaphores[i]);
 
@@ -222,11 +223,12 @@ VulkanSwapchain::VulkanSwapchain(ResourceID p_Device, const VkSwapchainKHR p_Han
 	VulkanDevice& l_Device = VulkanContext::getDevice(p_Device);
 
 	uint32_t l_ImageCount;
-	std::vector<VkImage> l_Images;
+    TRANS_VECTOR(l_Images, VkImage);
 	l_Device.getTable().vkGetSwapchainImagesKHR(l_Device.m_VkHandle, m_VkHandle, &l_ImageCount, nullptr);
     l_Images.resize(l_ImageCount);
     l_Device.getTable().vkGetSwapchainImagesKHR(l_Device.m_VkHandle, m_VkHandle, &l_ImageCount, l_Images.data());
 
+    m_Images.reserve(l_ImageCount);
 	for (const VkImage l_Image : l_Images)
 		m_Images.push_back({p_Device, l_Image, VkExtent3D{ p_Extent.width, p_Extent.height, 1 }, VK_IMAGE_TYPE_2D, VK_IMAGE_LAYOUT_UNDEFINED});
 

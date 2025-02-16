@@ -1,4 +1,5 @@
 #pragma once
+#include <span>
 #include <vector>
 
 #include "vulkan_extension_management.hpp"
@@ -48,7 +49,7 @@ public:
 	[[nodiscard]] uint32_t getNextImage() const;
 	[[nodiscard]] uint32_t getImgSemaphore() const;
 
-	bool present(QueueSelection p_Queue, const std::vector<ResourceID>& p_Semaphores);
+	bool present(QueueSelection p_Queue, std::span<const ResourceID> p_Semaphores);
 
 private:
 	void free() override;
