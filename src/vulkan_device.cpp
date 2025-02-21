@@ -295,6 +295,7 @@ ResourceID VulkanDevice::createImage(const VkImageType p_Type, const VkFormat p_
     VulkanImage* l_NewRes = ARENA_ALLOC(VulkanImage){m_ID, l_Image, p_Extent, p_Type, VK_IMAGE_LAYOUT_UNDEFINED};
     m_Subresources[l_NewRes->getID()] = l_NewRes;
     LOG_DEBUG("Created image (ID:", l_NewRes->getID(), ")");
+
 	return l_NewRes->getID();
 }
 
@@ -428,7 +429,7 @@ void VulkanDevice::dumpStagingBufferToImage(const uint32_t p_Image, const VkExte
     if (l_Layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
     {
         VulkanMemoryBarrierBuilder l_BarrierBuilder{getID(), VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0};
-        l_BarrierBuilder.addImageMemoryBarrier(p_Image, l_Layout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+        l_BarrierBuilder.addImageMemoryBarrier(p_Image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
         l_CommandBuffer.cmdPipelineBarrier(l_BarrierBuilder);
     }
     std::array<VkBufferImageCopy, 1> l_RegionArray = { l_Region };
@@ -436,7 +437,7 @@ void VulkanDevice::dumpStagingBufferToImage(const uint32_t p_Image, const VkExte
     if (l_Layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && p_KeepLayout)
     {
         VulkanMemoryBarrierBuilder l_BarrierBuilder{getID(), VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0};
-        l_BarrierBuilder.addImageMemoryBarrier(p_Image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, l_Layout);
+        l_BarrierBuilder.addImageMemoryBarrier(p_Image, l_Layout);
         l_CommandBuffer.cmdPipelineBarrier(l_BarrierBuilder);
     }
 	l_CommandBuffer.endRecording();
@@ -609,7 +610,7 @@ ResourceID VulkanDevice::createDescriptorSetLayout(const std::span<const VkDescr
 
 }
 
-ResourceID VulkanDevice::createDescriptorSet(const uint32_t p_Pool, const uint32_t p_Layout)
+ResourceID VulkanDevice::createDescriptorSet(ResourceID p_Pool, ResourceID p_Layout)
 {
 	const VkDescriptorSetLayout l_DescriptorSetLayout = getDescriptorSetLayout(p_Layout).m_VkHandle;
 	const VkDescriptorPool l_DescriptorPool = getDescriptorPool(p_Pool).m_VkHandle;
@@ -632,7 +633,7 @@ ResourceID VulkanDevice::createDescriptorSet(const uint32_t p_Pool, const uint32
 	return l_NewRes->getID();
 }
 
-void VulkanDevice::createDescriptorSets(const uint32_t p_Pool, const uint32_t p_Layout, const uint32_t p_Count, ResourceID p_Container[])
+void VulkanDevice::createDescriptorSets(ResourceID p_Pool, ResourceID p_Layout, const uint32_t p_Count, ResourceID p_Container[])
 {
 	const VkDescriptorSetLayout l_DescriptorSetLayout = getDescriptorSetLayout(p_Layout).m_VkHandle;
 	const VkDescriptorPool l_DescriptorPool = getDescriptorPool(p_Pool).m_VkHandle;
@@ -757,7 +758,7 @@ bool VulkanDevice::isStagingBufferConfigured() const
 	return m_StagingBufferInfo.stagingBuffer != UINT32_MAX;
 }
 
-ResourceID VulkanDevice::createPipeline(const VulkanPipelineBuilder& p_Builder, const uint32_t p_PipelineLayout, const uint32_t p_RenderPass, const uint32_t p_Subpass)
+ResourceID VulkanDevice::createPipeline(const VulkanPipelineBuilder& p_Builder, const ResourceID p_PipelineLayout, const ResourceID p_RenderPass, const uint32_t p_Subpass)
 {
     TRANS_VECTOR(l_ShaderModules, VkPipelineShaderStageCreateInfo);
     l_ShaderModules.resize(p_Builder.getShaderStageCount());
@@ -775,6 +776,9 @@ ResourceID VulkanDevice::createPipeline(const VulkanPipelineBuilder& p_Builder, 
 	l_PipelineInfo.pDepthStencilState = &p_Builder.m_DepthStencilState;
 	l_PipelineInfo.pColorBlendState = &p_Builder.m_ColorBlendState;
 	l_PipelineInfo.pDynamicState = &p_Builder.m_DynamicState;
+    if (p_Builder.m_TesellationStateEnabled)
+        l_PipelineInfo.pTessellationState = &p_Builder.m_TessellationState;
+
 	l_PipelineInfo.layout = getPipelineLayout(p_PipelineLayout).m_VkHandle;
 	l_PipelineInfo.renderPass = getRenderPass(p_RenderPass).m_VkHandle;
 	l_PipelineInfo.subpass = p_Subpass;
@@ -848,7 +852,7 @@ VkDeviceMemory VulkanDevice::getMemoryHandle(const uint32_t p_ChunkID) const
 	throw std::runtime_error("Memory chunk (ID: " + std::to_string(p_ChunkID) + ") not found");
 }
 
-VkCommandPool VulkanDevice::getCommandPool(const uint32_t p_QueueFamilyIndex, const uint32_t p_ThreadID, const VulkanCommandBuffer::TypeFlags p_Flags)
+VkCommandPool VulkanDevice::getCommandPool(const uint32_t p_QueueFamilyIndex, ThreadID p_ThreadID, const VulkanCommandBuffer::TypeFlags p_Flags)
 {
 	if ((p_Flags & VulkanCommandBuffer::TypeFlagBits::ONE_TIME) != 0)
 		return m_ThreadCommandInfos[p_ThreadID].oneTimePool;

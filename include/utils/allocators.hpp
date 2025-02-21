@@ -155,13 +155,13 @@ template <typename T>
 using TransAlloc = AllocHolder<TransientAllocator, T>;
 
 template<typename T, typename Q>
-using arena_umap = std::unordered_map<T, Q, std::hash<uint32_t>, std::equal_to<>, ArenaAlloc<std::pair<const T, Q>>>;
+using arena_umap = std::unordered_map<T, Q, std::hash<T>, std::equal_to<>, ArenaAlloc<std::pair<const T, Q>>>;
 
 template <typename T>
 using arena_vector = std::vector<T, ArenaAlloc<T>>;
 
 template<typename T, typename Q>
-using trans_umap = std::unordered_map<T, Q, std::hash<uint32_t>, std::equal_to<>, TransAlloc<std::pair<const T, Q>>>;
+using trans_umap = std::unordered_map<T, Q, std::hash<T>, std::equal_to<>, TransAlloc<std::pair<const T, Q>>>;
 
 template <typename T>
 using trans_vector = std::vector<T, TransAlloc<T>>;

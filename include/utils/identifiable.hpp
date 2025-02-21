@@ -7,6 +7,7 @@ typedef uint32_t ResourceID;
 class Identifiable
 {
 public:
+    virtual ~Identifiable() = default;
     [[nodiscard]] ResourceID getID() const { return m_ID; }
 
 protected:

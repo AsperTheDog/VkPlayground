@@ -4,6 +4,7 @@
 #include <vector>
 #include <Volk/volk.h>
 
+#include "vulkan_context.hpp"
 #include "utils/identifiable.hpp"
 
 
@@ -33,9 +34,12 @@ private:
     VkPipelineStageFlags m_SrcStageMask;
     VkPipelineStageFlags m_DstStageMask;
     VkDependencyFlags m_DependencyFlags;
-    std::vector<VkMemoryBarrier> m_MemoryBarriers;
-    std::vector<VkBufferMemoryBarrier> m_BufferMemoryBarriers;
-    std::vector<VkImageMemoryBarrier> m_ImageMemoryBarriers;
+    TRANS_VECTOR(m_MemoryBarriers, VkMemoryBarrier);
+    TRANS_VECTOR(m_BufferMemoryBarriers, VkBufferMemoryBarrier);
+    TRANS_VECTOR(m_ImageMemoryBarriers, VkImageMemoryBarrier);
+
+    TRANS_UMAP(m_Images, VkImage, ResourceID);
+    TRANS_UMAP(m_Buffers, VkBuffer, ResourceID);
 
     struct AccessData
     {
@@ -60,13 +64,13 @@ public:
 	void beginRecording(VkCommandBufferUsageFlags p_Flags = 0);
 	void endRecording();
 	void submit(const VulkanQueue& p_Queue, std::span<const WaitSemaphoreData> p_WaitSemaphoreData, std::span<const ResourceID> p_SignalSemaphores, ResourceID p_Fence = UINT32_MAX);
-	void reset() const;
+	void reset();
 
 	void cmdBeginRenderPass(ResourceID p_RenderPass, ResourceID p_FrameBuffer, VkExtent2D p_Extent, std::span<VkClearValue> p_ClearValues) const;
 	void cmdEndRenderPass() const;
 	void cmdBindPipeline(VkPipelineBindPoint p_BindPoint, ResourceID p_Pipeline) const;
 	void cmdNextSubpass() const;
-	void cmdPipelineBarrier(const VulkanMemoryBarrierBuilder& p_Builder) const;
+	void cmdPipelineBarrier(const VulkanMemoryBarrierBuilder& p_Builder);
 	
 	void cmdBindVertexBuffer(ResourceID p_Buffer, VkDeviceSize p_Offset) const;
 	void cmdBindVertexBuffers(std::span<const ResourceID> p_BufferIDs, std::span<const VkDeviceSize> p_Offsets) const;
@@ -104,11 +108,53 @@ private:
 	VkCommandBuffer m_VkHandle = VK_NULL_HANDLE;
 
 	bool m_IsRecording = false;
+    bool m_HasRecorded = false;
+    bool m_HasSubmitted = false;
 	TypeFlags m_Flags = false;
 	uint32_t m_FamilyIndex = 0;
 	uint32_t m_ThreadID = 0;
 
     bool m_CanBeReset = false;
+
+private:
+    void resetChangesOnSubmit();
+    void applyChangesOnSubmit() const;
+
+    struct ChangeOnSubmit
+    {
+        enum Type : uint8_t
+        {
+            IMAGE_LAYOUT_CHANGE,
+            IMAGE_OWNERSHIP_CHANGE,
+            BUFFER_OWNERSHIP_CHANGE
+        };
+
+        union Change
+        {
+            struct ImageLayoutChange
+            {
+                ResourceID image;
+                VkImageLayout layout;
+            } imageLayout;
+
+            struct ImageOwnershipChange
+            {
+                ResourceID image;
+                uint32_t queueFamily;
+            } imageOwnership;
+
+            struct BufferOwnershipChange
+            {
+                ResourceID buffer;
+                uint32_t queueFamily;
+            } bufferOwnership;
+        };
+
+        Type type;
+        Change change;
+    };
+
+    ARENA_VECTOR(m_ChangesOnSubmit, ChangeOnSubmit);
 
 	friend class VulkanDevice;
 };

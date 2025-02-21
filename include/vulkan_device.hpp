@@ -21,7 +21,7 @@
 class VulkanDeviceExtensionManager;
 typedef uint32_t ThreadID;
 
-class VulkanDevice : public Identifiable
+class VulkanDevice final : public Identifiable
 {
 public:
 
@@ -90,7 +90,7 @@ public:
     bool freeShader(const VulkanShader& p_Shader) { return freeSubresource<VulkanShader>(p_Shader.getID()); }
 	bool freeAllShaders();
 
-	ResourceID createPipeline(const VulkanPipelineBuilder& p_Builder, uint32_t p_PipelineLayout, uint32_t p_RenderPass, uint32_t p_Subpass);
+	ResourceID createPipeline(const VulkanPipelineBuilder& p_Builder, ResourceID p_PipelineLayout, ResourceID p_RenderPass, uint32_t p_Subpass);
     VulkanPipeline& getPipeline(const ResourceID p_ID) { return *getSubresource<VulkanPipeline>(p_ID); }
     [[nodiscard]] const VulkanPipeline& getPipeline(const ResourceID p_ID) const { return *getSubresource<VulkanPipeline>(p_ID); }
     bool freePipeline(const ResourceID p_ID) { return freeSubresource<VulkanPipeline>(p_ID); }
@@ -108,8 +108,8 @@ public:
     bool freeDescriptorSetLayout(const ResourceID p_ID) { return freeSubresource<VulkanDescriptorSetLayout>(p_ID); }
     bool freeDescriptorSetLayout(const VulkanDescriptorSetLayout& p_Layout) { return freeSubresource<VulkanDescriptorSetLayout>(p_Layout.getID()); }
     
-	ResourceID createDescriptorSet(uint32_t p_Pool, uint32_t p_Layout);
-    void createDescriptorSets(uint32_t p_Pool, uint32_t p_Layout, uint32_t p_Count, ResourceID p_Container[]);
+	ResourceID createDescriptorSet(ResourceID p_Pool, ResourceID p_Layout);
+    void createDescriptorSets(ResourceID p_Pool, ResourceID p_Layout, uint32_t p_Count, ResourceID p_Container[]);
     VulkanDescriptorSet& getDescriptorSet(const ResourceID p_ID) { return *getSubresource<VulkanDescriptorSet>(p_ID); }
     [[nodiscard]] const VulkanDescriptorSet& getDescriptorSet(const ResourceID p_ID) const { return *getSubresource<VulkanDescriptorSet>(p_ID); }
     bool freeDescriptorSet(const ResourceID p_ID) { return freeSubresource<VulkanDescriptorSet>(p_ID); }
@@ -155,7 +155,7 @@ public:
 private:
 	bool free();
 
-    VkCommandPool getCommandPool(uint32_t p_QueueFamilyIndex, uint32_t p_ThreadID, VulkanCommandBuffer::TypeFlags p_Flags);
+    VkCommandPool getCommandPool(uint32_t p_QueueFamilyIndex, ThreadID p_ThreadID, VulkanCommandBuffer::TypeFlags p_Flags);
 
 	VulkanDevice(VulkanGPU p_PhysicalDevice, VkDevice p_Device, VulkanDeviceExtensionManager* p_ExtensionManager);
 

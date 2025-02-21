@@ -193,7 +193,7 @@ ResourceID VulkanImage::createSampler(const VkFilter p_Filter, const VkSamplerAd
     l_CreateInfo.addressModeV = p_SamplerAddressMode;
     l_CreateInfo.addressModeW = p_SamplerAddressMode;
     l_CreateInfo.anisotropyEnable = VK_FALSE;
-    l_CreateInfo.maxAnisotropy = 0;
+    l_CreateInfo.maxAnisotropy = 0.0f;
     l_CreateInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
     l_CreateInfo.unnormalizedCoordinates = VK_FALSE;
     l_CreateInfo.compareEnable = VK_FALSE;
