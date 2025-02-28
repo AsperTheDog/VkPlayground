@@ -54,6 +54,8 @@ struct QueueFamily
 
 	bool isPresentSupported(VkSurfaceKHR p_Surface) const;
 
+    bool operator==(const QueueFamily& p_Other) const { return index == p_Other.index && gpu == p_Other.gpu; }
+
 private:
 	QueueFamily(const VkQueueFamilyProperties& p_Properties, uint32_t p_Index, VulkanGPU p_GPU);
 
@@ -81,6 +83,8 @@ struct QueueSelection
 {
 	uint32_t familyIndex = UINT32_MAX;
 	uint32_t queueIndex = UINT32_MAX;
+
+    bool operator==(const QueueSelection& p_Other) const { return familyIndex == p_Other.familyIndex && queueIndex == p_Other.queueIndex; }
 };
 
 class QueueFamilySelector

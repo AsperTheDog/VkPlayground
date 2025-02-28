@@ -123,3 +123,19 @@ private:
 	friend class VulkanDevice;
 	friend class VulkanCommandBuffer;
 };
+
+class VulkanComputePipeline final : public VulkanDeviceSubresource
+{
+public:
+    VkPipeline operator*() const { return m_VkHandle; }
+
+private:
+    void free() override;
+
+    VulkanComputePipeline(ResourceID p_Device, VkPipeline p_Handle);
+
+    VkPipeline m_VkHandle;
+
+    friend class VulkanDevice;
+    friend class VulkanCommandBuffer;
+};

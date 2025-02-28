@@ -31,6 +31,8 @@ public:
 
 	VkPhysicalDevice operator*() const;
 
+    bool operator==(const VulkanGPU& p_Other) const { return m_VkHandle == p_Other.m_VkHandle; }
+
 private:
 	explicit VulkanGPU(VkPhysicalDevice p_PhysicalDevice);
 

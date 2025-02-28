@@ -96,6 +96,12 @@ public:
     bool freePipeline(const ResourceID p_ID) { return freeSubresource<VulkanPipeline>(p_ID); }
     bool freePipeline(const VulkanPipeline& p_Pipeline) { return freeSubresource<VulkanPipeline>(p_Pipeline.getID()); }
 
+    ResourceID createComputePipeline(ResourceID p_Layout, ResourceID p_Shader, std::string_view p_Entrypoint);
+    VulkanComputePipeline& getComputePipeline(const ResourceID p_ID) { return *getSubresource<VulkanComputePipeline>(p_ID); }
+    [[nodiscard]] const VulkanComputePipeline& getComputePipeline(const ResourceID p_ID) const { return *getSubresource<VulkanComputePipeline>(p_ID); }
+    bool freeComputePipeline(const ResourceID p_ID) { return freeSubresource<VulkanComputePipeline>(p_ID); }
+    bool freeComputePipeline(const VulkanComputePipeline& p_Pipeline) { return freeSubresource<VulkanComputePipeline>(p_Pipeline.getID()); }
+
 	ResourceID createDescriptorPool(std::span<const VkDescriptorPoolSize> p_PoolSizes, uint32_t p_MaxSets, VkDescriptorPoolCreateFlags p_Flags);
     VulkanDescriptorPool& getDescriptorPool(const ResourceID p_ID) { return *getSubresource<VulkanDescriptorPool>(p_ID); }
     [[nodiscard]] const VulkanDescriptorPool& getDescriptorPool(const ResourceID p_ID) const { return *getSubresource<VulkanDescriptorPool>(p_ID); }
@@ -225,7 +231,7 @@ T* VulkanDevice::getSubresource(const ResourceID p_ID) const
 
     if (m_Subresources.contains(p_ID))
     {
-        return static_cast<T*>(m_Subresources.at(p_ID));
+        return dynamic_cast<T*>(m_Subresources.at(p_ID));
     }
     return nullptr;
 }

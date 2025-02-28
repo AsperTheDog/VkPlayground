@@ -291,3 +291,20 @@ VulkanPipelineLayout::VulkanPipelineLayout(const uint32_t device, const VkPipeli
 	: VulkanDeviceSubresource(device), m_VkHandle(handle)
 {
 }
+
+void VulkanComputePipeline::free()
+{
+    if (m_VkHandle != VK_NULL_HANDLE)
+    {
+        const VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
+
+        l_Device.getTable().vkDestroyPipeline(*l_Device, m_VkHandle, nullptr);
+        LOG_DEBUG("Freed compute pipeline (ID: ", m_ID, ")");
+        m_VkHandle = VK_NULL_HANDLE;
+    }
+}
+
+VulkanComputePipeline::VulkanComputePipeline(const ResourceID p_Device, const VkPipeline p_Handle)
+    : VulkanDeviceSubresource(p_Device), m_VkHandle(p_Handle)
+{
+}

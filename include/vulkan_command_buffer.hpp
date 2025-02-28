@@ -38,9 +38,6 @@ private:
     TRANS_VECTOR(m_BufferMemoryBarriers, VkBufferMemoryBarrier);
     TRANS_VECTOR(m_ImageMemoryBarriers, VkImageMemoryBarrier);
 
-    TRANS_UMAP(m_Images, VkImage, ResourceID);
-    TRANS_UMAP(m_Buffers, VkBuffer, ResourceID);
-
     struct AccessData
     {
         VkAccessFlags srcAccessMask;
@@ -58,19 +55,19 @@ public:
     struct WaitSemaphoreData
     {
         ResourceID semaphore;
-        VkSemaphoreWaitFlags flags;
+        VkPipelineStageFlags stages;
     };
 
 	void beginRecording(VkCommandBufferUsageFlags p_Flags = 0);
 	void endRecording();
 	void submit(const VulkanQueue& p_Queue, std::span<const WaitSemaphoreData> p_WaitSemaphoreData, std::span<const ResourceID> p_SignalSemaphores, ResourceID p_Fence = UINT32_MAX);
-	void reset();
+	void reset() const;
 
 	void cmdBeginRenderPass(ResourceID p_RenderPass, ResourceID p_FrameBuffer, VkExtent2D p_Extent, std::span<VkClearValue> p_ClearValues) const;
 	void cmdEndRenderPass() const;
 	void cmdBindPipeline(VkPipelineBindPoint p_BindPoint, ResourceID p_Pipeline) const;
 	void cmdNextSubpass() const;
-	void cmdPipelineBarrier(const VulkanMemoryBarrierBuilder& p_Builder);
+	void cmdPipelineBarrier(const VulkanMemoryBarrierBuilder& p_Builder) const;
 	
 	void cmdBindVertexBuffer(ResourceID p_Buffer, VkDeviceSize p_Offset) const;
 	void cmdBindVertexBuffers(std::span<const ResourceID> p_BufferIDs, std::span<const VkDeviceSize> p_Offsets) const;
@@ -90,6 +87,7 @@ public:
 
 	void cmdDraw(uint32_t p_VertexCount, uint32_t p_FirstVertex) const;
 	void cmdDrawIndexed(uint32_t p_IndexCount, uint32_t p_FirstIndex, int32_t p_VertexOffset) const;
+    void cmdDispatch(uint32_t p_GroupCountX, uint32_t p_GroupCountY, uint32_t p_GroupCountZ) const;
 
 	VkCommandBuffer operator*() const;
 
@@ -115,46 +113,6 @@ private:
 	uint32_t m_ThreadID = 0;
 
     bool m_CanBeReset = false;
-
-private:
-    void resetChangesOnSubmit();
-    void applyChangesOnSubmit() const;
-
-    struct ChangeOnSubmit
-    {
-        enum Type : uint8_t
-        {
-            IMAGE_LAYOUT_CHANGE,
-            IMAGE_OWNERSHIP_CHANGE,
-            BUFFER_OWNERSHIP_CHANGE
-        };
-
-        union Change
-        {
-            struct ImageLayoutChange
-            {
-                ResourceID image;
-                VkImageLayout layout;
-            } imageLayout;
-
-            struct ImageOwnershipChange
-            {
-                ResourceID image;
-                uint32_t queueFamily;
-            } imageOwnership;
-
-            struct BufferOwnershipChange
-            {
-                ResourceID buffer;
-                uint32_t queueFamily;
-            } bufferOwnership;
-        };
-
-        Type type;
-        Change change;
-    };
-
-    ARENA_VECTOR(m_ChangesOnSubmit, ChangeOnSubmit);
 
 	friend class VulkanDevice;
 };

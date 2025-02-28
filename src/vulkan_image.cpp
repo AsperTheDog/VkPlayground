@@ -73,6 +73,21 @@ VkImageLayout VulkanImage::getLayout() const
 	return m_Layout;
 }
 
+uint32_t VulkanImage::getQueue() const
+{
+    return m_QueueFamilyIndex;
+}
+
+void VulkanImage::setLayout(const VkImageLayout p_Layout)
+{
+    m_Layout = p_Layout;
+}
+
+void VulkanImage::setQueue(const uint32_t p_QueueFamilyIndex)
+{
+    m_QueueFamilyIndex = p_QueueFamilyIndex;
+}
+
 VkImage VulkanImage::operator*() const
 {
 	return m_VkHandle;

@@ -607,7 +607,6 @@ ResourceID VulkanDevice::createDescriptorSetLayout(const std::span<const VkDescr
     m_Subresources[l_NewRes->getID()] = l_NewRes;
     LOG_DEBUG("Created descriptor set layout (ID:", l_NewRes->getID(), ") with ", p_Bindings.size(), " binding(s)");
 	return l_NewRes->getID();
-
 }
 
 ResourceID VulkanDevice::createDescriptorSet(ResourceID p_Pool, ResourceID p_Layout)
@@ -794,6 +793,31 @@ ResourceID VulkanDevice::createPipeline(const VulkanPipelineBuilder& p_Builder, 
     m_Subresources[l_NewRes->getID()] = l_NewRes;
     LOG_DEBUG("Created pipeline (ID:", l_NewRes->getID(), ")");
 	return l_NewRes->getID();
+}
+
+ResourceID VulkanDevice::createComputePipeline(const ResourceID p_Layout, const ResourceID p_Shader, const std::string_view p_Entrypoint)
+{
+    VkPipelineShaderStageCreateInfo l_StageInfo{};
+	const VulkanShader& l_Shader = getShader(p_Shader);
+	l_StageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	l_StageInfo.stage = l_Shader.m_Stage;
+	l_StageInfo.module = l_Shader.m_VkHandle;
+	l_StageInfo.pName = p_Entrypoint.data();
+
+    VkComputePipelineCreateInfo l_PipelineInfo{};
+    l_PipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    l_PipelineInfo.stage = l_StageInfo;
+    l_PipelineInfo.layout = getPipelineLayout(p_Layout).m_VkHandle;
+
+    VkPipeline l_Pipeline;
+    if (const VkResult l_Ret = getTable().vkCreateComputePipelines(m_VkHandle, VK_NULL_HANDLE, 1, &l_PipelineInfo, nullptr, &l_Pipeline); l_Ret != VK_SUCCESS)
+    {
+        throw std::runtime_error(std::string("Failed to create compute pipeline, error: ") + string_VkResult(l_Ret));
+    }
+    VulkanPipeline* l_NewRes = ARENA_ALLOC(VulkanPipeline) { m_ID, l_Pipeline, p_Layout, UINT32_MAX, UINT32_MAX };
+    m_Subresources[l_NewRes->getID()] = l_NewRes;
+    LOG_DEBUG("Created compute pipeline (ID:", l_NewRes->getID(), ")");
+    return l_NewRes->getID();
 }
 
 bool VulkanDevice::free()

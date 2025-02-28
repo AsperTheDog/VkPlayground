@@ -173,8 +173,6 @@ void VulkanMemoryBarrierBuilder::addBufferMemoryBarrier(const ResourceID p_Buffe
         l_Barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     }
     m_BufferMemoryBarriers.push_back(l_Barrier);
-
-    m_Buffers[*l_Buffer] = p_Buffer;
 }
 
 void VulkanMemoryBarrierBuilder::addImageMemoryBarrier(const ResourceID p_Image, const VkImageLayout p_NewLayout, const uint32_t p_DstQueueFamily, const VkAccessFlags p_SrcAccessMask, const VkAccessFlags p_DstAccessMask)
@@ -203,8 +201,6 @@ void VulkanMemoryBarrierBuilder::addImageMemoryBarrier(const ResourceID p_Image,
     l_Barrier.subresourceRange.baseArrayLayer = 0;
     l_Barrier.subresourceRange.layerCount = 1;
     m_ImageMemoryBarriers.push_back(l_Barrier);
-
-    m_Images[*l_Image] = p_Image;
 }
 
 void VulkanCommandBuffer::beginRecording(const VkCommandBufferUsageFlags p_Flags)
@@ -364,7 +360,7 @@ void VulkanCommandBuffer::submit(const VulkanQueue& p_Queue, const std::span<con
 	for (size_t i = 0; i < l_WaitSemaphores.size(); i++)
 	{
 		l_WaitSemaphores[i] = l_Device.getSemaphore(p_WaitSemaphoreData[i].semaphore).m_VkHandle;
-		l_WaitStages[i] = p_WaitSemaphoreData[i].flags;
+		l_WaitStages[i] = p_WaitSemaphoreData[i].stages;
 	}
 
     TRANS_VECTOR(l_SignalSemaphoresVk, VkSemaphore);
@@ -390,18 +386,15 @@ void VulkanCommandBuffer::submit(const VulkanQueue& p_Queue, const std::span<con
 		throw std::runtime_error("Failed to submit command buffer (ID:" + std::to_string(m_ID) + "), error: " + string_VkResult(l_Ret));
 	}
 
-    applyChangesOnSubmit();
     m_HasSubmitted = true;
 }
 
-void VulkanCommandBuffer::reset()
+void VulkanCommandBuffer::reset() const
 {
 	if (const VkResult l_Ret = VulkanContext::getDevice(getDeviceID()).getTable().vkResetCommandBuffer(m_VkHandle, 0); l_Ret != VK_SUCCESS)
 	{
 		throw std::runtime_error("Failed to reset command buffer (ID:" + std::to_string(m_ID) + "), error: " + string_VkResult(l_Ret));
 	}
-
-    resetChangesOnSubmit();
 }
 
 void VulkanCommandBuffer::cmdBeginRenderPass(const ResourceID p_RenderPass, const ResourceID p_FrameBuffer, const VkExtent2D p_Extent, const std::span<VkClearValue>
@@ -459,56 +452,12 @@ void VulkanCommandBuffer::cmdNextSubpass() const
 	VulkanContext::getDevice(getDeviceID()).getTable().vkCmdNextSubpass(m_VkHandle, VK_SUBPASS_CONTENTS_INLINE);
 }
 
-void VulkanCommandBuffer::cmdPipelineBarrier(const VulkanMemoryBarrierBuilder& p_Builder)
+void VulkanCommandBuffer::cmdPipelineBarrier(const VulkanMemoryBarrierBuilder& p_Builder) const
 {
 	if (!m_IsRecording)
 	{
 		throw std::runtime_error("Tried to execute command CmdPipelineBarrier, but command buffer (ID:" + std::to_string(m_ID) + ") is not recording");
 	}
-
-    for (const VkImageMemoryBarrier& l_Barrier : p_Builder.m_ImageMemoryBarriers)
-    {
-        if (l_Barrier.oldLayout != VK_IMAGE_LAYOUT_UNDEFINED || l_Barrier.newLayout != VK_IMAGE_LAYOUT_UNDEFINED)
-        {
-            ChangeOnSubmit l_Change{};
-            l_Change.type = ChangeOnSubmit::Type::IMAGE_LAYOUT_CHANGE;
-            l_Change.change.imageLayout.image = p_Builder.m_Images.at(l_Barrier.image);
-            l_Change.change.imageLayout.layout = l_Barrier.newLayout;
-
-            m_ChangesOnSubmit.push_back(l_Change);
-        }
-
-        if (l_Barrier.srcQueueFamilyIndex != VK_QUEUE_FAMILY_IGNORED || l_Barrier.dstQueueFamilyIndex != VK_QUEUE_FAMILY_IGNORED)
-        {
-            ChangeOnSubmit l_Change{};
-            l_Change.type = ChangeOnSubmit::Type::IMAGE_OWNERSHIP_CHANGE;
-            l_Change.change.imageOwnership.image = p_Builder.m_Images.at(l_Barrier.image);
-            l_Change.change.imageOwnership.queueFamily = l_Barrier.dstQueueFamilyIndex;
-
-            m_ChangesOnSubmit.push_back(l_Change);
-        }
-        else if (VulkanContext::getDevice(getDeviceID()).getImage(p_Builder.m_Images.at(l_Barrier.image)).m_QueueFamilyIndex == VK_QUEUE_FAMILY_IGNORED)
-        {
-            ChangeOnSubmit l_Change{};
-            l_Change.type = ChangeOnSubmit::Type::IMAGE_OWNERSHIP_CHANGE;
-            l_Change.change.imageOwnership.image = p_Builder.m_Images.at(l_Barrier.image);
-            l_Change.change.imageOwnership.queueFamily = m_FamilyIndex;
-            m_ChangesOnSubmit.push_back(l_Change);
-        }
-    }
-
-    for (VkBufferMemoryBarrier l_Barrier : p_Builder.m_BufferMemoryBarriers)
-    {
-        if (l_Barrier.srcQueueFamilyIndex != VK_QUEUE_FAMILY_IGNORED || l_Barrier.dstQueueFamilyIndex != VK_QUEUE_FAMILY_IGNORED)
-        {
-            ChangeOnSubmit l_Change{};
-            l_Change.type = ChangeOnSubmit::Type::BUFFER_OWNERSHIP_CHANGE;
-            l_Change.change.bufferOwnership.buffer = p_Builder.m_Buffers.at(l_Barrier.buffer);
-            l_Change.change.bufferOwnership.queueFamily = l_Barrier.dstQueueFamilyIndex;
-
-            m_ChangesOnSubmit.push_back(l_Change);
-        }
-    }
 
 	VulkanContext::getDevice(getDeviceID()).getTable().vkCmdPipelineBarrier(m_VkHandle, 
         p_Builder.m_SrcStageMask, p_Builder.m_DstStageMask, p_Builder.m_DependencyFlags, 
@@ -596,6 +545,16 @@ void VulkanCommandBuffer::cmdDrawIndexed(const uint32_t p_IndexCount, const uint
 	VulkanContext::getDevice(getDeviceID()).getTable().vkCmdDrawIndexed(m_VkHandle, p_IndexCount, 1, p_FirstIndex, p_VertexOffset, 0);
 }
 
+void VulkanCommandBuffer::cmdDispatch(const uint32_t p_GroupCountX, const uint32_t p_GroupCountY, const uint32_t p_GroupCountZ) const
+{
+    if (!m_IsRecording)
+    {
+        throw std::runtime_error("Tried to execute command CmdDispatch, but command buffer (ID:" + std::to_string(m_ID) + ") is not recording");
+    }
+
+    VulkanContext::getDevice(getDeviceID()).getTable().vkCmdDispatch(m_VkHandle, p_GroupCountX, p_GroupCountY, p_GroupCountZ);
+}
+
 VkCommandBuffer VulkanCommandBuffer::operator*() const
 {
 	return m_VkHandle;
@@ -610,44 +569,9 @@ void VulkanCommandBuffer::free()
         LOG_DEBUG("Freed command buffer (ID:", m_ID, ")");
 		m_VkHandle = VK_NULL_HANDLE;
 	}
-
-    resetChangesOnSubmit();
 }
 
 VulkanCommandBuffer::VulkanCommandBuffer(const uint32_t device, const VkCommandBuffer commandBuffer, const TypeFlags flags, const uint32_t familyIndex, const uint32_t threadID)
 	: VulkanDeviceSubresource(device), m_VkHandle(commandBuffer), m_Flags(flags), m_FamilyIndex(familyIndex), m_ThreadID(threadID)
 {
-}
-
-void VulkanCommandBuffer::resetChangesOnSubmit()
-{
-    m_ChangesOnSubmit.clear();
-}
-
-void VulkanCommandBuffer::applyChangesOnSubmit() const
-{
-    for (const ChangeOnSubmit& l_Change : m_ChangesOnSubmit)
-    {
-        switch (l_Change.type)
-        {
-        case ChangeOnSubmit::Type::IMAGE_LAYOUT_CHANGE:
-            {
-                const ChangeOnSubmit::Change::ImageLayoutChange& l_ChangeData = l_Change.change.imageLayout;
-                VulkanContext::getDevice(getDeviceID()).getImage(l_ChangeData.image).m_Layout = l_ChangeData.layout;
-                break;
-            }
-        case ChangeOnSubmit::Type::IMAGE_OWNERSHIP_CHANGE:
-            {
-                const ChangeOnSubmit::Change::ImageOwnershipChange& l_ChangeData = l_Change.change.imageOwnership;
-                VulkanContext::getDevice(getDeviceID()).getImage(l_ChangeData.image).m_QueueFamilyIndex = l_ChangeData.queueFamily;
-                break;
-            }
-        case ChangeOnSubmit::Type::BUFFER_OWNERSHIP_CHANGE:
-            {
-                const ChangeOnSubmit::Change::BufferOwnershipChange& l_ChangeData = l_Change.change.bufferOwnership;
-                VulkanContext::getDevice(getDeviceID()).getBuffer(l_ChangeData.buffer).m_QueueFamilyIndex = l_ChangeData.queueFamily;
-                break;
-            }
-        }
-    }
 }

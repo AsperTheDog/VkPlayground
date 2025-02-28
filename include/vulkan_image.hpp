@@ -62,7 +62,11 @@ public:
 
 	[[nodiscard]] VkExtent3D getSize() const;
 	[[nodiscard]] VkImageType getType() const;
-	[[nodiscard]] VkImageLayout getLayout() const;
+    [[nodiscard]] VkImageLayout getLayout() const;
+    [[nodiscard]] uint32_t getQueue() const;
+
+    void setLayout(VkImageLayout p_Layout);
+    void setQueue(uint32_t p_QueueFamilyIndex);
 
 	VkImage operator*() const;
 
