@@ -4,6 +4,11 @@
 #include <cstdint>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
+
+// =====================
+// == Trans Allocator ==
+// =====================
 
 class TransientAllocator {
 public:
@@ -23,8 +28,10 @@ public:
     void initialize(uint8_t* p_Container, size_t p_Size, bool p_ShouldDelete);
 
     [[nodiscard]] bool isInitialized() const { return m_StackBegin != nullptr; }
-
-    std::string getVisualization(size_t p_BarSize) const;
+    [[nodiscard]] size_t getAllocatedSize() const { return m_StackPtr - m_StackBegin; }
+    [[nodiscard]] size_t getRemainingSize() const { return m_StackEnd - m_StackPtr; }
+ 
+    [[nodiscard]] std::string getVisualization(size_t p_BarSize) const;
 
 private:
     uint8_t* m_StackBegin = nullptr;
@@ -158,10 +165,16 @@ template<typename T, typename Q>
 using arena_umap = std::unordered_map<T, Q, std::hash<T>, std::equal_to<>, ArenaAlloc<std::pair<const T, Q>>>;
 
 template <typename T>
+using arena_uset = std::unordered_set<T, std::hash<T>, std::equal_to<>, ArenaAlloc<T>>;
+
+template <typename T>
 using arena_vector = std::vector<T, ArenaAlloc<T>>;
 
 template<typename T, typename Q>
 using trans_umap = std::unordered_map<T, Q, std::hash<T>, std::equal_to<>, TransAlloc<std::pair<const T, Q>>>;
+
+template <typename T>
+using trans_uset = std::unordered_set<T, std::hash<T>, std::equal_to<>, TransAlloc<T>>;
 
 template <typename T>
 using trans_vector = std::vector<T, TransAlloc<T>>;

@@ -18,12 +18,15 @@ public:
 	[[nodiscard]] bool isMemoryMapped() const;
 	[[nodiscard]] void* getMappedData() const;
 	[[nodiscard]] VkDeviceSize getSize() const;
+    [[nodiscard]] uint32_t getQueue() const;
 
 	VkBuffer operator*() const;
 
 	[[nodiscard]] bool isMemoryBound() const;
 	[[nodiscard]] uint32_t getBoundMemoryType() const;
     [[nodiscard]] VkDeviceAddress getDeviceAddress() const;
+
+    void setQueue(uint32_t p_QueueFamilyIndex);
 
 private:
 	void free() override;

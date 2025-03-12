@@ -18,7 +18,7 @@ VulkanSwapchainExtension* VulkanSwapchainExtension::get(const ResourceID p_Devic
     return VulkanContext::getDevice(p_DeviceID).getExtensionManager()->getExtension<VulkanSwapchainExtension>(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 }
 
-ResourceID VulkanSwapchainExtension::createSwapchain(const VkSurfaceKHR p_Surface, const VkExtent2D p_Extent, const VkSurfaceFormatKHR p_DesiredFormat, const uint32_t p_OldSwapchain)
+ResourceID VulkanSwapchainExtension::createSwapchain(const VkSurfaceKHR p_Surface, const VkExtent2D p_Extent, const VkSurfaceFormatKHR p_DesiredFormat, VkPresentModeKHR p_PresentMode, const uint32_t p_OldSwapchain)
 {
     const VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
     const VulkanGPU l_PhysicalDevice = l_Device.getGPU();
@@ -40,7 +40,7 @@ ResourceID VulkanSwapchainExtension::createSwapchain(const VkSurfaceKHR p_Surfac
 	l_CreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	l_CreateInfo.preTransform = l_Capabilities.currentTransform;
 	l_CreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-	l_CreateInfo.presentMode = VK_PRESENT_MODE_FIFO_KHR;
+	l_CreateInfo.presentMode = p_PresentMode;
 	l_CreateInfo.clipped = VK_TRUE;
 	if (p_OldSwapchain != UINT32_MAX)
 		l_CreateInfo.oldSwapchain = *getSwapchain(p_OldSwapchain);

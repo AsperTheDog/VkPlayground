@@ -14,8 +14,7 @@ class VulkanQueue;
 class VulkanFence;
 class VulkanRenderPass;
 class VulkanDevice;
-
-//TODO: Make a proper memory barrier system (builder?)
+class VulkanDevice;
 
 class VulkanMemoryBarrierBuilder
 {
@@ -25,7 +24,7 @@ public:
     void addAbsoluteMemoryBarrier();
 
     void addMemoryBarrier(VkAccessFlags p_SrcAccessMask, VkAccessFlags p_DstAccessMask);
-    void addBufferMemoryBarrier(ResourceID p_Buffer, VkDeviceSize p_Offset, VkDeviceSize p_Size, uint32_t p_DstQueueFamily = VK_QUEUE_FAMILY_IGNORED, VkAccessFlags p_SrcAccessMask = VK_ACCESS_FLAG_BITS_MAX_ENUM, VkAccessFlags p_DstAccessMask = VK_ACCESS_FLAG_BITS_MAX_ENUM);
+    void addBufferMemoryBarrier(ResourceID p_Buffer, VkDeviceSize p_Offset, VkDeviceSize p_Size, VkAccessFlags p_SrcAccessMask, VkAccessFlags p_DstAccessMask, uint32_t p_DstQueueFamily = VK_QUEUE_FAMILY_IGNORED);
     void addImageMemoryBarrier(ResourceID p_Image, VkImageLayout p_NewLayout, uint32_t p_DstQueueFamily = VK_QUEUE_FAMILY_IGNORED, VkAccessFlags p_SrcAccessMask = VK_ACCESS_FLAG_BITS_MAX_ENUM, VkAccessFlags p_DstAccessMask = VK_ACCESS_FLAG_BITS_MAX_ENUM);
 
 private:
@@ -85,8 +84,8 @@ public:
 	void cmdSetViewport(const VkViewport& p_Viewport) const;
 	void cmdSetScissor(VkRect2D p_Scissor) const;
 
-	void cmdDraw(uint32_t p_VertexCount, uint32_t p_FirstVertex) const;
-	void cmdDrawIndexed(uint32_t p_IndexCount, uint32_t p_FirstIndex, int32_t p_VertexOffset) const;
+	void cmdDraw(uint32_t p_VertexCount, uint32_t p_FirstVertex, uint32_t p_InstanceCount = 1, uint32_t p_FirstInstance = 0) const;
+	void cmdDrawIndexed(uint32_t p_IndexCount, uint32_t p_FirstIndex, int32_t p_VertexOffset, uint32_t p_InstanceCount = 1, uint32_t p_FirstInstance = 0) const;
     void cmdDispatch(uint32_t p_GroupCountX, uint32_t p_GroupCountY, uint32_t p_GroupCountZ) const;
 
 	VkCommandBuffer operator*() const;

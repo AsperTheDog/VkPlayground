@@ -14,6 +14,10 @@
 
 #define TRANS_UMAP(name, K, V) trans_umap<K, V> ##name{TransAlloc<std::pair<const K, V>>(VulkanContext::getTransAllocator())}
 
+#define ARENA_USET(name, T) arena_uset<T> ##name{ArenaAlloc<T>(VulkanContext::getArenaAllocator())}
+
+#define TRANS_USET(name, T) trans_uset<T> ##name{TransAlloc<T>(VulkanContext::getTransAllocator())}
+
 #define ARENA_ALLOC(cls) new (VulkanContext::getArenaAllocator()->allocate(sizeof(cls))) cls
 
 #define TRANS_ALLOC(cls) new (VulkanContext::getTransAllocator()->allocate(sizeof(cls))) cls

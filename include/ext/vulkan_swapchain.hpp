@@ -21,7 +21,7 @@ public:
     [[nodiscard]] VkBaseInStructure* getExtensionStruct() const override { return nullptr; }
     [[nodiscard]] VkStructureType getExtensionStructType() const override { return VK_STRUCTURE_TYPE_MAX_ENUM; }
 
-    ResourceID createSwapchain(VkSurfaceKHR p_Surface, VkExtent2D p_Extent, VkSurfaceFormatKHR p_DesiredFormat, uint32_t p_OldSwapchain = UINT32_MAX);
+    ResourceID createSwapchain(VkSurfaceKHR p_Surface, VkExtent2D p_Extent, VkSurfaceFormatKHR p_DesiredFormat, VkPresentModeKHR p_PresentMode, uint32_t p_OldSwapchain = UINT32_MAX);
     VulkanSwapchain& getSwapchain(ResourceID p_ID);
     [[nodiscard]] const VulkanSwapchain& getSwapchain(ResourceID p_ID) const;
     bool freeSwapchain(ResourceID p_ID);

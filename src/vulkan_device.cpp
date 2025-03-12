@@ -889,3 +889,4 @@ VulkanDevice::VulkanDevice(const VulkanGPU p_PhysicalDevice, const VkDevice p_De
     m_ExtensionManager->setDevice(getID());
     volkLoadDeviceTable(&m_VolkDeviceTable, m_VkHandle);
 }
+

@@ -151,7 +151,7 @@ void VulkanMemoryBarrierBuilder::addMemoryBarrier(const VkAccessFlags p_SrcAcces
     m_MemoryBarriers.push_back(l_Barrier);
 }
 
-void VulkanMemoryBarrierBuilder::addBufferMemoryBarrier(const ResourceID p_Buffer, const VkDeviceSize p_Offset, const VkDeviceSize p_Size, const uint32_t p_DstQueueFamily, const VkAccessFlags p_SrcAccessMask, const VkAccessFlags p_DstAccessMask)
+void VulkanMemoryBarrierBuilder::addBufferMemoryBarrier(const ResourceID p_Buffer, const VkDeviceSize p_Offset, const VkDeviceSize p_Size, const VkAccessFlags p_SrcAccessMask, const VkAccessFlags p_DstAccessMask, const uint32_t p_DstQueueFamily)
 {
     const VulkanBuffer& l_Buffer = VulkanContext::getDevice(m_Device).getBuffer(p_Buffer);
 
@@ -162,7 +162,7 @@ void VulkanMemoryBarrierBuilder::addBufferMemoryBarrier(const ResourceID p_Buffe
     l_Barrier.buffer = *l_Buffer;
     l_Barrier.offset = p_Offset;
     l_Barrier.size = p_Size;
-    if (p_DstQueueFamily != VK_QUEUE_FAMILY_IGNORED)
+    if (p_DstQueueFamily != VK_QUEUE_FAMILY_IGNORED && l_Buffer.m_QueueFamilyIndex != p_DstQueueFamily)
     {
         l_Barrier.srcQueueFamilyIndex = l_Buffer.m_QueueFamilyIndex;
         l_Barrier.dstQueueFamilyIndex = p_DstQueueFamily;
@@ -526,23 +526,23 @@ void VulkanCommandBuffer::cmdSetScissor(const VkRect2D p_Scissor) const
 	VulkanContext::getDevice(getDeviceID()).getTable().vkCmdSetScissor(m_VkHandle, 0, 1, &p_Scissor);
 }
 
-void VulkanCommandBuffer::cmdDraw(const uint32_t p_VertexCount, const uint32_t p_FirstVertex) const
+void VulkanCommandBuffer::cmdDraw(const uint32_t p_VertexCount, const uint32_t p_FirstVertex, const uint32_t p_InstanceCount, const uint32_t p_FirstInstance) const
 {
 	if (!m_IsRecording)
 	{
 		throw std::runtime_error("Tried to execute command CmdDraw, but command buffer (ID:" + std::to_string(m_ID) + ") is not recording");
 	}
 
-	VulkanContext::getDevice(getDeviceID()).getTable().vkCmdDraw(m_VkHandle, p_VertexCount, 1, p_FirstVertex, 0);
+	VulkanContext::getDevice(getDeviceID()).getTable().vkCmdDraw(m_VkHandle, p_VertexCount, p_InstanceCount, p_FirstVertex, p_FirstInstance);
 }
 
-void VulkanCommandBuffer::cmdDrawIndexed(const uint32_t p_IndexCount, const uint32_t  p_FirstIndex, const int32_t  p_VertexOffset) const
+void VulkanCommandBuffer::cmdDrawIndexed(const uint32_t p_IndexCount, const uint32_t  p_FirstIndex, const int32_t  p_VertexOffset, const uint32_t p_InstanceCount, const uint32_t p_FirstInstance) const
 {
 	if (!m_IsRecording)
 	{
 		throw std::runtime_error("Tried to execute command CmdDrawIndexed, but command buffer (ID:" + std::to_string(m_ID) + ") is not recording");
 	}
-	VulkanContext::getDevice(getDeviceID()).getTable().vkCmdDrawIndexed(m_VkHandle, p_IndexCount, 1, p_FirstIndex, p_VertexOffset, 0);
+	VulkanContext::getDevice(getDeviceID()).getTable().vkCmdDrawIndexed(m_VkHandle, p_IndexCount, p_InstanceCount, p_FirstIndex, p_VertexOffset, p_FirstInstance);
 }
 
 void VulkanCommandBuffer::cmdDispatch(const uint32_t p_GroupCountX, const uint32_t p_GroupCountY, const uint32_t p_GroupCountZ) const

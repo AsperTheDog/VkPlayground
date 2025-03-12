@@ -48,6 +48,16 @@ VkDeviceSize VulkanBuffer::getSize() const
 	return m_Size;
 }
 
+uint32_t VulkanBuffer::getQueue() const
+{
+    return m_QueueFamilyIndex;
+}
+
+void VulkanBuffer::setQueue(const uint32_t p_QueueFamilyIndex)
+{
+    m_QueueFamilyIndex = p_QueueFamilyIndex;
+}
+
 VkBuffer VulkanBuffer::operator*() const
 {
 	return m_VkHandle;
