@@ -62,8 +62,6 @@ VulkanPipelineBuilder::VulkanPipelineBuilder(const ResourceID p_Device)
 
 void VulkanPipelineBuilder::addVertexBinding(const VulkanBinding& p_Binding)
 {
-    const VulkanDevice& l_Device = VulkanContext::getDevice(m_Device);
-
 	m_VertexInputBindings.push_back(p_Binding.getBindingDescription());
     TRANS_VECTOR(l_Attributes, VkVertexInputAttributeDescription);
     l_Attributes.resize(p_Binding.getAttributeDescriptionCount());
@@ -71,6 +69,7 @@ void VulkanPipelineBuilder::addVertexBinding(const VulkanBinding& p_Binding)
 	for (VkVertexInputAttributeDescription& l_Attr : l_Attributes)
 	{
 		m_VertexInputAttributes.push_back(l_Attr);
+		m_VertexInputAttributes.back().location = m_currentVertexAttrLocation++;
 	}
 	m_VertexInputState.vertexBindingDescriptionCount = static_cast<uint32_t>(m_VertexInputBindings.size());
 	m_VertexInputState.pVertexBindingDescriptions = m_VertexInputBindings.data();

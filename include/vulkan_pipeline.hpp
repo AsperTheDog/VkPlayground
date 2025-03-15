@@ -72,6 +72,7 @@ private:
 	std::vector<ShaderData> m_ShaderStages;
 	std::vector<VkVertexInputBindingDescription> m_VertexInputBindings;
 	std::vector<VkVertexInputAttributeDescription> m_VertexInputAttributes;
+	uint32_t m_currentVertexAttrLocation = 0;
 	std::vector<VkViewport> m_Viewports;
 	std::vector<VkRect2D> m_Scissors;
 	std::vector<VkPipelineColorBlendAttachmentState> m_Attachments;
