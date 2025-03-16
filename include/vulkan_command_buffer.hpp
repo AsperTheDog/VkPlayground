@@ -90,6 +90,8 @@ public:
 
 	VkCommandBuffer operator*() const;
 
+    bool isRecording() const { return m_IsRecording; }
+
 private:
     enum TypeFlagBits : uint8_t
     {
