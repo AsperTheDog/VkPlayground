@@ -24,6 +24,11 @@ typedef uint32_t ThreadID;
 class VulkanDevice final : public Identifiable
 {
 public:
+    struct StagingBufferInfo
+	{
+		uint32_t stagingBuffer = UINT32_MAX;
+		QueueSelection queue{};
+	};
 
     [[nodiscard]] VulkanDeviceExtensionManager* getExtensionManager() const { return m_ExtensionManager; }
 
@@ -135,18 +140,14 @@ public:
     bool freeFence(const VulkanFence& p_Fence) { return freeSubresource<VulkanFence>(p_Fence.getID()); }
 
 	void waitIdle() const;
-
+    
 	[[nodiscard]] bool isStagingBufferConfigured() const;
+    [[nodiscard]] StagingBufferInfo getStagingBufferData() const;
     [[nodiscard]] VkDeviceSize getStagingBufferSize() const;
 	void configureStagingBuffer(VkDeviceSize p_Size, const QueueSelection& p_Queue, bool p_ForceAllowStagingMemory = false);
     bool freeStagingBuffer();
 	void* mapStagingBuffer(VkDeviceSize p_Size, VkDeviceSize p_Offset);
 	void unmapStagingBuffer();
-	void dumpStagingBuffer(ResourceID p_Buffer, VkDeviceSize p_Size, VkDeviceSize p_Offset, ThreadID p_ThreadID);
-	void dumpStagingBuffer(ResourceID p_Buffer, std::span<const VkBufferCopy> p_Regions, ThreadID p_ThreadID);
-    void dumpStagingBufferToImage(ResourceID p_Image, VkExtent3D p_Size, VkOffset3D p_Offset, ThreadID p_ThreadID, bool p_KeepLayout = false);
-    void dumpDataIntoBuffer(ResourceID p_DestBuffer, const uint8_t* p_Data, VkDeviceSize p_Size, ThreadID p_ThreadID);
-    void dumpDataIntoImage(ResourceID p_DestImage, const uint8_t* p_Data, VkExtent3D p_Extent, uint32_t p_BytesPerPixel, ThreadID p_ThreadID, bool p_KeepLayout);
 
 	[[nodiscard]] VulkanQueue getQueue(const QueueSelection& p_QueueSelection) const;
     [[nodiscard]] VulkanGPU getGPU() const { return m_PhysicalDevice; }
@@ -173,11 +174,7 @@ private:
         ARENA_UMAP(commandPools, QueueFamilyIndex, VkCommandPool);
 	};
 
-	struct StagingBufferInfo
-	{
-		uint32_t stagingBuffer = UINT32_MAX;
-		QueueSelection queue{};
-	} m_StagingBufferInfo;
+	StagingBufferInfo m_StagingBufferInfo;
 
     struct ThreadCmdBuffers
     {

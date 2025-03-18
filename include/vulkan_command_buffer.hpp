@@ -77,6 +77,11 @@ public:
 	void cmdBlitImage(ResourceID p_Source, ResourceID p_Destination, std::span<const VkImageBlit> p_Regions, VkFilter p_Filter) const;
 	void cmdSimpleBlitImage(ResourceID p_Source, ResourceID p_Destination, VkFilter p_Filter) const;
 	void cmdSimpleBlitImage(const VulkanImage& p_Source, const VulkanImage& p_Destination, VkFilter p_Filter) const;
+	void ecmdDumpStagingBuffer(ResourceID p_Buffer, VkDeviceSize p_Size, VkDeviceSize p_Offset) const;
+	void ecmdDumpStagingBuffer(ResourceID p_Buffer, std::span<const VkBufferCopy> p_Regions) const;
+    void ecmdDumpStagingBufferToImage(ResourceID p_Image, VkExtent3D p_Size, VkOffset3D p_Offset, bool p_KeepLayout = false) const;
+    void ecmdDumpDataIntoBuffer(ResourceID p_DestBuffer, const uint8_t* p_Data, VkDeviceSize p_Size) const;
+    void ecmdDumpDataIntoImage(ResourceID p_DestImage, const uint8_t* p_Data, VkExtent3D p_Extent, uint32_t p_BytesPerPixel, bool p_KeepLayout) const;
 
 	void cmdPushConstant(ResourceID p_Layout, VkShaderStageFlags p_StageFlags, uint32_t p_Offset, uint32_t p_Size, const void* p_Values) const;
     void cmdBindDescriptorSet(VkPipelineBindPoint p_BindPoint, ResourceID p_Layout, ResourceID p_DescriptorSet) const;

@@ -318,6 +318,116 @@ void VulkanCommandBuffer::cmdSimpleBlitImage(const VulkanImage& p_Source, const 
 	l_Device.getTable().vkCmdBlitImage(m_VkHandle, *p_Source, p_Source.getLayout(), *p_Destination, p_Destination.getLayout(), 1, &l_Region, p_Filter);
 }
 
+void VulkanCommandBuffer::ecmdDumpStagingBuffer(const ResourceID p_Buffer, const VkDeviceSize p_Size, const VkDeviceSize p_Offset) const
+{
+    std::array<VkBufferCopy, 1> l_Regions = {{{0, p_Offset, p_Size}}};
+	ecmdDumpStagingBuffer(p_Buffer, l_Regions);
+}
+
+void VulkanCommandBuffer::ecmdDumpStagingBuffer(ResourceID p_Buffer, const std::span<const VkBufferCopy> p_Regions) const
+{
+    if (!m_IsRecording)
+    {
+        throw std::runtime_error("Command buffer (ID:" + std::to_string(m_ID) + ") is not recording");
+    }
+
+    VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
+    const ResourceID l_StagingBufferID = l_Device.getStagingBufferData().stagingBuffer;
+    VulkanBuffer& l_StagingBuffer = l_Device.getBuffer(l_StagingBufferID);
+	if (l_StagingBuffer.m_VkHandle == VK_NULL_HANDLE)
+	{
+		throw std::runtime_error("Tried to dump staging buffer (ID: " + std::to_string(p_Buffer) + ") data, but staging buffer is not configured");
+	}
+
+	if (l_StagingBuffer.isMemoryMapped())
+	{
+        LOG_DEBUG("Automatically unmapping staging buffer before dumping into buffer (ID: ", p_Buffer, ")");
+		l_StagingBuffer.unmap();
+	}
+
+	cmdCopyBuffer(l_StagingBufferID, p_Buffer, p_Regions);
+}
+
+void VulkanCommandBuffer::ecmdDumpStagingBufferToImage(const ResourceID p_Image, const VkExtent3D p_Size, const VkOffset3D p_Offset, const bool p_KeepLayout) const
+{
+    if (!m_IsRecording)
+    {
+        throw std::runtime_error("Command buffer (ID:" + std::to_string(m_ID) + ") is not recording");
+    }
+
+    VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
+
+    VkBufferImageCopy l_Region;
+    l_Region.bufferOffset = 0;
+    l_Region.bufferRowLength = 0;
+    l_Region.bufferImageHeight = 0;
+    l_Region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    l_Region.imageSubresource.mipLevel = 0;
+    l_Region.imageSubresource.baseArrayLayer = 0;
+    l_Region.imageSubresource.layerCount = 1;
+    l_Region.imageOffset = p_Offset;
+    l_Region.imageExtent = p_Size;
+
+    const VkImageLayout l_Layout = l_Device.getImage(p_Image).getLayout();
+
+    if (l_Layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+    {
+        VulkanMemoryBarrierBuilder l_BarrierBuilder{getID(), VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0};
+        l_BarrierBuilder.addImageMemoryBarrier(p_Image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+        cmdPipelineBarrier(l_BarrierBuilder);
+    }
+    std::array<VkBufferImageCopy, 1> l_RegionArray = { l_Region };
+	cmdCopyBufferToImage(l_Device.getStagingBufferData().stagingBuffer, p_Image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, l_RegionArray);
+    if (l_Layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && p_KeepLayout)
+    {
+        VulkanMemoryBarrierBuilder l_BarrierBuilder{getID(), VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0};
+        l_BarrierBuilder.addImageMemoryBarrier(p_Image, l_Layout);
+        cmdPipelineBarrier(l_BarrierBuilder);
+    }
+}
+
+void VulkanCommandBuffer::ecmdDumpDataIntoBuffer(const ResourceID p_DestBuffer, const uint8_t* p_Data, const VkDeviceSize p_Size) const
+{
+    VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
+    const VkDeviceSize l_StagingBufferSize = l_Device.getBuffer(l_Device.getStagingBufferData().stagingBuffer).getSize();
+
+	VkDeviceSize l_Offset = 0;
+	while (l_Offset < p_Size)
+	{
+		const VkDeviceSize nextSize = std::min(l_StagingBufferSize, p_Size - l_Offset);
+		void* stagePtr = l_Device.mapStagingBuffer(nextSize, 0);
+		memcpy(stagePtr, p_Data + l_Offset, nextSize);
+		ecmdDumpStagingBuffer(p_DestBuffer, nextSize, l_Offset);
+		l_Offset += nextSize;
+	}
+}
+
+void VulkanCommandBuffer::ecmdDumpDataIntoImage(const ResourceID p_DestImage, const uint8_t* p_Data, const VkExtent3D p_Extent, const uint32_t p_BytesPerPixel, const bool p_KeepLayout) const
+{
+    VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
+    const VulkanDevice::StagingBufferInfo l_StagingBufferInfo = l_Device.getStagingBufferData();
+    const VkDeviceSize l_InitStagingBufferSize = l_Device.getBuffer(l_StagingBufferInfo.stagingBuffer).getSize();
+	VkDeviceSize l_StagingBufferSize = l_InitStagingBufferSize;
+	if (l_StagingBufferSize < p_Extent.width * p_Extent.height * p_BytesPerPixel)
+	{
+		l_Device.freeStagingBuffer();
+		l_Device.configureStagingBuffer(p_Extent.width * p_Extent.height * p_BytesPerPixel, l_StagingBufferInfo.queue);
+		l_StagingBufferSize = l_Device.getBuffer(l_StagingBufferInfo.stagingBuffer).getSize();
+	}
+
+	const VkDeviceSize l_Size = std::min(l_StagingBufferSize, static_cast<VkDeviceSize>(p_Extent.width * p_Extent.height * p_BytesPerPixel));
+
+	void* stagePtr = l_Device.mapStagingBuffer(l_Size, 0);
+	memcpy(stagePtr, p_Data, l_Size);
+	ecmdDumpStagingBufferToImage(p_DestImage, p_Extent, { 0, 0, 0 }, p_KeepLayout);
+
+	if (l_InitStagingBufferSize != l_StagingBufferSize)
+	{
+		l_Device.freeStagingBuffer();
+		l_Device.configureStagingBuffer(l_InitStagingBufferSize, l_StagingBufferInfo.queue);
+	}
+}
+
 void VulkanCommandBuffer::cmdPushConstant(const ResourceID p_Layout, const VkShaderStageFlags p_StageFlags, const uint32_t p_Offset, const uint32_t p_Size, const void* p_Values) const
 {
 	if (!m_IsRecording)
