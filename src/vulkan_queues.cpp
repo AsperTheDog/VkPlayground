@@ -84,6 +84,23 @@ QueueFamily GPUQueueStructure::findQueueFamily(const VkQueueFlags p_Flags, const
 	throw std::runtime_error("No queue family found with the flags " + string_VkQueueFlags(p_Flags) + (p_ExactMatch ? " exactly " : " ") + " in " + m_GPU.getProperties().deviceName);
 }
 
+QueueFamily GPUQueueStructure::findQueueFamily(const VkQueueFlags p_Flags, std::span<uint32_t> p_Exclude, bool p_ExactMatch) const
+{
+    for (const QueueFamily& l_QueueFamily : m_QueueFamilies)
+    {
+        if (std::ranges::find(p_Exclude, l_QueueFamily.index) != p_Exclude.end())
+            continue;
+        if (p_ExactMatch)
+        {
+            if (l_QueueFamily.properties.queueFlags == p_Flags)
+                return l_QueueFamily;
+        }
+        else if (l_QueueFamily.properties.queueFlags & p_Flags)
+            return l_QueueFamily;
+    }
+    throw std::runtime_error("No queue family found with the flags " + string_VkQueueFlags(p_Flags) + (p_ExactMatch ? " exactly " : " ") + " in " + m_GPU.getProperties().deviceName);
+}
+
 QueueFamily GPUQueueStructure::findPresentQueueFamily(const VkSurfaceKHR p_Surface) const
 {
 	for (const QueueFamily& l_QueueFamily : m_QueueFamilies)

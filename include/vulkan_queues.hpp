@@ -27,6 +27,7 @@ public:
 	[[nodiscard]] uint32_t getQueueFamilyCount() const;
 	[[nodiscard]] QueueFamily getQueueFamily(uint32_t p_Index) const;
 	[[nodiscard]] QueueFamily findQueueFamily(VkQueueFlags p_Flags, bool p_ExactMatch = false) const;
+    [[nodiscard]] QueueFamily findQueueFamily(VkQueueFlags p_Flags, std::span<uint32_t> p_Exclude, bool p_ExactMatch = false) const;
 	[[nodiscard]] QueueFamily findPresentQueueFamily(VkSurfaceKHR p_Surface) const;
 
 	[[nodiscard]] std::string toString() const;
