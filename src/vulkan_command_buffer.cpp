@@ -320,7 +320,7 @@ void VulkanCommandBuffer::cmdSimpleBlitImage(const VulkanImage& p_Source, const 
 
 void VulkanCommandBuffer::ecmdDumpStagingBuffer(const ResourceID p_Buffer, const VkDeviceSize p_Size, const VkDeviceSize p_Offset) const
 {
-    std::array<VkBufferCopy, 1> l_Regions = {{{0, p_Offset, p_Size}}};
+    std::array<VkBufferCopy, 1> l_Regions = {{{.srcOffset= 0, .dstOffset= p_Offset, .size= p_Size}}};
 	ecmdDumpStagingBuffer(p_Buffer, l_Regions);
 }
 
