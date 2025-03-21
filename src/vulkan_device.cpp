@@ -400,7 +400,7 @@ ResourceID VulkanDevice::createRenderPass(const VulkanRenderPassBuilder& p_Build
 	for (const VulkanRenderPassBuilder::SubpassInfo& l_Subpass : p_Builder.m_Subpasses)
 	{
 		VkSubpassDescription l_SubpassInfo{};
-		l_SubpassInfo.pipelineBindPoint = l_Subpass.bindPoint;
+		l_SubpassInfo.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 		l_SubpassInfo.flags = l_Subpass.flags;
 		l_SubpassInfo.colorAttachmentCount = static_cast<uint32_t>(l_Subpass.colorAttachments.size());
 		l_SubpassInfo.pColorAttachments = l_Subpass.colorAttachments.data();

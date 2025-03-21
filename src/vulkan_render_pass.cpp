@@ -12,10 +12,9 @@ VulkanRenderPassBuilder& VulkanRenderPassBuilder::addAttachment(const VkAttachme
 	return *this;
 }
 
-VulkanRenderPassBuilder& VulkanRenderPassBuilder::addSubpass(const VkPipelineBindPoint bindPoint, const std::span<const AttachmentReference> p_Attachments, const VkSubpassDescriptionFlags p_Flags)
+VulkanRenderPassBuilder& VulkanRenderPassBuilder::addSubpass(const std::span<const AttachmentReference> p_Attachments, const VkSubpassDescriptionFlags p_Flags)
 {
 	SubpassInfo l_Subpass{};
-	l_Subpass.bindPoint = bindPoint;
 	l_Subpass.flags = p_Flags;
 
 	uint32_t l_DepthCount = 0;

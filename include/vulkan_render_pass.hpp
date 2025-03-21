@@ -59,7 +59,7 @@ public:
 	};
 
 	VulkanRenderPassBuilder& addAttachment(const VkAttachmentDescription& p_Attachment);
-	VulkanRenderPassBuilder& addSubpass(VkPipelineBindPoint bindPoint, std::span<const AttachmentReference> p_Attachments, VkSubpassDescriptionFlags p_Flags);
+	VulkanRenderPassBuilder& addSubpass(std::span<const AttachmentReference> p_Attachments, VkSubpassDescriptionFlags p_Flags);
 	VulkanRenderPassBuilder& addDependency(const VkSubpassDependency& p_Dependency);
 
 	static VkAttachmentDescription createAttachment(VkFormat p_Format, VkAttachmentLoadOp p_LoadOp, VkAttachmentStoreOp p_StoreOp, VkImageLayout p_InitialLayout, VkImageLayout p_FinalLayout);
@@ -68,7 +68,6 @@ public:
 private:
 	struct SubpassInfo
 	{
-		VkPipelineBindPoint bindPoint;
 		VkSubpassDescriptionFlags flags;
 		std::vector<VkAttachmentReference> colorAttachments;
 		std::vector<VkAttachmentReference> resolveAttachments;
