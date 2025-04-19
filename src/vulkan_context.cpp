@@ -35,9 +35,19 @@ void DestroyDebugUtilsMessengerEXT(const VkInstance p_Instance, const VkDebugUti
 }
 
 VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(const VkDebugUtilsMessageSeverityFlagBitsEXT p_MessageSeverity, VkDebugUtilsMessageTypeFlagsEXT p_MessageType, const VkDebugUtilsMessengerCallbackDataEXT* p_CallbackData, void* p_UserData) {
-    LOG_ERR("validation layer: ", p_CallbackData->pMessage);
-
-	assert(!g_assertOnError || (p_MessageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) == 0);
+    if (p_MessageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
+    {
+        LOG_INFO("validation layer: ", p_CallbackData->pMessage);
+    }
+    else if (p_MessageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+    {
+        LOG_WARN("validation layer: ", p_CallbackData->pMessage);
+    }
+    else if (p_MessageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+    {
+        LOG_ERR("validation layer: ", p_CallbackData->pMessage);
+        assert(!g_assertOnError);
+    }
 
 	return VK_FALSE;
 }
