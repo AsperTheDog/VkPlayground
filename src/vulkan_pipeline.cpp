@@ -60,7 +60,7 @@ VulkanPipelineBuilder::VulkanPipelineBuilder(const ResourceID p_Device)
 	m_DynamicState.dynamicStateCount = 0;
 }
 
-void VulkanPipelineBuilder::addVertexBinding(const VulkanBinding& p_Binding)
+void VulkanPipelineBuilder::addVertexBinding(const VulkanBinding& p_Binding, bool p_RecalculateLocations)
 {
 	m_VertexInputBindings.push_back(p_Binding.getBindingDescription());
     TRANS_VECTOR(l_Attributes, VkVertexInputAttributeDescription);
@@ -68,8 +68,12 @@ void VulkanPipelineBuilder::addVertexBinding(const VulkanBinding& p_Binding)
     p_Binding.getAttributeDescriptions(l_Attributes.data());
 	for (VkVertexInputAttributeDescription& l_Attr : l_Attributes)
 	{
-		m_VertexInputAttributes.push_back(l_Attr);
-		m_VertexInputAttributes.back().location = m_currentVertexAttrLocation++;
+	    m_VertexInputAttributes.push_back(l_Attr);
+        if (p_RecalculateLocations)
+        {
+            m_VertexInputAttributes.back().location = m_currentVertexAttrLocation;
+            m_currentVertexAttrLocation += l_Attr.location;
+        }
 	}
 	m_VertexInputState.vertexBindingDescriptionCount = static_cast<uint32_t>(m_VertexInputBindings.size());
 	m_VertexInputState.pVertexBindingDescriptions = m_VertexInputBindings.data();
@@ -235,7 +239,7 @@ void VulkanPipelineBuilder::createShaderStages(VkPipelineShaderStageCreateInfo p
     for (size_t i = 0; i < m_ShaderStages.size(); i++)
     {
         VkPipelineShaderStageCreateInfo l_StageInfo{};
-		const VulkanShader& l_Shader = VulkanContext::getDevice(m_Device).getShader(m_ShaderStages[i].shader);
+		const VulkanShaderModule& l_Shader = VulkanContext::getDevice(m_Device).getShaderModule(m_ShaderStages[i].shader);
 		l_StageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		l_StageInfo.stage = l_Shader.m_Stage;
 		l_StageInfo.module = l_Shader.m_VkHandle;

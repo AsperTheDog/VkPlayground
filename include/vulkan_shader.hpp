@@ -1,16 +1,17 @@
 #pragma once
 #include <span>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
+#include <slang/slang.h>
 #include <Volk/volk.h>
-#include <shaderc/shaderc.hpp>
-#include <spirv_cross/spirv_glsl.hpp>
 
 #include "utils/identifiable.hpp"
 
 class VulkanDevice;
 
-class VulkanShader final : public VulkanDeviceSubresource
+class VulkanShader
 {
 public:
     struct MacroDef
@@ -19,58 +20,77 @@ public:
         std::string value;
     };
 
-    struct ReflectionManager
-    {
-        ReflectionManager() = default;
-        explicit ReflectionManager(spirv_cross::CompilerGLSL* p_Compiler, bool p_IsCompilerLocal = true);
-        ~ReflectionManager() { if (compiler != nullptr && isCompilerLocal) delete compiler; }
-        
-        ReflectionManager(ReflectionManager&& p_Other) noexcept;
-        ReflectionManager& operator=(ReflectionManager&& p_Other) noexcept;
+	struct Result
+	{
+        enum Status : uint8_t { NOT_READY, FAILED, COMPILED };
 
-        [[nodiscard]] spirv_cross::ShaderResources getResources() const { return compiler->get_shader_resources(); }
-        [[nodiscard]] bool isValid() const { return compiler != nullptr; }
+		Status status = NOT_READY;
+		std::string error;
+	};
 
-        [[nodiscard]] std::string getName(spirv_cross::ID p_ID, std::string_view p_NameField) const;
+    static void reset(VulkanShader& p_Shader);
+    static void reinit(VulkanShader& p_Shader, ThreadID p_CompilationThread, bool p_Optimize = true, std::span<const MacroDef> p_Macros = {});
 
-        spirv_cross::CompilerGLSL* compiler = nullptr;
-        bool isCompilerLocal = false;
-    };
+    VulkanShader() = default;
 
+    explicit VulkanShader(ThreadID p_CompilationThread, bool p_Optimize = true, std::span<const MacroDef> p_Macros = {});
+    ~VulkanShader();
+    VulkanShader(const VulkanShader&) = delete;
+    VulkanShader(VulkanShader&&) noexcept;
 
-	static [[nodiscard]] shaderc_shader_kind getKindFromStage(VkShaderStageFlagBits p_Stage);
+    void loadModule(std::string_view p_Filename, std::string_view p_ModuleName);
+    void loadModuleString(std::string_view p_Source, std::string_view p_ModuleName);
+
+    void linkAndFinalize();
+
+    [[nodiscard]] const Result& getStatus() const { return m_Result; }
+    [[nodiscard]] std::vector<uint32_t> getSPIRVForStage(VkShaderStageFlagBits p_Stage);
+    [[nodiscard]] std::vector<uint32_t> getSPIRVFromName(std::string_view p_Name);
+    [[nodiscard]] const std::vector<MacroDef>& getMacros() const { return m_Macros; }
+    [[nodiscard]] slang::ProgramLayout* getLayout() const;
+
+    static SlangStage getSlangStageFromVkStage(VkShaderStageFlagBits p_Stage);
+    static VkShaderStageFlagBits getVkStageFromSlangStage(SlangStage p_Stage);
+
+    void addSearchPath(const std::string& p_Path) { m_SearchPaths.insert(p_Path); }
+
+private:
+    bool buildSession();
+
+    ThreadID m_CompilationThread = 0;
+    bool m_Optimize = true;
+    std::vector<MacroDef> m_MacroDefs;
+
+    std::vector<MacroDef> m_Macros;
+    std::unordered_set<std::string> m_SearchPaths;
+
+    Result m_Result;
+    
+    inline static std::unordered_map<ThreadID, slang::IGlobalSession*> s_SlangSessions;
+
+    slang::ISession* m_SlangSession = nullptr;
+
+    std::vector<slang::IComponentType*> m_SlangComponents;
+    slang::IComponentType* m_SlangProgram = nullptr;
+
+    friend class VulkanShaderModule;
+};
+
+class VulkanShaderModule final : public VulkanDeviceSubresource
+{
+public:
 
 	VkShaderModule operator*() const;
 
     [[nodiscard]] VkShaderStageFlagBits getStage() const { return m_Stage; }
 
-    [[nodiscard]] bool hasReflection() const { return m_Compiler != nullptr; }
-    [[nodiscard]] ReflectionManager getReflectionData() const;
-
-    void printReflectionData() const;
-
-    static ReflectionManager getReflectionDataFromFile(std::string_view p_Filepath, VkShaderStageFlagBits p_Stage);
-
 private:
 	void free() override;
 
-	struct Result
-	{
-		bool success = false;
-		std::vector<uint32_t> code;
-		std::string error;
-	};
+	VulkanShaderModule(ResourceID p_Device, VkShaderModule p_Handle, VkShaderStageFlagBits p_Stage);
 
-	VulkanShader(ResourceID p_Device, VkShaderModule p_Handle, VkShaderStageFlagBits p_Stage);
-    void reflect(const std::vector<uint32_t>& p_Code);
-
-	static std::string readFile(std::string_view p_Filename);
-	static [[nodiscard]] Result compileFile(std::string_view p_Source_name, shaderc_shader_kind p_Kind, std::string_view p_Source, bool p_Optimize, std::span<const MacroDef> p_Macros);
-    
 	VkShaderModule m_VkHandle = VK_NULL_HANDLE;
 	VkShaderStageFlagBits m_Stage = VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
-
-    spirv_cross::CompilerGLSL* m_Compiler = nullptr;
 
 	friend class VulkanDevice;
 	friend class VulkanPipeline;

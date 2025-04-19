@@ -3,6 +3,7 @@
 #include <cstdint>
 
 typedef uint32_t ResourceID;
+typedef uint32_t ThreadID;
 
 class Identifiable
 {

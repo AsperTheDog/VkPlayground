@@ -28,14 +28,18 @@
 #define TRANS_FREE(ptr, size) VulkanContext::getTransAllocator()->deallocate(ptr, size)
 #define TRANS_FREE_NOSIZE(ptr) VulkanContext::getTransAllocator()->deallocate(ptr)
 
+namespace slang
+{
+    struct IGlobalSession;
+}
+
 class VulkanGPU;
 class VulkanDeviceExtensionManager;
 class VulkanDevice;
 
-class VulkanContext : public Identifiable
+class VulkanContext
 {
 public:
-
     static void init(uint32_t p_VulkanApiVersion, bool p_EnableValidationLayers, bool p_AssertOnError, std::span<const char*> p_Extensions);
 
     static void initializeTransientMemory(size_t p_Size);

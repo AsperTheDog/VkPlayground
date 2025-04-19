@@ -555,24 +555,19 @@ void VulkanDevice::updateDescriptorSets(const std::span<const VkWriteDescriptorS
     getTable().vkUpdateDescriptorSets(m_VkHandle, static_cast<uint32_t>(p_DescriptorWrites.size()), p_DescriptorWrites.data(), 0, nullptr);
 }
 
-ResourceID VulkanDevice::createShader(const std::string_view p_Filename, const VkShaderStageFlagBits p_Stage, const bool p_GetReflection, const std::span<const VulkanShader::MacroDef> p_Macros)
+ResourceID VulkanDevice::createShaderModule(VulkanShader& p_ShaderCode, const VkShaderStageFlagBits p_Stage)
 {
-	const VulkanShader::Result l_Result = VulkanShader::compileFile(p_Filename, VulkanShader::getKindFromStage(p_Stage), VulkanShader::readFile(p_Filename),
-#ifdef _DEBUG
-		false, p_Macros);
-#else
-		true, p_Macros);
-#endif
-	if (l_Result.code.empty())
+    const std::vector<uint32_t> l_Code = p_ShaderCode.getSPIRVForStage(p_Stage);
+	if (p_ShaderCode.getStatus().status == VulkanShader::Result::FAILED)
 	{
-        LOG_ERR("Failed to load shader: ", l_Result.error);
+        LOG_ERR("Failed to load shader -> ", p_ShaderCode.getStatus().error);
 		throw std::runtime_error("Failed to create shader module");
 	}
 
 	VkShaderModuleCreateInfo l_CreateInfo{};
 	l_CreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-	l_CreateInfo.codeSize = 4 * l_Result.code.size();
-	l_CreateInfo.pCode = l_Result.code.data();
+	l_CreateInfo.codeSize = 4 * l_Code.size();
+	l_CreateInfo.pCode = l_Code.data();
 
 	VkShaderModule l_Shader;
 	if (getTable().vkCreateShaderModule(m_VkHandle, &l_CreateInfo, nullptr, &l_Shader) != VK_SUCCESS)
@@ -580,20 +575,18 @@ ResourceID VulkanDevice::createShader(const std::string_view p_Filename, const V
 		throw std::runtime_error("failed to create shader module!");
 	}
 
-    VulkanShader* l_NewRes = ARENA_ALLOC(VulkanShader){ m_ID, l_Shader, p_Stage };
+    VulkanShaderModule* l_NewRes = ARENA_ALLOC(VulkanShaderModule){ m_ID, l_Shader, p_Stage };
     m_Subresources[l_NewRes->getID()] = l_NewRes;
-    if (p_GetReflection)
-	    l_NewRes->reflect(l_Result.code);
     LOG_DEBUG("Created shader (ID:", l_NewRes->getID(), ") and stage ", string_VkShaderStageFlagBits(p_Stage));
 	return l_NewRes->getID();
 }
 
-bool VulkanDevice::freeAllShaders()
+bool VulkanDevice::freeAllShaderModules()
 {
     uint32_t l_Count = 0;
     for (VulkanDeviceSubresource* const l_Component : m_Subresources | std::views::values)
     {
-        if (const VulkanShader* l_Shader = dynamic_cast<VulkanShader*>(l_Component))
+        if (const VulkanShaderModule* l_Shader = dynamic_cast<VulkanShaderModule*>(l_Component))
         {
             freeSubresource(l_Shader->getID());
             l_Count++;
@@ -689,7 +682,7 @@ ResourceID VulkanDevice::createPipeline(const VulkanPipelineBuilder& p_Builder, 
 ResourceID VulkanDevice::createComputePipeline(const ResourceID p_Layout, const ResourceID p_Shader, const std::string_view p_Entrypoint)
 {
     VkPipelineShaderStageCreateInfo l_StageInfo{};
-	const VulkanShader& l_Shader = getShader(p_Shader);
+	const VulkanShaderModule& l_Shader = getShaderModule(p_Shader);
 	l_StageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	l_StageInfo.stage = l_Shader.m_Stage;
 	l_StageInfo.module = l_Shader.m_VkHandle;
