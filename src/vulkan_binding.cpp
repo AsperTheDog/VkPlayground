@@ -11,13 +11,14 @@ uint32_t VulkanBinding::getStride() const
 	return m_Stride;
 }
 
-void VulkanBinding::addAttribDescription(VkFormat p_Format, uint32_t p_Offset)
+void VulkanBinding::addAttribDescription(const VkFormat p_Format, const uint32_t p_Offset, const uint32_t p_LocationOverride, const uint32_t p_LocationSize)
 {
-	m_Attributes.emplace_back(static_cast<uint32_t>(m_Attributes.size()), p_Format, p_Offset);
+    uint32_t l_Location = p_LocationOverride == UINT32_MAX ? m_Attributes.size() : p_LocationOverride;
+	m_Attributes.emplace_back(l_Location, p_Format, p_Offset, p_LocationSize);
 }
 
-VulkanBinding::AttributeData::AttributeData(const uint32_t p_Location, const VkFormat p_Format, const uint32_t p_Offset)
-	: location(p_Location), format(p_Format), offset(p_Offset)
+VulkanBinding::AttributeData::AttributeData(const uint32_t p_Location, const VkFormat p_Format, const uint32_t p_Offset, const uint32_t p_LocationSize)
+	: location(p_Location), format(p_Format), offset(p_Offset), locationSize(p_LocationSize)
 {
 }
 
@@ -25,7 +26,7 @@ VkVertexInputAttributeDescription VulkanBinding::AttributeData::getAttributeDesc
 {
 	VkVertexInputAttributeDescription l_AttributeDescription;
 	l_AttributeDescription.binding = p_Binding;
-	l_AttributeDescription.location = location;
+	l_AttributeDescription.location = locationSize;
 	l_AttributeDescription.format = format;
 	l_AttributeDescription.offset = offset;
 	return l_AttributeDescription;

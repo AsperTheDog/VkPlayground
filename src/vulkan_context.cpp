@@ -1,5 +1,6 @@
 #include "vulkan_context.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <iostream>

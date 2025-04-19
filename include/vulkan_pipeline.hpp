@@ -17,7 +17,7 @@ struct VulkanPipelineBuilder
 	void resetShaderStages();
 
 	void setVertexInputState(const VkPipelineVertexInputStateCreateInfo& p_State);
-	void addVertexBinding(const VulkanBinding& p_Binding);
+	void addVertexBinding(const VulkanBinding& p_Binding, bool p_RecalculateLocations = false);
 
 	void setInputAssemblyState(const VkPipelineInputAssemblyStateCreateInfo& p_State);
 	void setInputAssemblyState(VkPrimitiveTopology p_Topology, VkBool32 p_PrimitiveRestartEnable);

@@ -9,7 +9,7 @@ class VulkanBinding
 public:
 	VulkanBinding(uint32_t p_Binding, VkVertexInputRate p_Rate, uint32_t p_Stride);
 
-	void addAttribDescription(VkFormat p_Format, uint32_t p_Offset);
+	void addAttribDescription(VkFormat p_Format, uint32_t p_Offset, uint32_t p_LocationOverride = UINT32_MAX, uint32_t p_LocationSize = 1);
 
 	[[nodiscard]] uint32_t getStride() const;
 
@@ -19,8 +19,9 @@ private:
 		uint32_t location;
 		VkFormat format;
 		uint32_t offset;
+        uint32_t locationSize;
 
-		AttributeData(uint32_t p_Location, VkFormat p_Format, uint32_t p_Offset);
+		AttributeData(uint32_t p_Location, VkFormat p_Format, uint32_t p_Offset, uint32_t p_LocationSize);
 
 		[[nodiscard]] VkVertexInputAttributeDescription getAttributeDescription(uint32_t p_Binding) const;
 	};

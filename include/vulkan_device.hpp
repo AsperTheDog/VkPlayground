@@ -1,5 +1,6 @@
 #pragma once
 #include <unordered_map>
+#include <slang/slang.h>
 
 #include "utils/identifiable.hpp"
 #include "vulkan_queues.hpp"
@@ -19,7 +20,6 @@
 #include "utils/allocators.hpp"
 
 class VulkanDeviceExtensionManager;
-typedef uint32_t ThreadID;
 
 class VulkanDevice final : public Identifiable
 {
@@ -88,12 +88,12 @@ public:
     bool freePipelineLayout(const ResourceID p_ID) { return freeSubresource<VulkanPipelineLayout>(p_ID); }
     bool freePipelineLayout(const VulkanPipelineLayout& p_Layout) { return freeSubresource<VulkanPipelineLayout>(p_Layout.getID()); }
 
-	ResourceID createShader(std::string_view p_Filename, VkShaderStageFlagBits p_Stage, bool p_GetReflection, std::span<const VulkanShader::MacroDef> p_Macros);
-    VulkanShader& getShader(const ResourceID p_ID) { return *getSubresource<VulkanShader>(p_ID); }
-    [[nodiscard]] const VulkanShader& getShader(const ResourceID p_ID) const { return *getSubresource<VulkanShader>(p_ID); }
-    bool freeShader(const ResourceID p_ID) { return freeSubresource<VulkanShader>(p_ID); }
-    bool freeShader(const VulkanShader& p_Shader) { return freeSubresource<VulkanShader>(p_Shader.getID()); }
-	bool freeAllShaders();
+	ResourceID createShaderModule(VulkanShader& p_ShaderCode, VkShaderStageFlagBits p_Stage);
+    VulkanShaderModule& getShaderModule(const ResourceID p_ID) { return *getSubresource<VulkanShaderModule>(p_ID); }
+    [[nodiscard]] const VulkanShaderModule& getShaderModule(const ResourceID p_ID) const { return *getSubresource<VulkanShaderModule>(p_ID); }
+    bool freeShaderModule(const ResourceID p_ID) { return freeSubresource<VulkanShaderModule>(p_ID); }
+    bool freeShaderModule(const VulkanShaderModule& p_Shader) { return freeSubresource<VulkanShaderModule>(p_Shader.getID()); }
+	bool freeAllShaderModules();
 
 	ResourceID createPipeline(const VulkanPipelineBuilder& p_Builder, ResourceID p_PipelineLayout, ResourceID p_RenderPass, uint32_t p_Subpass);
     VulkanPipeline& getPipeline(const ResourceID p_ID) { return *getSubresource<VulkanPipeline>(p_ID); }
@@ -208,10 +208,10 @@ private:
 	friend class VulkanImage;
 	friend class VulkanFence;
 	friend class VulkanSemaphore;
+    friend class VulkanShaderModule;
 	friend class VulkanPipeline;
 	friend class VulkanPipelineLayout;
 	friend class VulkanFramebuffer;
-	friend class VulkanShader;
 	friend class VulkanDescriptorPool;
 	friend class VulkanDescriptorSetLayout;
 	friend class VulkanDescriptorSet;
