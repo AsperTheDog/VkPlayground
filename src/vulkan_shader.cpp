@@ -106,7 +106,7 @@ void VulkanShader::loadModuleString(const std::string_view p_Source, const std::
 
     m_SlangComponents.push_back(l_Module);
 
-    for (uint32_t i = 0;  i < l_Module->getDefinedEntryPointCount(); i++)
+    for (int32_t i = 0; i < l_Module->getDefinedEntryPointCount(); i++)
     {
         slang::IEntryPoint* l_EntryPoint = nullptr;
         if (SLANG_FAILED(l_Module->getDefinedEntryPoint(i, &l_EntryPoint)))
@@ -251,9 +251,10 @@ SlangStage VulkanShader::getSlangStageFromVkStage(const VkShaderStageFlagBits p_
     case VK_SHADER_STAGE_INTERSECTION_BIT_KHR: return SLANG_STAGE_INTERSECTION;
     case VK_SHADER_STAGE_CALLABLE_BIT_KHR: return SLANG_STAGE_CALLABLE;
     case VK_SHADER_STAGE_MESH_BIT_EXT: return SLANG_STAGE_MESH;
+    default:
+        throw std::runtime_error("Unsupported shader stage");
     }
 
-    throw std::runtime_error("Unsupported shader stage");
 }
 
 VkShaderStageFlagBits VulkanShader::getVkStageFromSlangStage(const SlangStage p_Stage)
@@ -273,8 +274,9 @@ VkShaderStageFlagBits VulkanShader::getVkStageFromSlangStage(const SlangStage p_
     case SLANG_STAGE_INTERSECTION: return VK_SHADER_STAGE_INTERSECTION_BIT_KHR;
     case SLANG_STAGE_CALLABLE: return VK_SHADER_STAGE_CALLABLE_BIT_KHR;
     case SLANG_STAGE_MESH: return VK_SHADER_STAGE_MESH_BIT_EXT;
+    default:
+        throw std::runtime_error("Unsupported shader stage");
     }
-    throw std::runtime_error("Unsupported shader stage");
 }
 
 bool VulkanShader::buildSession()
@@ -305,7 +307,7 @@ bool VulkanShader::buildSession()
     options[1] = { slang::CompilerOptionName::Optimization, {slang::CompilerOptionValueKind::Int, static_cast<int>(m_Optimize ? SLANG_OPTIMIZATION_LEVEL_HIGH : SLANG_OPTIMIZATION_LEVEL_NONE), 0, nullptr, nullptr} };
     options[2] = { slang::CompilerOptionName::DebugInformation, {slang::CompilerOptionValueKind::Int, static_cast<int>(m_Optimize ? SLANG_DEBUG_INFO_LEVEL_NONE : SLANG_DEBUG_INFO_LEVEL_MAXIMAL), 0, nullptr, nullptr} };
 
-    sessionDesc.compilerOptionEntryCount = options.size();
+    sessionDesc.compilerOptionEntryCount = static_cast<uint32_t>(options.size());
     sessionDesc.compilerOptionEntries = options.data();
 
     std::vector<const char*> l_SearchPaths;
@@ -313,7 +315,7 @@ bool VulkanShader::buildSession()
     for (const std::string& l_Path : m_SearchPaths)
         l_SearchPaths.push_back(l_Path.c_str());
 
-    sessionDesc.searchPathCount = l_SearchPaths.size();
+    sessionDesc.searchPathCount = static_cast<uint32_t>(l_SearchPaths.size());
     sessionDesc.searchPaths = l_SearchPaths.data();
 
     std::vector<slang::PreprocessorMacroDesc> l_Macros;
@@ -326,7 +328,7 @@ bool VulkanShader::buildSession()
         l_Macros.push_back(l_Desc);
     }
 
-    sessionDesc.preprocessorMacroCount = l_Macros.size();
+    sessionDesc.preprocessorMacroCount = static_cast<uint32_t>(l_Macros.size());
     sessionDesc.preprocessorMacros = l_Macros.data();
 
     if (SLANG_FAILED(s_SlangSessions[m_CompilationThread]->createSession(sessionDesc, &m_SlangSession)))

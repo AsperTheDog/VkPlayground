@@ -13,7 +13,7 @@ uint32_t VulkanBinding::getStride() const
 
 void VulkanBinding::addAttribDescription(const VkFormat p_Format, const uint32_t p_Offset, const uint32_t p_LocationOverride, const uint32_t p_LocationSize)
 {
-    uint32_t l_Location = p_LocationOverride == UINT32_MAX ? m_Attributes.size() : p_LocationOverride;
+    uint32_t l_Location = p_LocationOverride == UINT32_MAX ? static_cast<uint32_t>(m_Attributes.size()) : p_LocationOverride;
 	m_Attributes.emplace_back(l_Location, p_Format, p_Offset, p_LocationSize);
 }
 
