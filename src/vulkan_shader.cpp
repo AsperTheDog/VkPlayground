@@ -147,7 +147,7 @@ std::vector<uint32_t> VulkanShader::getSPIRVForStage(const VkShaderStageFlagBits
         return {};
     }
 
-    uint32_t l_EntryPointIndex = 0;
+    uint32_t l_EntryPointIndex = UINT32_MAX;
     slang::IBlob* l_DiagnosticsBlob = nullptr;
     slang::ProgramLayout* l_Layout = m_SlangProgram->getLayout(0, &l_DiagnosticsBlob);
     printBlob(l_DiagnosticsBlob);
@@ -161,6 +161,12 @@ std::vector<uint32_t> VulkanShader::getSPIRVForStage(const VkShaderStageFlagBits
             l_EntryPointIndex = i;
             break;
         }
+    }
+    if (l_EntryPointIndex == UINT32_MAX)
+    {
+        m_Result.error = "Failed to find entry point for shader stage: " + std::to_string(p_Stage);
+        m_Result.status = Result::FAILED;
+        return {};
     }
 
     slang::IBlob* l_EntryPointBlob = nullptr;

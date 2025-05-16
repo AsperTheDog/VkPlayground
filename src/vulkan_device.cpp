@@ -1,6 +1,5 @@
 #include "vulkan_device.hpp"
 
-#include <array>
 #include <ranges>
 #include <stdexcept>
 #include <vulkan/vk_enum_string_helper.h>

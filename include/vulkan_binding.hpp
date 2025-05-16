@@ -32,8 +32,8 @@ private:
 	std::vector<AttributeData> m_Attributes;
 
 	[[nodiscard]] VkVertexInputBindingDescription getBindingDescription() const;
-    size_t getAttributeDescriptionCount() const;
-    [[nodiscard]] void getAttributeDescriptions(VkVertexInputAttributeDescription p_Container[]) const;
+    [[nodiscard]] size_t getAttributeDescriptionCount() const;
+    void getAttributeDescriptions(VkVertexInputAttributeDescription p_Container[]) const;
 
 	friend class VulkanPipeline;
 	friend struct VulkanPipelineBuilder;
