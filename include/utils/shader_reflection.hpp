@@ -13,7 +13,7 @@
 struct ShaderReflectionData
 {
     ShaderReflectionData() = default;
-    ShaderReflectionData(slang::ProgramLayout* p_Layout, VkShaderStageFlags p_Stages);
+    explicit ShaderReflectionData(slang::ProgramLayout* p_Layout);
     
     enum FieldType: uint8_t
     {
@@ -30,7 +30,7 @@ struct ShaderReflectionData
         FLOAT32 = 108, FLOAT32_2 = 110, FLOAT32_3 = 111, FLOAT32_4 = 112, FLOAT32_2X2 = 113, FLOAT32_3X3 = 118, FLOAT32_4X4 = 125,
         FLOAT64 = 126, FLOAT64_2 = 128, FLOAT64_3 = 129, FLOAT64_4 = 130, FLOAT64_2X2 = 131, FLOAT64_3X3 = 136, FLOAT64_4X4 = 143,
 
-        IMAGE1D = 244, IMAGE2D = 245, IMAGE3D = 246, BUFFER = 247, SAMPLER = 248,
+        IMAGE1D = 244, IMAGE2D = 245, IMAGE3D = 246, BUFFER = 247, SAMPLER = 248, SUBPASS_INPUT = 249,
 
         UNKNOWN = UINT8_MAX
     };
@@ -39,12 +39,6 @@ struct ShaderReflectionData
     {
         size_t numElements;
         FieldType type;
-    };
-
-    struct ResourceData
-    {
-        FieldType type;
-        bool access;
     };
 
     struct Field
@@ -72,6 +66,7 @@ struct ShaderReflectionData
     struct Resource final : Field
     {
         FieldType type;
+        FieldType subType;
         bool readOnly;
     };
     using ResourcePtr = std::shared_ptr<Resource>;
@@ -96,6 +91,7 @@ struct ShaderReflectionData
     };
 
     std::vector<FieldPtr> vertexInputs;
+    std::vector<FieldPtr> fragmentOutputs;
     std::vector<DescriptorBinding> descriptorBindings;
     StructPtr pushConstantBlock;
 
@@ -126,7 +122,7 @@ private:
     static FieldData createField(slang::VariableLayoutReflection* p_Variable, uint32_t p_BindingOffset);
     static TypeData getTypeData(slang::TypeLayoutReflection* p_Type);
     static FieldType getTypeFromShape(SlangResourceShape p_Shape);
-    static FieldType getType(slang::TypeLayoutReflection* p_Type);
+    static FieldType getType(slang::TypeReflection* p_Type);
     static BindingFormat getBindingFormat(FieldType p_Type);
 
     [[nodiscard]] std::vector<VertexBindingRef::Field> getFlatVertexInputs(uint32_t p_StartingPoint = 0) const;
@@ -137,23 +133,42 @@ private:
     };
 };
 
-inline ShaderReflectionData::ShaderReflectionData(slang::ProgramLayout* p_Layout, const VkShaderStageFlags p_Stages)
-    : stageFlags(p_Stages), m_Valid(true)
+inline ShaderReflectionData::ShaderReflectionData(slang::ProgramLayout* p_Layout)
+    : m_Valid(true)
 {
     for (uint32_t i = 0; i < p_Layout->getEntryPointCount(); i++)
     {
         slang::EntryPointLayout* l_EntryPoint = p_Layout->getEntryPointByIndex(i);
-        if (VulkanShader::getVkStageFromSlangStage(l_EntryPoint->getStage()) != VK_SHADER_STAGE_VERTEX_BIT)
-            continue;
-
-        for (uint32_t j = 0; j < l_EntryPoint->getParameterCount(); j++)
+        const VkShaderStageFlagBits l_Stage = VulkanShader::getVkStageFromSlangStage(l_EntryPoint->getStage());
+        stageFlags |= l_Stage;
+        if (l_Stage == VK_SHADER_STAGE_VERTEX_BIT)
         {
-            slang::VariableLayoutReflection* l_Variable = l_EntryPoint->getParameterByIndex(j);
-            FieldData l_Field = createField(l_Variable, 0);
-            if (l_Field.category == FieldData::INPUT)
-                vertexInputs.push_back(l_Field.field);
-            else
-                LOG_WARN("Vertex parameter is not an input variable");
+            for (uint32_t j = 0; j < l_EntryPoint->getParameterCount(); j++)
+            {
+                slang::VariableLayoutReflection* l_Variable = l_EntryPoint->getParameterByIndex(j);
+                FieldData l_Field = createField(l_Variable, 0);
+                if (l_Field.category == FieldData::INPUT)
+                    vertexInputs.push_back(l_Field.field);
+                else
+                    LOG_WARN("Vertex parameter is not an input variable");
+            }
+        }
+        else if (l_Stage == VK_SHADER_STAGE_FRAGMENT_BIT)
+        {
+            slang::VariableLayoutReflection* l_Result = l_EntryPoint->getResultVarLayout();
+            if (l_Result->getTypeLayout()->getKind() == slang::TypeReflection::Kind::Scalar)
+            {
+                FieldData l_Field = createField(l_Result, 0);
+                fragmentOutputs.push_back(l_Field.field);
+            }
+            else if (l_Result->getTypeLayout()->getKind() == slang::TypeReflection::Kind::Struct)
+            {
+                for (uint32_t j = 0; j < l_Result->getTypeLayout()->getFieldCount(); j++)
+                {
+                    FieldData l_Field = createField(l_Result->getTypeLayout()->getFieldByIndex(j), 0);
+                    fragmentOutputs.push_back(l_Field.field);
+                }
+            }
         }
     }
 
@@ -186,7 +201,7 @@ inline ShaderReflectionData::ShaderReflectionData(slang::ProgramLayout* p_Layout
 inline VkPushConstantRange ShaderReflectionData::getPushConstantRange() const
 {
     VkPushConstantRange l_PushConstantRange{};
-    l_PushConstantRange.size = pushConstantBlock->size;
+    l_PushConstantRange.size = static_cast<uint32_t>(pushConstantBlock->size);
     l_PushConstantRange.stageFlags = stageFlags;
     return l_PushConstantRange;
 }
@@ -215,7 +230,7 @@ inline void ShaderReflectionData::populateBindings(std::span<VertexBindingRef> p
             VertexBindingRef& l_Binding = p_Bindings[i];
             const BindingFormat l_BindingFormat = getBindingFormat(l_Field.field->data.type);
             l_Binding.binding.addAttribDescription(l_BindingFormat.format, l_Offset, l_Field.field->binding, l_BindingFormat.bindingSize);
-            l_Offset += l_Field.field->size;
+            l_Offset += static_cast<uint32_t>(l_Field.field->size);
         }
     }
 }
@@ -266,9 +281,15 @@ inline ShaderReflectionData::FieldData ShaderReflectionData::createField(slang::
     {
         const ResourcePtr l_Resource = std::make_shared<Resource>();
 
-        l_Resource->type = getType(l_Type);
+        l_Resource->type = getType(l_Type->getType());
         if (l_Resource->type == UNKNOWN)
+        {
             l_Resource->type = getTypeFromShape(l_Type->getResourceShape());
+            if (l_Resource->type == BUFFER)
+                l_Resource->subType = getType(l_Type->getElementTypeLayout()->getType());
+            else
+                l_Resource->subType = getType(l_Type->getResourceResultType());
+        }
 
         const SlangResourceAccess l_Access = l_Type->getResourceAccess();
         if (l_Access != SLANG_RESOURCE_ACCESS_READ && l_Access != SLANG_RESOURCE_ACCESS_READ_WRITE)
@@ -297,7 +318,7 @@ inline ShaderReflectionData::TypeData ShaderReflectionData::getTypeData(slang::T
 
     const TypeData l_TypeData{
         .numElements = std::max(1ULL, l_Type->getTotalArrayElementCount()),
-        .type = getType(l_Type->unwrapArray()),
+        .type = getType(l_Type->unwrapArray()->getType()),
     };
 
     return l_TypeData;
@@ -315,12 +336,14 @@ inline ShaderReflectionData::FieldType ShaderReflectionData::getTypeFromShape(co
         return FieldType::IMAGE3D;
     case SlangResourceShape::SLANG_STRUCTURED_BUFFER:
         return FieldType::BUFFER;
+    case SlangResourceShape::SLANG_TEXTURE_SUBPASS:
+        return FieldType::SUBPASS_INPUT;
     default:
         return FieldType::UNKNOWN;
     }
 }
 
-inline ShaderReflectionData::FieldType ShaderReflectionData::getType(slang::TypeLayoutReflection* p_Type)
+inline ShaderReflectionData::FieldType ShaderReflectionData::getType(slang::TypeReflection* p_Type)
 {
     switch (p_Type->getKind())
     {
@@ -329,9 +352,9 @@ inline ShaderReflectionData::FieldType ShaderReflectionData::getType(slang::Type
     case slang::TypeReflection::Kind::Scalar:
         return l_ScalarKindMapping[p_Type->getScalarType()];
     case slang::TypeReflection::Kind::Vector:
-        return static_cast<FieldType>(getType(p_Type->getElementTypeLayout()) + p_Type->getElementCount());
+        return static_cast<FieldType>(getType(p_Type->getElementType()) + p_Type->getElementCount());
     case slang::TypeReflection::Kind::Matrix:
-        return static_cast<FieldType>(getType(p_Type->getElementTypeLayout()->getElementTypeLayout()) + p_Type->getRowCount() * p_Type->getColumnCount() + 1);
+        return static_cast<FieldType>(getType(p_Type->getElementType()->getElementType()) + p_Type->getRowCount() * p_Type->getColumnCount() + 1);
     default: 
         return FieldType::UNKNOWN;
     }
