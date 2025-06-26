@@ -45,6 +45,8 @@ public:
     ResourceID createBLASFromModels(std::span<const ModelData> p_Models, uint32_t p_BufferQueueFamilyIndex);
 
     void free() override {}
+    std::string getMainExtensionName() override { return "VK_KHR_acceleration_structure"; }
+
 private:
     bool m_EnableStructure;
     bool m_EnableIndirectBuild;

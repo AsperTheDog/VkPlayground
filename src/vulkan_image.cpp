@@ -45,22 +45,25 @@ VkMemoryRequirements VulkanImage::getMemoryRequirements() const
 void VulkanImage::allocateFromIndex(const uint32_t p_MemoryIndex)
 {
 	Logger::pushContext("Image memory (from index)");
-	const VkMemoryRequirements l_Requirements = getMemoryRequirements();
-	setBoundMemory(VulkanContext::getDevice(getDeviceID()).getMemoryAllocator().allocate(l_Requirements.size, l_Requirements.alignment, p_MemoryIndex));
-	Logger::popContext();
+    VulkanMemArray::allocateFromIndex(p_MemoryIndex);
+    Logger::popContext();
 }
 
 void VulkanImage::allocateFromFlags(const VulkanMemoryAllocator::MemoryPropertyPreferences p_MemoryProperties)
 {
 	Logger::pushContext("Image memory (from flags)");
-	const VkMemoryRequirements l_Requirements = getMemoryRequirements();
-	setBoundMemory(VulkanContext::getDevice(getDeviceID()).getMemoryAllocator().searchAndAllocate(l_Requirements.size, l_Requirements.alignment, p_MemoryProperties, l_Requirements.memoryTypeBits));
-	Logger::popContext();
+    VulkanMemArray::allocateFromFlags(p_MemoryProperties);
+    Logger::popContext();
 }
 
 VkExtent3D VulkanImage::getSize() const
 {
 	return m_Size;
+}
+
+uint32_t VulkanImage::getFlatSize() const
+{
+    return m_Size.width * m_Size.height * m_Size.depth;
 }
 
 VkImageType VulkanImage::getType() const
@@ -258,7 +261,7 @@ void VulkanImage::freeSampler(const VulkanImageSampler& p_Sampler)
 }
 
 VulkanImage::VulkanImage(const ResourceID p_Device, const VkImage p_VkHandle, const VkExtent3D p_Size, const VkImageType p_Type, const VkImageLayout p_Layout)
-	: VulkanDeviceSubresource(p_Device), m_Size(p_Size), m_Type(p_Type), m_Layout(p_Layout), m_VkHandle(p_VkHandle)
+	: VulkanMemArray(p_Device), m_Size(p_Size), m_Type(p_Type), m_Layout(p_Layout), m_VkHandle(p_VkHandle)
 {
 
 }

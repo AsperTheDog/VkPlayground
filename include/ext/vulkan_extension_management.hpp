@@ -1,7 +1,11 @@
 #pragma once
 #include <vector>
+#if _WIN32
+#define VK_USE_PLATFORM_WIN32_KHR
+#endif
 #include <Volk/volk.h>
 
+#include "vulkan_gpu.hpp"
 #include "utils/identifiable.hpp"
 #include "utils/string_utils.hpp"
 
@@ -32,6 +36,7 @@ typedef uint32_t ExtensionID;
 class VulkanDeviceExtension
 {
 public:
+    virtual ~VulkanDeviceExtension() = default;
     [[nodiscard]] ExtensionID getExtensionID() const { return m_ExtensionID; }
     [[nodiscard]] ResourceID getDeviceID() const { return m_DeviceID; }
 
@@ -40,6 +45,9 @@ public:
 
     virtual void free() = 0;
     void setDevice(const ResourceID p_DeviceID) { m_DeviceID = p_DeviceID; }
+
+    virtual std::string getMainExtensionName() = 0;
+    virtual std::vector<std::string> getExtraExtensionNames() { return {}; };
 
 protected:
     explicit VulkanDeviceExtension(const ResourceID p_DeviceID) : m_DeviceID(p_DeviceID) {}
@@ -61,14 +69,16 @@ public:
     VulkanDeviceExtensionManager(VulkanDeviceExtensionManager&& p_Other) noexcept;
     VulkanDeviceExtensionManager(const VulkanDeviceExtensionManager& p_Other);
 
+    void setGPU(const VulkanGPU p_GPU) { m_GPU = p_GPU; }
+
     void addExtensionsToChain(VulkanExtensionChain& p_Chain) const;
-    void addExtension(const std::string& p_ExtensionName, VulkanDeviceExtension* p_Extension, bool p_ForceReplace = false);
+    void addExtension(VulkanDeviceExtension* p_Extension, bool p_ForceReplace = false);
 
     [[nodiscard]] VulkanDeviceExtension* getExtension(const std::string& p_ExtensionName) const;
     [[nodiscard]] bool containsExtension(std::string_view p_ExtensionName) const;
     [[nodiscard]] bool isEmpty() const { return m_Extensions.empty(); }
     [[nodiscard]] size_t getExtensionCount() const { return m_Extensions.size(); }
-    [[nodiscard]] bool isValid() const { return m_DeviceID != -1; }
+    [[nodiscard]] bool isValid() const { return m_DeviceID != UINT32_MAX; }
     void populateExtensionNames(const char* p_Container[]) const;
 
     template <typename T>
@@ -78,11 +88,13 @@ public:
     void freeExtensions();
 
 private:
+    void addExtension(const std::string& p_Name, VulkanDeviceExtension* p_Extension, bool p_ForceReplace = false);
     void setDevice(ResourceID p_Device);
 
     StringUMap<VulkanDeviceExtension*> m_Extensions{};
 
-    ResourceID m_DeviceID = -1;
+    VulkanGPU m_GPU;
+    ResourceID m_DeviceID = UINT32_MAX;
 
     friend class VulkanDevice;
 };

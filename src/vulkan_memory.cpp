@@ -1,5 +1,6 @@
 #include "vulkan_memory.hpp"
 
+#include <algorithm>
 #include <ranges>
 #include <stdexcept>
 #include <vulkan/vk_enum_string_helper.h>
@@ -119,7 +120,7 @@ MemoryChunk::MemoryBlock MemoryChunk::allocate(const VkDeviceSize p_NewSize, con
 	VkDeviceSize l_Best = m_Size;
 	VkDeviceSize l_BestAlignOffset = 0;
 	if (p_NewSize > m_UnallocatedData[m_BiggestChunk])
-		return {0, 0, m_ID};
+		return {.size = 0, .offset = 0, .chunk = m_ID};
 
 	for (const auto& [l_Offset, l_Size] : m_UnallocatedData)
 	{
@@ -136,7 +137,7 @@ MemoryChunk::MemoryBlock MemoryChunk::allocate(const VkDeviceSize p_NewSize, con
 	}
 
 	if (l_Best == m_Size)
-		return {0, 0, m_ID};
+		return {.size = 0, .offset = 0, .chunk = m_ID};
 
 	const VkDeviceSize l_BestSize = m_UnallocatedData[l_Best];
 	m_UnallocatedData.erase(l_Best);
@@ -160,7 +161,7 @@ MemoryChunk::MemoryBlock MemoryChunk::allocate(const VkDeviceSize p_NewSize, con
 
 	m_UnallocatedSize -= p_NewSize;
 
-	return {p_NewSize, l_Best, m_ID};
+	return {.size = p_NewSize, .offset = l_Best, .chunk = m_ID};
 }
 
 void MemoryChunk::deallocate(const MemoryBlock& p_Block)
@@ -253,6 +254,38 @@ void VulkanMemoryAllocator::free()
 	m_MemoryChunks.clear();
 }
 
+uint32_t VulkanMemoryAllocator::search(const VkDeviceSize p_Size, VkDeviceSize p_Alignment, const MemoryPropertyPreferences p_Properties, const uint32_t p_TypeFilter, const bool p_IncludeHidden)
+{
+    const std::vector<uint32_t> l_MemoryType = m_MemoryStructure.getMemoryTypes(p_Properties.desiredProperties, p_TypeFilter);
+	uint32_t l_BestType = 0;
+	VkDeviceSize l_BestSize = 0;
+	bool l_DoesBestHaveUndesired = false;
+	for (const uint32_t& l_Type : l_MemoryType)
+	{
+		if (!p_IncludeHidden && m_HiddenTypes.contains(l_Type))
+			continue;
+
+		const bool l_DoesMemoryHaveUndesired = m_MemoryStructure.doesMemoryContainProperties(l_Type, p_Properties.undesiredProperties);
+		if (!p_Properties.allowUndesired && l_DoesMemoryHaveUndesired)
+			continue;
+
+		if (l_BestSize != 0 && !l_DoesBestHaveUndesired && l_DoesMemoryHaveUndesired)
+			continue;
+
+		if (suitableChunkExists(l_Type, p_Size))
+			return l_Type;
+
+		const VkDeviceSize l_RemainingSize = getRemainingSize(m_MemoryStructure.getMemoryProperties().memoryTypes[l_Type].heapIndex);
+		if (l_RemainingSize >= l_BestSize)
+		{
+			l_BestType = l_Type;
+			l_BestSize = l_RemainingSize;
+			l_DoesBestHaveUndesired = l_DoesMemoryHaveUndesired;
+		}
+	}
+	return l_BestType;
+}
+
 MemoryChunk::MemoryBlock VulkanMemoryAllocator::allocate(const VkDeviceSize p_Size, const VkDeviceSize p_Alignment, const uint32_t p_MemoryType)
 {
 	VkDeviceSize l_ChunkSize = m_ChunkSize;
@@ -274,7 +307,7 @@ MemoryChunk::MemoryBlock VulkanMemoryAllocator::allocate(const VkDeviceSize p_Si
 
     const VkDeviceSize l_HeapSize = getMemoryStructure().getMemoryTypeHeap(p_MemoryType).size;
     const VkDeviceSize l_MaxHeapUsage = static_cast<VkDeviceSize>(static_cast<double>(l_HeapSize) * 0.7);
-    if (l_ChunkSize > l_MaxHeapUsage) l_ChunkSize = l_MaxHeapUsage;
+    l_ChunkSize = std::min(l_ChunkSize, l_MaxHeapUsage);
     if (l_ChunkSize < p_Size) 
         throw std::runtime_error("Allocation of size " + std::to_string(p_Size) + " was requested for memory type " + std::to_string(p_MemoryType) + " but the heap size is only " + std::to_string(l_HeapSize) + " (Cannot allocate more than 80% of heap)");
 
@@ -296,36 +329,42 @@ MemoryChunk::MemoryBlock VulkanMemoryAllocator::allocate(const VkDeviceSize p_Si
 	return m_MemoryChunks.back().allocate(p_Size, p_Alignment);
 }
 
+MemoryChunk::MemoryBlock VulkanMemoryAllocator::allocateIsolated(const VkDeviceSize p_Size, const uint32_t p_MemoryType, const void* p_Next)
+{
+    if (!p_Next)
+    {
+        LOG_WARN("Allocating strictly isolated memory chunk without special properties (p_Next). It is recommended that non special memory is not isolated for better performance");
+    }
+
+    const VkDeviceSize l_HeapSize = getMemoryStructure().getMemoryTypeHeap(p_MemoryType).size;
+    const VkDeviceSize l_MaxHeapUsage = static_cast<VkDeviceSize>(static_cast<double>(l_HeapSize) * 0.7);
+    if (p_Size > l_MaxHeapUsage)
+    {
+        throw std::runtime_error("Allocation of size " + std::to_string(p_Size) + " was requested for memory type " + std::to_string(p_MemoryType) + " but the heap size is only " + std::to_string(l_HeapSize) + " (Cannot allocate more than 80% of heap)");
+    }
+
+    VkMemoryAllocateInfo l_AllocInfo{};
+	l_AllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    l_AllocInfo.pNext = p_Next;
+	l_AllocInfo.allocationSize = p_Size;
+	l_AllocInfo.memoryTypeIndex = p_MemoryType;
+
+    const VulkanDevice& l_Device = VulkanContext::getDevice(m_Device);
+
+	VkDeviceMemory l_Memory;
+	if (const VkResult l_Ret = l_Device.getTable().vkAllocateMemory(l_Device.m_VkHandle, &l_AllocInfo, nullptr, &l_Memory); l_Ret != VK_SUCCESS)
+	{
+		throw std::runtime_error(std::string("Failed to allocate memory, error: ") + string_VkResult(l_Ret));
+	}
+    m_MemoryChunks.push_back(MemoryChunk(p_Size, p_MemoryType, l_Memory));
+    LOG_DEBUG("Allocated isolated chunk (ID: ", m_MemoryChunks.back().getID(), ") of size ", compactBytes(p_Size), " of memory type ", p_MemoryType);
+    return m_MemoryChunks.back().allocate(p_Size, 1);
+}
+
 MemoryChunk::MemoryBlock VulkanMemoryAllocator::searchAndAllocate(const VkDeviceSize p_Size, const VkDeviceSize p_Alignment, const MemoryPropertyPreferences p_Properties, const uint32_t p_TypeFilter, const bool p_IncludeHidden)
 {
-	const std::vector<uint32_t> l_MemoryType = m_MemoryStructure.getMemoryTypes(p_Properties.desiredProperties, p_TypeFilter);
-	uint32_t l_BestType = 0;
-	VkDeviceSize l_BestSize = 0;
-	bool l_DoesBestHaveUndesired = false;
-	for (const uint32_t& l_Type : l_MemoryType)
-	{
-		if (!p_IncludeHidden && m_HiddenTypes.contains(l_Type))
-			continue;
-
-		const bool l_DoesMemoryHaveUndesired = m_MemoryStructure.doesMemoryContainProperties(l_Type, p_Properties.undesiredProperties);
-		if (!p_Properties.allowUndesired && l_DoesMemoryHaveUndesired)
-			continue;
-
-		if (l_BestSize != 0 && !l_DoesBestHaveUndesired && l_DoesMemoryHaveUndesired)
-			continue;
-
-		if (suitableChunkExists(l_Type, p_Size))
-			return allocate(p_Size, p_Alignment, l_Type);
-
-		const VkDeviceSize l_RemainingSize = getRemainingSize(m_MemoryStructure.getMemoryProperties().memoryTypes[l_Type].heapIndex);
-		if (l_RemainingSize >= l_BestSize)
-		{
-			l_BestType = l_Type;
-			l_BestSize = l_RemainingSize;
-			l_DoesBestHaveUndesired = l_DoesMemoryHaveUndesired;
-		}
-	}
-	return allocate(p_Size, p_Alignment, l_BestType);
+    const uint32_t l_Index = search(p_Size, p_Alignment, p_Properties, p_TypeFilter, p_IncludeHidden);
+	return allocate(p_Size, p_Alignment, l_Index);
 }
 
 void VulkanMemoryAllocator::deallocate(const MemoryChunk::MemoryBlock& p_Block)
@@ -417,4 +456,17 @@ uint32_t VulkanMemoryAllocator::getChunkMemoryType(const uint32_t p_Chunk) const
 
     LOG_DEBUG("Chunk search failed out of ", m_MemoryChunks.size(), " chunks");
 	throw std::runtime_error("Chunk (ID:" + std::to_string(p_Chunk) + ") not found");
+}
+
+VkDeviceMemory VulkanMemoryAllocator::getChunkMemoryHandle(const uint32_t p_Chunk) const
+{
+    for (const MemoryChunk& l_MemoryChunk : m_MemoryChunks)
+    {
+        if (l_MemoryChunk.getID() == p_Chunk)
+        {
+            return *l_MemoryChunk;
+        }
+    }
+    LOG_DEBUG("Chunk search failed out of ", m_MemoryChunks.size(), " chunks");
+    throw std::runtime_error("Chunk (ID:" + std::to_string(p_Chunk) + ") not found");
 }

@@ -1,7 +1,7 @@
 #pragma once
 #include "vulkan_extension_management.hpp"
 
-class VulkanShaderClockExtension : public VulkanDeviceExtension
+class VulkanShaderClockExtension final : public VulkanDeviceExtension
 {
 public:
     static VulkanShaderClockExtension* get(const VulkanDevice& p_Device);
@@ -13,6 +13,7 @@ public:
     [[nodiscard]] VkStructureType getExtensionStructType() const override { return VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CLOCK_FEATURES_KHR; }
 
     void free() override {}
+    std::string getMainExtensionName() override { return VK_KHR_SHADER_CLOCK_EXTENSION_NAME; }
 
 private:
     bool m_EnableDeviceClock;

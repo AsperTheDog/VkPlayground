@@ -67,7 +67,7 @@ public:
     bool freeBuffer(const ResourceID p_ID) { return freeSubresource<VulkanBuffer>(p_ID); }
     bool freeBuffer(const VulkanBuffer& p_Buffer) { return freeSubresource<VulkanBuffer>(p_Buffer.getID()); }
 
-    ResourceID createImage(VkImageType p_Type, VkFormat p_Format, VkExtent3D p_Extent, VkImageUsageFlags p_Usage, VkImageCreateFlags p_Flags);
+    ResourceID createImage(VkImageType p_Type, VkFormat p_Format, VkExtent3D p_Extent, VkImageUsageFlags p_Usage, VkImageCreateFlags p_Flags, VkImageTiling p_Tiling = VK_IMAGE_TILING_OPTIMAL);
     VulkanImage& getImage(const ResourceID p_ID) { return *getSubresource<VulkanImage>(p_ID); }
     [[nodiscard]] const VulkanImage& getImage(const ResourceID p_ID) const { return *getSubresource<VulkanImage>(p_ID); }
     bool freeImage(const ResourceID p_ID) { return freeSubresource<VulkanImage>(p_ID); }
@@ -218,6 +218,11 @@ private:
 	friend class VulkanSwapchain;
 
     friend class VulkanDeviceExtensionManager;
+
+private:
+    void insertImage(VulkanImage* p_Image);
+
+    friend class VulkanExternalMemoryExtension;
 };
 
 

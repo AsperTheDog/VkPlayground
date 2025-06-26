@@ -9,11 +9,11 @@ class VulkanDevice;
 
 enum AttachmentType
 {
-	COLOR,
-	DEPTH_STENCIL,
-	INPUT,
-	RESOLVE,
-	PRESERVE
+	COLOR_ATTACHMENT,
+	DEPTH_STENCIL_ATTACHMENT,
+	INPUT_ATTACHMENT,
+	RESOLVE_ATTACHMENT,
+	PRESERVE_ATTACHMENT
 };
 
 class VulkanRenderPassBuilder
@@ -35,23 +35,23 @@ public:
         {
             switch (p_Type)
             {
-            case COLOR:
+            case COLOR_ATTACHMENT:
                 layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
                 break;
 
-            case DEPTH_STENCIL:
+            case DEPTH_STENCIL_ATTACHMENT:
                 layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
                 break;
 
-            case INPUT:
+            case INPUT_ATTACHMENT:
                 layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
                 break;
 
-            case RESOLVE:
+            case RESOLVE_ATTACHMENT:
                 layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
                 break;
 
-            case PRESERVE:
+            case PRESERVE_ATTACHMENT:
                 layout = VK_IMAGE_LAYOUT_UNDEFINED;
                 break;
             }

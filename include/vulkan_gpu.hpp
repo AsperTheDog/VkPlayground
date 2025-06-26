@@ -1,5 +1,6 @@
 #pragma once
 #include <span>
+#include <string_view>
 #include <Volk/volk.h>
 
 class SDLWindow;
@@ -17,7 +18,8 @@ public:
 	[[nodiscard]] VkSurfaceCapabilitiesKHR getCapabilities(const VkSurfaceKHR& p_Surface) const;
 
     [[nodiscard]] uint32_t getSupportedExtensionCount() const;
-    [[nodiscard]] void getSupportedExtensions(VkExtensionProperties p_Container[]) const;
+    void getSupportedExtensions(VkExtensionProperties p_Container[]) const;
+    [[nodiscard]] bool supportsExtension(std::string_view p_Extension) const;
 
 	[[nodiscard]] GPUQueueStructure getQueueFamilies() const;
 
@@ -32,6 +34,8 @@ public:
 	VkPhysicalDevice operator*() const;
 
     bool operator==(const VulkanGPU& p_Other) const { return m_VkHandle == p_Other.m_VkHandle; }
+
+    bool isValid() const { return m_VkHandle != VK_NULL_HANDLE; }
 
 private:
 	explicit VulkanGPU(VkPhysicalDevice p_PhysicalDevice);

@@ -7,6 +7,79 @@
 #include "vulkan_context.hpp"
 #include "vulkan_device.hpp"
 
+void VulkanMemArray::allocateFromIndex(const uint32_t p_MemoryIndex)
+{
+    const VkMemoryRequirements l_Requirements = getMemoryRequirements();
+	setBoundMemory(VulkanContext::getDevice(getDeviceID()).getMemoryAllocator().allocate(l_Requirements.size, l_Requirements.alignment, p_MemoryIndex));
+}
+
+void VulkanMemArray::allocateFromFlags(const VulkanMemoryAllocator::MemoryPropertyPreferences p_MemoryProperties)
+{
+    const VkMemoryRequirements l_Requirements = getMemoryRequirements();
+    setBoundMemory(VulkanContext::getDevice(getDeviceID()).getMemoryAllocator().searchAndAllocate(l_Requirements.size, l_Requirements.alignment, p_MemoryProperties, l_Requirements.memoryTypeBits));
+}
+
+bool VulkanMemArray::isMemoryBound() const
+{
+    return m_MemoryRegion.size > 0;
+}
+
+uint32_t VulkanMemArray::getBoundMemoryType() const
+{
+    return VulkanContext::getDevice(getDeviceID()).getMemoryAllocator().getChunkMemoryType(m_MemoryRegion.chunk);
+}
+
+VkDeviceSize VulkanMemArray::getMemorySize() const
+{
+    return m_MemoryRegion.size;
+}
+
+VkDeviceMemory VulkanMemArray::getChunkMemoryHandle() const
+{
+    if (!isMemoryBound())
+    {
+        throw std::runtime_error("Buffer (ID:" + std::to_string(m_ID) + ") does not have memory bound to it!");
+    }
+
+    VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
+    const VulkanMemoryAllocator& l_Allocator = l_Device.getMemoryAllocator();
+    return l_Allocator.getChunkMemoryHandle(m_MemoryRegion.chunk);
+}
+
+bool VulkanMemArray::isMemoryMapped() const
+{
+	return m_MappedData != nullptr;
+}
+
+void* VulkanMemArray::getMappedData() const
+{
+	return m_MappedData;
+}
+
+VkDeviceAddress VulkanBuffer::getDeviceAddress() const
+{
+    const VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
+
+    VkBufferDeviceAddressInfo l_Info = {};
+    l_Info.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+    l_Info.buffer = m_VkHandle;
+    return l_Device.getTable().vkGetBufferDeviceAddress(*l_Device, &l_Info);
+}
+
+void* VulkanMemArray::map(const VkDeviceSize p_Size, const VkDeviceSize p_Offset)
+{
+    const VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
+
+	void* l_Data;
+	if (const VkResult l_Ret = l_Device.getTable().vkMapMemory(*l_Device, l_Device.getMemoryHandle(m_MemoryRegion.chunk), m_MemoryRegion.offset + p_Offset, p_Size, 0, &l_Data); l_Ret != VK_SUCCESS)
+	{
+	    throw std::runtime_error("Failed to map buffer (ID:" + std::to_string(m_ID) + ") memory! Error code: " + string_VkResult(l_Ret));
+	}
+	m_MappedData = l_Data;
+    LOG_DEBUG("Mapped buffer (ID:", m_ID, ") memory with size ", VulkanMemoryAllocator::compactBytes(p_Size), " and offset ", p_Offset);
+	return l_Data;
+}
+
 VkMemoryRequirements VulkanBuffer::getMemoryRequirements() const
 {
     const VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
@@ -19,28 +92,16 @@ VkMemoryRequirements VulkanBuffer::getMemoryRequirements() const
 void VulkanBuffer::allocateFromIndex(const uint32_t p_MemoryIndex)
 {
 	Logger::pushContext("Buffer memory (from index)");
-	const VkMemoryRequirements l_Requirements = getMemoryRequirements();
-	setBoundMemory(VulkanContext::getDevice(getDeviceID()).getMemoryAllocator().allocate(l_Requirements.size, l_Requirements.alignment, p_MemoryIndex));
-	Logger::popContext();
+    VulkanMemArray::allocateFromIndex(p_MemoryIndex);
+    Logger::popContext();
 }
 
 void VulkanBuffer::allocateFromFlags(const VulkanMemoryAllocator::MemoryPropertyPreferences p_MemoryProperties)
 {
 	Logger::pushContext("Buffer memory (from flags)");
-	const VkMemoryRequirements l_Requirements = getMemoryRequirements();
-    m_Size = l_Requirements.size;
-    setBoundMemory(VulkanContext::getDevice(getDeviceID()).getMemoryAllocator().searchAndAllocate(l_Requirements.size, l_Requirements.alignment, p_MemoryProperties, l_Requirements.memoryTypeBits));
-	Logger::popContext();
-}
-
-bool VulkanBuffer::isMemoryMapped() const
-{
-	return m_MappedData != nullptr;
-}
-
-void* VulkanBuffer::getMappedData() const
-{
-	return m_MappedData;
+    VulkanMemArray::allocateFromFlags(p_MemoryProperties);
+    m_Size = m_MemoryRegion.size;
+    Logger::popContext();
 }
 
 VkDeviceSize VulkanBuffer::getSize() const
@@ -63,41 +124,7 @@ VkBuffer VulkanBuffer::operator*() const
 	return m_VkHandle;
 }
 
-bool VulkanBuffer::isMemoryBound() const
-{
-	return m_MemoryRegion.size > 0;
-}
-
-uint32_t VulkanBuffer::getBoundMemoryType() const
-{
-	return VulkanContext::getDevice(getDeviceID()).getMemoryAllocator().getChunkMemoryType(m_MemoryRegion.chunk);
-}
-
-VkDeviceAddress VulkanBuffer::getDeviceAddress() const
-{
-    const VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
-
-    VkBufferDeviceAddressInfo l_Info = {};
-    l_Info.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
-    l_Info.buffer = m_VkHandle;
-    return l_Device.getTable().vkGetBufferDeviceAddress(*l_Device, &l_Info);
-}
-
-void* VulkanBuffer::map(const VkDeviceSize p_Size, const VkDeviceSize p_Offset)
-{
-    const VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
-
-	void* l_Data;
-	if (const VkResult l_Ret = l_Device.getTable().vkMapMemory(*l_Device, l_Device.getMemoryHandle(m_MemoryRegion.chunk), m_MemoryRegion.offset + p_Offset, p_Size, 0, &l_Data); l_Ret != VK_SUCCESS)
-	{
-	    throw std::runtime_error("Failed to map buffer (ID:" + std::to_string(m_ID) + ") memory! Error code: " + string_VkResult(l_Ret));
-	}
-	m_MappedData = l_Data;
-    LOG_DEBUG("Mapped buffer (ID:", m_ID, ") memory with size ", VulkanMemoryAllocator::compactBytes(p_Size), " and offset ", p_Offset);
-	return l_Data;
-}
-
-void VulkanBuffer::unmap()
+void VulkanMemArray::unmap()
 {
     if (!isMemoryMapped())
     {
@@ -113,7 +140,7 @@ void VulkanBuffer::unmap()
 }
 
 VulkanBuffer::VulkanBuffer(const uint32_t p_Device, const VkBuffer p_VkHandle, const VkDeviceSize p_Size)
-	: VulkanDeviceSubresource(p_Device), m_VkHandle(p_VkHandle), m_Size(p_Size)
+	: VulkanMemArray(p_Device), m_VkHandle(p_VkHandle), m_Size(p_Size)
 {
 	
 }

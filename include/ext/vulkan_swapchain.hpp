@@ -28,6 +28,7 @@ public:
     bool freeSwapchain(const VulkanSwapchain& p_Swapchain);
 
     void free() override;
+    std::string getMainExtensionName() override { return VK_KHR_SWAPCHAIN_EXTENSION_NAME; }
 
 private:
     std::map<ResourceID, VulkanSwapchain*> m_Swapchains;

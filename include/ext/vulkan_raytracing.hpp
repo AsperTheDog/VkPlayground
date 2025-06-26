@@ -13,6 +13,7 @@ public:
     [[nodiscard]] VkStructureType getExtensionStructType() const override { return VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR; }
 
     void free() override {}
+    std::string getMainExtensionName() override { return VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME; }
 
 private:
     bool m_EnablePipeline;

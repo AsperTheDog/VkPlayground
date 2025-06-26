@@ -47,6 +47,17 @@ void VulkanGPU::getSupportedExtensions(VkExtensionProperties p_Container[]) cons
 	vkEnumerateDeviceExtensionProperties(m_VkHandle, nullptr, &l_ExtensionCount, p_Container);
 }
 
+bool VulkanGPU::supportsExtension(const std::string_view p_Extension) const
+{
+    const uint32_t l_ExtensionCount = getSupportedExtensionCount();
+    std::vector<VkExtensionProperties> l_Extensions(l_ExtensionCount);
+    getSupportedExtensions(l_Extensions.data());
+    for (const VkExtensionProperties& l_Extension : l_Extensions)
+        if (p_Extension == l_Extension.extensionName)
+            return true;
+    return false;
+}
+
 GPUQueueStructure VulkanGPU::getQueueFamilies() const
 {
 	return GPUQueueStructure(*this);

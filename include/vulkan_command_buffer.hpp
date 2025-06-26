@@ -26,6 +26,7 @@ public:
     void addMemoryBarrier(VkAccessFlags p_SrcAccessMask, VkAccessFlags p_DstAccessMask);
     void addBufferMemoryBarrier(ResourceID p_Buffer, VkDeviceSize p_Offset, VkDeviceSize p_Size, VkAccessFlags p_SrcAccessMask, VkAccessFlags p_DstAccessMask, uint32_t p_DstQueueFamily = VK_QUEUE_FAMILY_IGNORED);
     void addImageMemoryBarrier(ResourceID p_Image, VkImageLayout p_NewLayout, uint32_t p_DstQueueFamily = VK_QUEUE_FAMILY_IGNORED, VkAccessFlags p_SrcAccessMask = VK_ACCESS_FLAG_BITS_MAX_ENUM, VkAccessFlags p_DstAccessMask = VK_ACCESS_FLAG_BITS_MAX_ENUM);
+    void addImageMemoryBarrier(const VulkanImage& p_Image, VkImageLayout p_NewLayout, uint32_t p_DstQueueFamily = VK_QUEUE_FAMILY_IGNORED, VkAccessFlags p_SrcAccessMask = VK_ACCESS_FLAG_BITS_MAX_ENUM, VkAccessFlags p_DstAccessMask = VK_ACCESS_FLAG_BITS_MAX_ENUM);
 
 private:
     ResourceID m_Device;
@@ -75,7 +76,8 @@ public:
 	void cmdCopyBuffer(ResourceID p_Source, ResourceID p_Destination, std::span<const VkBufferCopy> p_CopyRegions) const;
     void cmdCopyBufferToImage(ResourceID p_Buffer, ResourceID p_Image, VkImageLayout p_ImageLayout, std::span<const VkBufferImageCopy> p_CopyRegions) const;
 	void cmdBlitImage(ResourceID p_Source, ResourceID p_Destination, std::span<const VkImageBlit> p_Regions, VkFilter p_Filter) const;
-	void cmdSimpleBlitImage(ResourceID p_Source, ResourceID p_Destination, VkFilter p_Filter) const;
+    void cmdBlitImage(const VulkanImage& p_Source, const VulkanImage& p_Destination, std::span<const VkImageBlit> p_Regions, VkFilter p_Filter) const;
+    void cmdSimpleBlitImage(ResourceID p_Source, ResourceID p_Destination, VkFilter p_Filter) const;
 	void cmdSimpleBlitImage(const VulkanImage& p_Source, const VulkanImage& p_Destination, VkFilter p_Filter) const;
 	void ecmdDumpStagingBuffer(ResourceID p_Buffer, VkDeviceSize p_Size, VkDeviceSize p_Offset) const;
 	void ecmdDumpStagingBuffer(ResourceID p_Buffer, std::span<const VkBufferCopy> p_Regions) const;

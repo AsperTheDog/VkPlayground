@@ -2,6 +2,7 @@
 #include <ext/vulkan_extension_management.hpp>
 
 #include "vulkan_context.hpp"
+#include "utils/logger.hpp"
 
 VulkanExtensionChain::~VulkanExtensionChain()
 {
@@ -71,7 +72,7 @@ void VulkanDeviceExtensionManager::addExtensionsToChain(VulkanExtensionChain& p_
 {
     for (const VulkanDeviceExtension* l_Extension : m_Extensions | std::views::values)
     {
-        if (l_Extension->getExtensionStructType() == VK_STRUCTURE_TYPE_MAX_ENUM || p_Chain.containsExtensionStruct(l_Extension->getExtensionStructType()))
+        if (!l_Extension || l_Extension->getExtensionStructType() == VK_STRUCTURE_TYPE_MAX_ENUM || p_Chain.containsExtensionStruct(l_Extension->getExtensionStructType()))
         {
             continue;
         }
@@ -79,25 +80,13 @@ void VulkanDeviceExtensionManager::addExtensionsToChain(VulkanExtensionChain& p_
     }
 }
 
-void VulkanDeviceExtensionManager::addExtension(const std::string& p_ExtensionName, VulkanDeviceExtension* p_Extension, const bool p_ForceReplace)
+void VulkanDeviceExtensionManager::addExtension(VulkanDeviceExtension* p_Extension, const bool p_ForceReplace)
 {
-    if (m_Extensions.contains(p_ExtensionName))
+    addExtension(p_Extension->getMainExtensionName(), p_Extension, p_ForceReplace);
+    for (const std::string& l_Extension : p_Extension->getExtraExtensionNames())
     {
-        if (p_ForceReplace)
-        {
-            m_Extensions.erase(p_ExtensionName);
-        }
-        else
-        {
-            return;
-        }
+        addExtension(l_Extension, nullptr, p_ForceReplace);
     }
-    if (p_Extension == nullptr)
-    {
-        return;
-    }
-
-    m_Extensions[p_ExtensionName] = p_Extension;
 }
 
 VulkanDeviceExtension* VulkanDeviceExtensionManager::getExtension(const std::string& p_ExtensionName) const
@@ -127,8 +116,11 @@ void VulkanDeviceExtensionManager::freeExtension(const std::string& p_Extension)
 {
     if (m_Extensions.contains(p_Extension))
     {
-        m_Extensions.at(p_Extension)->free();
-        delete m_Extensions.at(p_Extension);
+        if (m_Extensions.at(p_Extension))
+        {
+            m_Extensions.at(p_Extension)->free();
+            delete m_Extensions.at(p_Extension);
+        }
         m_Extensions.erase(p_Extension);
     }
 }
@@ -137,10 +129,34 @@ void VulkanDeviceExtensionManager::freeExtensions()
 {
     for (VulkanDeviceExtension* l_Extension : m_Extensions | std::views::values)
     {
+        if (!l_Extension)
+            continue;
         l_Extension->free();
         delete l_Extension;
     }
     m_Extensions.clear();
+}
+
+void VulkanDeviceExtensionManager::addExtension(const std::string& p_Name, VulkanDeviceExtension* p_Extension, const bool p_ForceReplace)
+{
+    if (m_GPU.isValid())
+    {
+        if (!m_GPU.supportsExtension(p_Name))
+        {
+            LOG_ERR("Vulkan GPU does not support extension: ", p_Name);
+            return;
+        }
+    }
+
+    if (m_Extensions.contains(p_Name))
+    {
+        if (p_ForceReplace)
+            m_Extensions.erase(p_Name);
+        else
+            return;
+    }
+
+    m_Extensions[p_Name] = p_Extension;
 }
 
 void VulkanDeviceExtensionManager::setDevice(const ResourceID p_Device)
@@ -148,6 +164,7 @@ void VulkanDeviceExtensionManager::setDevice(const ResourceID p_Device)
     m_DeviceID = p_Device;
     for (VulkanDeviceExtension* l_Extension : m_Extensions | std::views::values)
     {
-        l_Extension->setDevice(p_Device);
+        if (l_Extension)
+            l_Extension->setDevice(p_Device);
     }
 }

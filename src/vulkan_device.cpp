@@ -267,7 +267,7 @@ ResourceID VulkanDevice::createBuffer(const VkDeviceSize p_Size, const VkBufferU
 	return l_NewRes->getID();
 }
 
-ResourceID VulkanDevice::createImage(const VkImageType p_Type, const VkFormat p_Format, const VkExtent3D p_Extent, const VkImageUsageFlags p_Usage, const VkImageCreateFlags p_Flags)
+ResourceID VulkanDevice::createImage(VkImageType p_Type, VkFormat p_Format, VkExtent3D p_Extent, VkImageUsageFlags p_Usage, VkImageCreateFlags p_Flags, VkImageTiling p_Tiling)
 {
 	VkImageCreateInfo l_ImageInfo{};
 	l_ImageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -277,7 +277,7 @@ ResourceID VulkanDevice::createImage(const VkImageType p_Type, const VkFormat p_
 	l_ImageInfo.mipLevels = 1;
 	l_ImageInfo.arrayLayers = 1;
 	l_ImageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-	l_ImageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+	l_ImageInfo.tiling = p_Tiling;
 	l_ImageInfo.usage = p_Usage;
 	l_ImageInfo.flags = p_Flags;
 	l_ImageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -771,5 +771,16 @@ VulkanDevice::VulkanDevice(const VulkanGPU p_PhysicalDevice, const VkDevice p_De
 {
     m_ExtensionManager->setDevice(getID());
     volkLoadDeviceTable(&m_VolkDeviceTable, m_VkHandle);
+}
+
+void VulkanDevice::insertImage(VulkanImage* p_Image)
+{
+    if (m_Subresources.contains(p_Image->getID()))
+    {
+        LOG_DEBUG("Image with ID ", p_Image->getID(), " already exists, not inserting again");
+        return;
+    }
+    m_Subresources[p_Image->getID()] = p_Image;
+    LOG_DEBUG("Inserted image (ID:", p_Image->getID(), ") into device");
 }
 

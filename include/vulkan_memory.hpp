@@ -1,5 +1,4 @@
 #pragma once
-#include <cstdint>
 #include <map>
 #include <optional>
 #include <set>
@@ -92,9 +91,13 @@ public:
 		bool allowUndesired;
 	};
 
-	MemoryChunk::MemoryBlock allocate(VkDeviceSize p_Size, VkDeviceSize p_Alignment, uint32_t p_MemoryType);
-	MemoryChunk::MemoryBlock searchAndAllocate(VkDeviceSize p_Size, VkDeviceSize p_Alignment, MemoryPropertyPreferences p_Properties, uint32_t p_TypeFilter, bool p_IncludeHidden = false);
-	void deallocate(const MemoryChunk::MemoryBlock& p_Block);
+    uint32_t search(VkDeviceSize p_Size, VkDeviceSize p_Alignment, MemoryPropertyPreferences p_Properties, uint32_t p_TypeFilter, bool p_IncludeHidden = false);
+
+    MemoryChunk::MemoryBlock allocate(VkDeviceSize p_Size, VkDeviceSize p_Alignment, uint32_t p_MemoryType);
+    MemoryChunk::MemoryBlock allocateIsolated(VkDeviceSize p_Size, uint32_t p_MemoryType, const void* p_Next);
+    MemoryChunk::MemoryBlock searchAndAllocate(VkDeviceSize p_Size, VkDeviceSize p_Alignment, MemoryPropertyPreferences p_Properties, uint32_t p_TypeFilter, bool p_IncludeHidden = false);
+
+    void deallocate(const MemoryChunk::MemoryBlock& p_Block);
 
 	void hideMemoryType(uint32_t p_Type);
 	void unhideMemoryType(uint32_t p_Type);
@@ -105,6 +108,7 @@ public:
 	[[nodiscard]] bool isMemoryTypeHidden(uint32_t p_Value) const;
 
 	[[nodiscard]] uint32_t getChunkMemoryType(uint32_t p_Chunk) const;
+    [[nodiscard]] VkDeviceMemory getChunkMemoryHandle(uint32_t p_Chunk) const;
     
     static std::string compactBytes(VkDeviceSize p_Bytes);
 private:

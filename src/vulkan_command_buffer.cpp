@@ -186,15 +186,20 @@ void VulkanMemoryBarrierBuilder::addBufferMemoryBarrier(const ResourceID p_Buffe
 void VulkanMemoryBarrierBuilder::addImageMemoryBarrier(const ResourceID p_Image, const VkImageLayout p_NewLayout, const uint32_t p_DstQueueFamily, const VkAccessFlags p_SrcAccessMask, const VkAccessFlags p_DstAccessMask)
 {
     const VulkanImage& l_Image = VulkanContext::getDevice(m_Device).getImage(p_Image);
+    addImageMemoryBarrier(l_Image, p_NewLayout, p_DstQueueFamily, p_SrcAccessMask, p_DstAccessMask);
+}
+
+void VulkanMemoryBarrierBuilder::addImageMemoryBarrier(const VulkanImage& p_Image, const VkImageLayout p_NewLayout, const uint32_t p_DstQueueFamily, const VkAccessFlags p_SrcAccessMask, const VkAccessFlags p_DstAccessMask)
+{
     VkImageMemoryBarrier l_Barrier{};
     l_Barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    l_Barrier.srcAccessMask = p_SrcAccessMask == VK_ACCESS_FLAG_BITS_MAX_ENUM ? s_TransitionMapping[l_Image.getLayout()].srcAccessMask : p_SrcAccessMask;
+    l_Barrier.srcAccessMask = p_SrcAccessMask == VK_ACCESS_FLAG_BITS_MAX_ENUM ? s_TransitionMapping[p_Image.getLayout()].srcAccessMask : p_SrcAccessMask;
     l_Barrier.dstAccessMask = p_DstAccessMask == VK_ACCESS_FLAG_BITS_MAX_ENUM ? s_TransitionMapping[p_NewLayout].dstAccessMask : p_DstAccessMask;
-    l_Barrier.oldLayout = l_Image.getLayout();
+    l_Barrier.oldLayout = p_Image.getLayout();
     l_Barrier.newLayout = p_NewLayout;
-    if (p_DstQueueFamily != VK_QUEUE_FAMILY_IGNORED && l_Image.m_QueueFamilyIndex != p_DstQueueFamily)
+    if (p_DstQueueFamily != VK_QUEUE_FAMILY_IGNORED && p_Image.m_QueueFamilyIndex != p_DstQueueFamily)
     {
-        l_Barrier.srcQueueFamilyIndex = l_Image.m_QueueFamilyIndex;
+        l_Barrier.srcQueueFamilyIndex = p_Image.m_QueueFamilyIndex;
         l_Barrier.dstQueueFamilyIndex = p_DstQueueFamily;
     }
     else
@@ -202,7 +207,7 @@ void VulkanMemoryBarrierBuilder::addImageMemoryBarrier(const ResourceID p_Image,
         l_Barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         l_Barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     }
-    l_Barrier.image = *l_Image;
+    l_Barrier.image = *p_Image;
     l_Barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     l_Barrier.subresourceRange.baseMipLevel = 0;
     l_Barrier.subresourceRange.levelCount = 1;
@@ -266,15 +271,21 @@ void VulkanCommandBuffer::cmdCopyBufferToImage(const ResourceID p_Buffer, const 
 
 void VulkanCommandBuffer::cmdBlitImage(const ResourceID p_Source, const ResourceID p_Destination, const std::span<const VkImageBlit> p_Regions, const VkFilter p_Filter) const
 {
-	if (!m_IsRecording)
+	VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
+	const VulkanImage& l_SrcImage = l_Device.getImage(p_Source);
+	const VulkanImage& l_DstImage = l_Device.getImage(p_Destination);
+    cmdBlitImage(l_SrcImage, l_DstImage, p_Regions, p_Filter);
+}
+
+void VulkanCommandBuffer::cmdBlitImage(const VulkanImage& p_Source, const VulkanImage& p_Destination, const std::span<const VkImageBlit> p_Regions, const VkFilter p_Filter) const
+{
+    if (!m_IsRecording)
 	{
 		throw std::runtime_error("Command buffer (ID:" + std::to_string(m_ID) + ") is not recording");
 	}
 
-	VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
-	const VulkanImage& l_SrcImage = l_Device.getImage(p_Source);
-	const VulkanImage& l_DstImage = l_Device.getImage(p_Destination);
-	l_Device.getTable().vkCmdBlitImage(m_VkHandle, *l_SrcImage, l_SrcImage.getLayout(), *l_DstImage, l_DstImage.getLayout(), static_cast<uint32_t>(p_Regions.size()), p_Regions.data(), p_Filter);
+	const VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
+    l_Device.getTable().vkCmdBlitImage(m_VkHandle, *p_Source, p_Source.getLayout(), *p_Destination, p_Destination.getLayout(), static_cast<uint32_t>(p_Regions.size()), p_Regions.data(), p_Filter);
 }
 
 void VulkanCommandBuffer::cmdSimpleBlitImage(const ResourceID p_Source, const ResourceID p_Destination, const VkFilter p_Filter) const

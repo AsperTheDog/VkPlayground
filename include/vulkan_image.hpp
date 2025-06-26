@@ -1,9 +1,9 @@
 #pragma once
 #include <unordered_map>
 
+#include "vulkan_buffer.hpp"
 #include "vulkan_context.hpp"
 #include "utils/identifiable.hpp"
-#include "vulkan_memory.hpp"
 
 class VulkanDevice;
 class VulkanMemoryBarrierBuilder;
@@ -40,13 +40,13 @@ private:
     friend class VulkanDevice;
 };
 
-class VulkanImage final : public VulkanDeviceSubresource
+class VulkanImage final : public VulkanMemArray
 {
 public:
-	[[nodiscard]] VkMemoryRequirements getMemoryRequirements() const;
+	[[nodiscard]] VkMemoryRequirements getMemoryRequirements() const override;
 	
-	void allocateFromIndex(uint32_t p_MemoryIndex);
-	void allocateFromFlags(VulkanMemoryAllocator::MemoryPropertyPreferences p_MemoryProperties);
+	void allocateFromIndex(uint32_t p_MemoryIndex) override;
+	void allocateFromFlags(VulkanMemoryAllocator::MemoryPropertyPreferences p_MemoryProperties) override;
 
 	ResourceID createImageView(VkFormat p_Format, VkImageAspectFlags p_AspectFlags);
     VulkanImageView& getImageView(ResourceID p_ImageView);
@@ -61,6 +61,7 @@ public:
     void freeSampler(const VulkanImageSampler& p_Sampler);
 
 	[[nodiscard]] VkExtent3D getSize() const;
+    [[nodiscard]] uint32_t getFlatSize() const;
 	[[nodiscard]] VkImageType getType() const;
     [[nodiscard]] VkImageLayout getLayout() const;
     [[nodiscard]] uint32_t getQueue() const;
@@ -78,14 +79,11 @@ private:
 
 	VulkanImage(ResourceID p_Device, VkImage p_VkHandle, VkExtent3D p_Size, VkImageType p_Type, VkImageLayout p_Layout);
 
-	void setBoundMemory(const MemoryChunk::MemoryBlock& p_MemoryRegion);
+	void setBoundMemory(const MemoryChunk::MemoryBlock& p_MemoryRegion) override;
 
-	MemoryChunk::MemoryBlock m_MemoryRegion;
 	VkExtent3D m_Size{};
 	VkImageType m_Type;
 	VkImageLayout m_Layout = VK_IMAGE_LAYOUT_UNDEFINED;
-
-    uint32_t m_QueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	
 	VkImage m_VkHandle = VK_NULL_HANDLE;
 
@@ -96,4 +94,5 @@ private:
 	friend class VulkanCommandBuffer;
 	friend class VulkanSwapchain;
     friend class VulkanMemoryBarrierBuilder;
+    friend class VulkanExternalMemoryExtension;
 };

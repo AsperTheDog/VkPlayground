@@ -22,21 +22,21 @@ VulkanRenderPassBuilder& VulkanRenderPassBuilder::addSubpass(const std::span<con
 	{
 		switch (l_Attachment.type)
 		{
-			case COLOR:
+			case COLOR_ATTACHMENT:
 				l_Subpass.colorAttachments.push_back({l_Attachment.attachment, l_Attachment.layout});
 				break;
-			case DEPTH_STENCIL:
+			case DEPTH_STENCIL_ATTACHMENT:
 				l_Subpass.depthStencilAttachment = {l_Attachment.attachment, l_Attachment.layout};
 				l_DepthCount++;
 				l_Subpass.hasDepthStencilAttachment = true;
 				break;
-			case INPUT:
+			case INPUT_ATTACHMENT:
 				l_Subpass.inputAttachments.push_back({l_Attachment.attachment, l_Attachment.layout});
 				break;
-			case RESOLVE:
+			case RESOLVE_ATTACHMENT:
 				l_Subpass.resolveAttachments.push_back({l_Attachment.attachment, l_Attachment.layout});
 				break;
-			case PRESERVE:
+			case PRESERVE_ATTACHMENT:
 				l_Subpass.preserveAttachments.push_back(l_Attachment.attachment);
 				break;
 		}
