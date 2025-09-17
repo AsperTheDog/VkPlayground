@@ -411,11 +411,11 @@ void VulkanCommandBuffer::ecmdDumpDataIntoBuffer(const ResourceID p_DestBuffer, 
     VkDeviceSize l_Offset = 0;
     while (l_Offset < p_Size)
     {
-        const VkDeviceSize nextSize = std::min(l_StagingBufferSize, p_Size - l_Offset);
-        void* stagePtr = l_Device.mapStagingBuffer(nextSize, 0);
-        memcpy(stagePtr, p_Data + l_Offset, nextSize);
-        ecmdDumpStagingBuffer(p_DestBuffer, nextSize, l_Offset);
-        l_Offset += nextSize;
+        const VkDeviceSize l_NextSize = std::min(l_StagingBufferSize, p_Size - l_Offset);
+        void* l_StagePtr = l_Device.mapStagingBuffer(l_NextSize, 0);
+        memcpy(l_StagePtr, p_Data + l_Offset, l_NextSize);
+        ecmdDumpStagingBuffer(p_DestBuffer, l_NextSize, l_Offset);
+        l_Offset += l_NextSize;
     }
 }
 
@@ -434,8 +434,8 @@ void VulkanCommandBuffer::ecmdDumpDataIntoImage(const ResourceID p_DestImage, co
 
     const VkDeviceSize l_Size = std::min(l_StagingBufferSize, static_cast<VkDeviceSize>(p_Extent.width * p_Extent.height * p_BytesPerPixel));
 
-    void* stagePtr = l_Device.mapStagingBuffer(l_Size, 0);
-    memcpy(stagePtr, p_Data, l_Size);
+    void* l_StagePtr = l_Device.mapStagingBuffer(l_Size, 0);
+    memcpy(l_StagePtr, p_Data, l_Size);
     ecmdDumpStagingBufferToImage(p_DestImage, p_Extent, {0, 0, 0}, p_KeepLayout);
 
     if (l_InitStagingBufferSize != l_StagingBufferSize)
@@ -697,5 +697,5 @@ void VulkanCommandBuffer::free()
     }
 }
 
-VulkanCommandBuffer::VulkanCommandBuffer(const uint32_t device, const VkCommandBuffer commandBuffer, const TypeFlags flags, const uint32_t familyIndex, const uint32_t threadID)
-    : VulkanDeviceSubresource(device), m_VkHandle(commandBuffer), m_Flags(flags), m_FamilyIndex(familyIndex), m_ThreadID(threadID) {}
+VulkanCommandBuffer::VulkanCommandBuffer(const uint32_t p_Device, const VkCommandBuffer p_CommandBuffer, const TypeFlags p_Flags, const uint32_t p_FamilyIndex, const uint32_t p_ThreadID)
+    : VulkanDeviceSubresource(p_Device), m_VkHandle(p_CommandBuffer), m_Flags(p_Flags), m_FamilyIndex(p_FamilyIndex), m_ThreadID(p_ThreadID) {}

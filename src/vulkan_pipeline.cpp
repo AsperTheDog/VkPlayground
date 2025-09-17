@@ -71,8 +71,8 @@ void VulkanPipelineBuilder::addVertexBinding(const VulkanBinding& p_Binding, boo
         m_VertexInputAttributes.push_back(l_Attr);
         if (p_RecalculateLocations)
         {
-            m_VertexInputAttributes.back().location = m_currentVertexAttrLocation;
-            m_currentVertexAttrLocation += l_Attr.location;
+            m_VertexInputAttributes.back().location = m_CurrentVertexAttrLocation;
+            m_CurrentVertexAttrLocation += l_Attr.location;
         }
     }
     m_VertexInputState.vertexBindingDescriptionCount = static_cast<uint32_t>(m_VertexInputBindings.size());
@@ -191,9 +191,9 @@ void VulkanPipelineBuilder::setViewportState(const VkPipelineViewportStateCreate
     m_ViewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 }
 
-void VulkanPipelineBuilder::setRasterizationState(const VkPipelineRasterizationStateCreateInfo& P_State)
+void VulkanPipelineBuilder::setRasterizationState(const VkPipelineRasterizationStateCreateInfo& p_State)
 {
-    m_RasterizationState = P_State;
+    m_RasterizationState = p_State;
     m_RasterizationState.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 }
 
@@ -288,8 +288,8 @@ void VulkanPipelineLayout::free()
     }
 }
 
-VulkanPipelineLayout::VulkanPipelineLayout(const uint32_t device, const VkPipelineLayout handle)
-    : VulkanDeviceSubresource(device), m_VkHandle(handle) {}
+VulkanPipelineLayout::VulkanPipelineLayout(const uint32_t p_Device, const VkPipelineLayout p_Handle)
+    : VulkanDeviceSubresource(p_Device), m_VkHandle(p_Handle) {}
 
 void VulkanComputePipeline::free()
 {

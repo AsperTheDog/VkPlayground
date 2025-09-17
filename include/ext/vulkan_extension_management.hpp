@@ -104,8 +104,8 @@ VulkanExtensionChain& VulkanExtensionChain::addExtension(const T& p_Extension)
 {
     static_assert(std::is_trivially_destructible_v<T>, "T must have a trivial or no destructor!");
 
-    T* pNext = new(allocFromContext(sizeof(T))) T(p_Extension);
-    m_Next.push_back(reinterpret_cast<VkBaseInStructure*>(pNext));
+    T* l_PNext = new(allocFromContext(sizeof(T))) T(p_Extension);
+    m_Next.push_back(reinterpret_cast<VkBaseInStructure*>(l_PNext));
     return *this;
 }
 

@@ -46,39 +46,38 @@ public:
     static void initializeTransientMemory(uint8_t* p_Container, size_t p_Size, bool p_ShouldDelete);
     static void initializeArenaMemory(size_t p_Size);
 
-	static [[nodiscard]] uint32_t getGPUCount();
-	static [[nodiscard]] void getGPUs(VulkanGPU p_Container[]);
+    static [[nodiscard]] uint32_t getGPUCount();
+    static [[nodiscard]] void getGPUs(VulkanGPU p_Container[]);
 
-	static ResourceID createDevice(VulkanGPU p_GPU, const QueueFamilySelector& p_Queues, const VulkanDeviceExtensionManager* p_Extensions, const VkPhysicalDeviceFeatures& p_Features);
-	static VulkanDevice& getDevice(ResourceID p_Index);
-	static void freeDevice(ResourceID p_Index);
-	static void freeDevice(const VulkanDevice& p_Device);
+    static ResourceID createDevice(VulkanGPU p_GPU, const QueueFamilySelector& p_Queues, const VulkanDeviceExtensionManager* p_Extensions, const VkPhysicalDeviceFeatures& p_Features);
+    static VulkanDevice& getDevice(ResourceID p_Index);
+    static void freeDevice(ResourceID p_Index);
+    static void freeDevice(const VulkanDevice& p_Device);
 
-	static void free();
+    static void free();
 
-	static VkInstance getHandle();
+    static VkInstance getHandle();
 
-    static TransientAllocator* getTransAllocator() { return &m_TransientAllocator; }
-    static ArenaAllocator* getArenaAllocator() { return &m_ArenaAllocator; }
+    static TransientAllocator* getTransAllocator() { return &s_TransientAllocator; }
+    static ArenaAllocator* getArenaAllocator() { return &s_ArenaAllocator; }
 
     static void resetTransMemory();
     static void resetArenaMemory();
 
 private:
-	static bool checkValidationLayerSupport();
-	static bool areExtensionsSupported(std::span<const char*> p_Extensions);
+    static bool checkValidationLayerSupport();
+    static bool areExtensionsSupported(std::span<const char*> p_Extensions);
     static void setupDebugMessenger();
 
-	inline static VkInstance m_VkHandle = VK_NULL_HANDLE;
-	inline static bool m_ValidationLayersEnabled = false;
+    inline static VkInstance s_VkHandle = VK_NULL_HANDLE;
+    inline static bool s_ValidationLayersEnabled = false;
 
-    inline static TransientAllocator m_TransientAllocator{0};
-    inline static ArenaAllocator m_ArenaAllocator{0};
+    inline static TransientAllocator s_TransientAllocator{0};
+    inline static ArenaAllocator s_ArenaAllocator{0};
 
-	inline static ARENA_VECTOR(m_Devices, VulkanDevice*);
+    inline static ARENA_VECTOR(m_Devices, VulkanDevice*);
 
-    inline static VkDebugUtilsMessengerEXT m_DebugMessenger = VK_NULL_HANDLE;
+    inline static VkDebugUtilsMessengerEXT s_DebugMessenger = VK_NULL_HANDLE;
 
-	friend class SDLWindow;
+    friend class SDLWindow;
 };
-

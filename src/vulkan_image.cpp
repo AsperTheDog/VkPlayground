@@ -124,9 +124,9 @@ ResourceID VulkanImage::createImageView(const VkFormat p_Format, const VkImageAs
     const VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
 
     VkImageView l_ImageView;
-    if (const VkResult ret = l_Device.getTable().vkCreateImageView(l_Device.m_VkHandle, &l_CreateInfo, nullptr, &l_ImageView); ret != VK_SUCCESS)
+    if (const VkResult l_Ret = l_Device.getTable().vkCreateImageView(l_Device.m_VkHandle, &l_CreateInfo, nullptr, &l_ImageView); l_Ret != VK_SUCCESS)
     {
-        throw std::runtime_error(std::string("Failed to create image view, error: ") + string_VkResult(ret));
+        throw std::runtime_error(std::string("Failed to create image view, error: ") + string_VkResult(l_Ret));
     }
 
     auto l_ImageViewObj = ARENA_ALLOC(VulkanImageView)(getDeviceID(), l_ImageView);
@@ -269,9 +269,9 @@ void VulkanImage::setBoundMemory(const MemoryChunk::MemoryBlock& p_MemoryRegion)
 
     const VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
 
-    if (const VkResult ret = l_Device.getTable().vkBindImageMemory(l_Device.m_VkHandle, m_VkHandle, l_Device.getMemoryHandle(m_MemoryRegion.chunk), m_MemoryRegion.offset); ret != VK_SUCCESS)
+    if (const VkResult l_Ret = l_Device.getTable().vkBindImageMemory(l_Device.m_VkHandle, m_VkHandle, l_Device.getMemoryHandle(m_MemoryRegion.chunk), m_MemoryRegion.offset); l_Ret != VK_SUCCESS)
     {
-        throw std::runtime_error("Failed to bind memory to image (ID: " + std::to_string(m_ID) + "), error: " + string_VkResult(ret));
+        throw std::runtime_error("Failed to bind memory to image (ID: " + std::to_string(m_ID) + "), error: " + string_VkResult(l_Ret));
     }
     LOG_DEBUG("Bound memory to image ", m_ID, " with size ", m_MemoryRegion.size, " and offset ", m_MemoryRegion.offset);
 }

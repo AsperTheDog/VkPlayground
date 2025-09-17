@@ -29,7 +29,7 @@ struct VulkanPipelineBuilder
     void setViewportState(uint32_t p_ViewportCount, uint32_t p_ScissorCount);
     void setViewportState(std::span<const VkViewport> p_Viewports, std::span<const VkRect2D> p_Scissors);
 
-    void setRasterizationState(const VkPipelineRasterizationStateCreateInfo& P_State);
+    void setRasterizationState(const VkPipelineRasterizationStateCreateInfo& p_State);
     void setRasterizationState(VkPolygonMode p_PolygonMode, VkCullModeFlags p_CullMode = VK_CULL_MODE_BACK_BIT, VkFrontFace p_FrontFace = VK_FRONT_FACE_CLOCKWISE);
 
     void setMultisampleState(const VkPipelineMultisampleStateCreateInfo& p_State);
@@ -72,7 +72,7 @@ private:
     std::vector<ShaderData> m_ShaderStages;
     std::vector<VkVertexInputBindingDescription> m_VertexInputBindings;
     std::vector<VkVertexInputAttributeDescription> m_VertexInputAttributes;
-    uint32_t m_currentVertexAttrLocation = 0;
+    uint32_t m_CurrentVertexAttrLocation = 0;
     std::vector<VkViewport> m_Viewports;
     std::vector<VkRect2D> m_Scissors;
     std::vector<VkPipelineColorBlendAttachmentState> m_Attachments;
@@ -117,7 +117,7 @@ public:
 private:
     void free() override;
 
-    VulkanPipelineLayout(uint32_t device, VkPipelineLayout handle);
+    VulkanPipelineLayout(uint32_t p_Device, VkPipelineLayout p_Handle);
 
     VkPipelineLayout m_VkHandle = VK_NULL_HANDLE;
 

@@ -8,15 +8,15 @@ public:
 
     ~CallOnDestroyList()
     {
-        for (auto& func : m_Functions)
+        for (auto& l_Func : m_Functions)
         {
-            func();
+            l_Func();
         }
     }
 
-    void add(std::function<void()> func)
+    void add(std::function<void()> p_Func)
     {
-        m_Functions.push_back(std::move(func));
+        m_Functions.push_back(std::move(p_Func));
     }
 
     void cancel()
@@ -31,7 +31,7 @@ private:
 class CallOnDestroy
 {
 public:
-    explicit CallOnDestroy(std::function<void()> func) : m_Function(std::move(func)) {}
+    explicit CallOnDestroy(std::function<void()> p_Func) : m_Function(std::move(p_Func)) {}
     ~CallOnDestroy()
     {
         if (m_Function)

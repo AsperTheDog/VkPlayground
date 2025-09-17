@@ -28,9 +28,9 @@ bool GPUQueueStructure::isQueueFlagSupported(const VkQueueFlagBits p_Flag) const
     return false;
 }
 
-bool GPUQueueStructure::areQueueFlagsSupported(const VkQueueFlags p_Flags, const bool SingleQueue) const
+bool GPUQueueStructure::areQueueFlagsSupported(const VkQueueFlags p_Flags, const bool p_SingleQueue) const
 {
-    if (SingleQueue)
+    if (p_SingleQueue)
     {
         for (const QueueFamily& l_QueueFamily : m_QueueFamilies)
         {
@@ -225,30 +225,30 @@ std::vector<uint32_t> QueueFamilySelector::getUniqueIndices() const
     return l_Indices;
 }
 
-QueueFamilyTypes QueueFamilySelector::getTypesFromFlags(const VkQueueFlags P_Flags)
+QueueFamilyTypes QueueFamilySelector::getTypesFromFlags(const VkQueueFlags p_Flags)
 {
     QueueFamilyTypes l_Types = 0;
-    if (P_Flags & VK_QUEUE_GRAPHICS_BIT)
+    if (p_Flags & VK_QUEUE_GRAPHICS_BIT)
     {
         l_Types |= GRAPHICS;
     }
-    if (P_Flags & VK_QUEUE_COMPUTE_BIT)
+    if (p_Flags & VK_QUEUE_COMPUTE_BIT)
     {
         l_Types |= COMPUTE;
     }
-    if (P_Flags & VK_QUEUE_TRANSFER_BIT)
+    if (p_Flags & VK_QUEUE_TRANSFER_BIT)
     {
         l_Types |= TRANSFER;
     }
-    if (P_Flags & VK_QUEUE_SPARSE_BINDING_BIT)
+    if (p_Flags & VK_QUEUE_SPARSE_BINDING_BIT)
     {
         l_Types |= SPARSE_BINDING;
     }
-    if (P_Flags & VK_QUEUE_PROTECTED_BIT)
+    if (p_Flags & VK_QUEUE_PROTECTED_BIT)
     {
         l_Types |= PROTECTED;
     }
-    if (P_Flags & VK_QUEUE_VIDEO_DECODE_BIT_KHR)
+    if (p_Flags & VK_QUEUE_VIDEO_DECODE_BIT_KHR)
     {
         l_Types |= VIDEO_DECODE;
     }

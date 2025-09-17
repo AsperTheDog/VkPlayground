@@ -71,11 +71,11 @@ class ArenaAllocator
     };
 
 public:
-    static constexpr size_t c_BlockCount = 10;
-    static constexpr size_t c_MinFreeBlockSize = 32;
-    static constexpr size_t c_Alignment = alignof(std::max_align_t);
-    static_assert(c_Alignment % 8 == 0 && c_Alignment >= sizeof(AllocHeader) && "Alignment must be a multiple of 8 bytes and cannot be smaller than the size of AllocHeader");
-    static_assert(c_MinFreeBlockSize % c_Alignment == 0 && "Minimum free block size must be a multiple of alignment");
+    static constexpr size_t BLOCK_COUNT = 10;
+    static constexpr size_t MIN_FREE_BLOCK_SIZE = 32;
+    static constexpr size_t ALIGNMENT = alignof(std::max_align_t);
+    static_assert(ALIGNMENT % 8 == 0 && ALIGNMENT >= sizeof(AllocHeader) && "Alignment must be a multiple of 8 bytes and cannot be smaller than the size of AllocHeader");
+    static_assert(MIN_FREE_BLOCK_SIZE % ALIGNMENT == 0 && "Minimum free block size must be a multiple of alignment");
 
     ArenaAllocator() = default;
     explicit ArenaAllocator(size_t p_BlockSize);
@@ -94,9 +94,9 @@ public:
 
 private:
     uint8_t allocateBlock();
-    void* allocateInFreeChunk(Block& l_Block, FreeHeader* p_PrevHeader, FreeHeader* p_FreeHeader, size_t p_Bytes) const;
+    void* allocateInFreeChunk(Block& p_Block, FreeHeader* p_PrevHeader, FreeHeader* p_FreeHeader, size_t p_Bytes) const;
 
-    std::array<Block, c_BlockCount> m_Blocks{};
+    std::array<Block, BLOCK_COUNT> m_Blocks{};
     size_t m_BlockSize = 0;
     uint8_t m_BlockIndex = 0;
 };
@@ -111,7 +111,7 @@ public:
     explicit AllocHolder(Alloc* p_Pool) : m_Pool(p_Pool) {}
 
     template <typename U>
-    explicit AllocHolder(const AllocHolder<Alloc, U>& other) : m_Pool(other.m_Pool) {}
+    explicit AllocHolder(const AllocHolder<Alloc, U>& p_Other) : m_Pool(p_Other.m_Pool) {}
 
     void set(Alloc* p_Pool) { m_Pool = p_Pool; }
 

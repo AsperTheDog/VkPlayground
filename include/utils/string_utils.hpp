@@ -7,21 +7,21 @@
 
 struct StringHash
 {
-    using is_transparent = void;
+    using IsTransparent = void;
 
-    std::size_t operator()(const std::string_view key) const noexcept
+    std::size_t operator()(const std::string_view p_Key) const noexcept
     {
-        return std::hash<std::string_view>{}(key);
+        return std::hash<std::string_view>{}(p_Key);
     }
 };
 
 struct StringEqual
 {
-    using is_transparent = void;
+    using IsTransparent = void;
 
-    bool operator()(const std::string_view lhs, const std::string_view rhs) const noexcept
+    bool operator()(const std::string_view p_Lhs, const std::string_view p_Rhs) const noexcept
     {
-        return lhs == rhs;
+        return p_Lhs == p_Rhs;
     }
 };
 

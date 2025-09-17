@@ -100,14 +100,14 @@ VulkanDeviceExtension* VulkanDeviceExtensionManager::getExtension(const std::str
 
 bool VulkanDeviceExtensionManager::containsExtension(const std::string_view p_ExtensionName) const
 {
-    return m_Extensions.contains(p_ExtensionName);
+    return m_Extensions.contains(std::string(p_ExtensionName));
 }
 
 void VulkanDeviceExtensionManager::populateExtensionNames(const char* p_Container[]) const
 {
-    for (const std::string& key : m_Extensions | std::views::keys)
+    for (const std::string& l_Key : m_Extensions | std::views::keys)
     {
-        *p_Container = key.c_str();
+        *p_Container = l_Key.c_str();
         p_Container++;
     }
 }
@@ -130,7 +130,9 @@ void VulkanDeviceExtensionManager::freeExtensions()
     for (VulkanDeviceExtension* l_Extension : m_Extensions | std::views::values)
     {
         if (!l_Extension)
+        {
             continue;
+        }
         l_Extension->free();
         delete l_Extension;
     }
@@ -151,9 +153,13 @@ void VulkanDeviceExtensionManager::addExtension(const std::string& p_Name, Vulka
     if (m_Extensions.contains(p_Name))
     {
         if (p_ForceReplace)
+        {
             m_Extensions.erase(p_Name);
+        }
         else
+        {
             return;
+        }
     }
 
     m_Extensions[p_Name] = p_Extension;
@@ -165,6 +171,8 @@ void VulkanDeviceExtensionManager::setDevice(const ResourceID p_Device)
     for (VulkanDeviceExtension* l_Extension : m_Extensions | std::views::values)
     {
         if (l_Extension)
+        {
             l_Extension->setDevice(p_Device);
+        }
     }
 }

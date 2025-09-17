@@ -299,22 +299,22 @@ bool VulkanShader::buildSession()
         s_SlangSessions[m_CompilationThread] = l_SlangGlobalSession;
     }
 
-    slang::SessionDesc sessionDesc = {};
+    slang::SessionDesc l_SessionDesc = {};
 
-    slang::TargetDesc targetDesc = {};
-    targetDesc.format = SLANG_SPIRV;
-    targetDesc.profile = s_SlangSessions[m_CompilationThread]->findProfile("spirv_1_5");
+    slang::TargetDesc l_TargetDesc = {};
+    l_TargetDesc.format = SLANG_SPIRV;
+    l_TargetDesc.profile = s_SlangSessions[m_CompilationThread]->findProfile("spirv_1_5");
 
-    sessionDesc.targetCount = 1;
-    sessionDesc.targets = &targetDesc;
+    l_SessionDesc.targetCount = 1;
+    l_SessionDesc.targets = &l_TargetDesc;
 
-    std::array<slang::CompilerOptionEntry, 3> options;
-    options[0] = {slang::CompilerOptionName::EmitSpirvDirectly, {slang::CompilerOptionValueKind::Int, 1, 0, nullptr, nullptr}};
-    options[1] = {slang::CompilerOptionName::Optimization, {slang::CompilerOptionValueKind::Int, static_cast<int>(m_Optimize ? SLANG_OPTIMIZATION_LEVEL_HIGH : SLANG_OPTIMIZATION_LEVEL_NONE), 0, nullptr, nullptr}};
-    options[2] = {slang::CompilerOptionName::DebugInformation, {slang::CompilerOptionValueKind::Int, static_cast<int>(m_Optimize ? SLANG_DEBUG_INFO_LEVEL_NONE : SLANG_DEBUG_INFO_LEVEL_MAXIMAL), 0, nullptr, nullptr}};
+    std::array<slang::CompilerOptionEntry, 3> l_Options;
+    l_Options[0] = {slang::CompilerOptionName::EmitSpirvDirectly, {slang::CompilerOptionValueKind::Int, 1, 0, nullptr, nullptr}};
+    l_Options[1] = {slang::CompilerOptionName::Optimization, {slang::CompilerOptionValueKind::Int, static_cast<int>(m_Optimize ? SLANG_OPTIMIZATION_LEVEL_HIGH : SLANG_OPTIMIZATION_LEVEL_NONE), 0, nullptr, nullptr}};
+    l_Options[2] = {slang::CompilerOptionName::DebugInformation, {slang::CompilerOptionValueKind::Int, static_cast<int>(m_Optimize ? SLANG_DEBUG_INFO_LEVEL_NONE : SLANG_DEBUG_INFO_LEVEL_MAXIMAL), 0, nullptr, nullptr}};
 
-    sessionDesc.compilerOptionEntryCount = static_cast<uint32_t>(options.size());
-    sessionDesc.compilerOptionEntries = options.data();
+    l_SessionDesc.compilerOptionEntryCount = static_cast<uint32_t>(l_Options.size());
+    l_SessionDesc.compilerOptionEntries = l_Options.data();
 
     std::vector<const char*> l_SearchPaths;
     l_SearchPaths.reserve(m_SearchPaths.size());
@@ -323,8 +323,8 @@ bool VulkanShader::buildSession()
         l_SearchPaths.push_back(l_Path.c_str());
     }
 
-    sessionDesc.searchPathCount = static_cast<uint32_t>(l_SearchPaths.size());
-    sessionDesc.searchPaths = l_SearchPaths.data();
+    l_SessionDesc.searchPathCount = static_cast<uint32_t>(l_SearchPaths.size());
+    l_SessionDesc.searchPaths = l_SearchPaths.data();
 
     std::vector<slang::PreprocessorMacroDesc> l_Macros;
     l_Macros.reserve(m_Macros.size());
@@ -336,10 +336,10 @@ bool VulkanShader::buildSession()
         l_Macros.push_back(l_Desc);
     }
 
-    sessionDesc.preprocessorMacroCount = static_cast<uint32_t>(l_Macros.size());
-    sessionDesc.preprocessorMacros = l_Macros.data();
+    l_SessionDesc.preprocessorMacroCount = static_cast<uint32_t>(l_Macros.size());
+    l_SessionDesc.preprocessorMacros = l_Macros.data();
 
-    if (SLANG_FAILED(s_SlangSessions[m_CompilationThread]->createSession(sessionDesc, &m_SlangSession)))
+    if (SLANG_FAILED(s_SlangSessions[m_CompilationThread]->createSession(l_SessionDesc, &m_SlangSession)))
     {
         m_Result.error = "Failed to create Slang session";
         m_Result.status = Result::FAILED;

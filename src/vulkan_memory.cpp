@@ -394,11 +394,11 @@ MemoryChunk::MemoryBlock VulkanMemoryAllocator::searchAndAllocate(const VkDevice
 void VulkanMemoryAllocator::deallocate(const MemoryChunk::MemoryBlock& p_Block)
 {
     uint32_t l_ChunkIndex = static_cast<uint32_t>(m_MemoryChunks.size());
-    for (uint32_t l_memoryChunkIdx = 0; l_memoryChunkIdx < m_MemoryChunks.size(); l_memoryChunkIdx++)
+    for (uint32_t l_MemoryChunkIdx = 0; l_MemoryChunkIdx < m_MemoryChunks.size(); l_MemoryChunkIdx++)
     {
-        if (m_MemoryChunks[l_memoryChunkIdx].getID() == p_Block.chunk)
+        if (m_MemoryChunks[l_MemoryChunkIdx].getID() == p_Block.chunk)
         {
-            l_ChunkIndex = l_memoryChunkIdx;
+            l_ChunkIndex = l_MemoryChunkIdx;
             break;
         }
     }

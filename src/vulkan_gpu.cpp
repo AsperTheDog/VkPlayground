@@ -132,16 +132,16 @@ VkSurfaceFormatKHR VulkanGPU::getFirstFormat(const VkSurfaceKHR& p_Surface) cons
     return l_Formats[0];
 }
 
-VkFormatProperties VulkanGPU::getFormatProperties(const VkFormat P_Format) const
+VkFormatProperties VulkanGPU::getFormatProperties(const VkFormat p_Format) const
 {
     VkFormatProperties l_FormatProperties;
-    vkGetPhysicalDeviceFormatProperties(m_VkHandle, P_Format, &l_FormatProperties);
+    vkGetPhysicalDeviceFormatProperties(m_VkHandle, p_Format, &l_FormatProperties);
     return l_FormatProperties;
 }
 
-VkFormat VulkanGPU::findSupportedFormat(const std::span<const VkFormat> P_Candidates, const VkImageTiling p_Tiling, const VkFormatFeatureFlags p_Features) const
+VkFormat VulkanGPU::findSupportedFormat(const std::span<const VkFormat> p_Candidates, const VkImageTiling p_Tiling, const VkFormatFeatureFlags p_Features) const
 {
-    for (const VkFormat l_Format : P_Candidates)
+    for (const VkFormat l_Format : p_Candidates)
     {
         const VkFormatProperties l_Props = getFormatProperties(l_Format);
         if (p_Tiling == VK_IMAGE_TILING_LINEAR && (l_Props.linearTilingFeatures & p_Features) == p_Features)
@@ -154,7 +154,7 @@ VkFormat VulkanGPU::findSupportedFormat(const std::span<const VkFormat> P_Candid
         }
     }
 
-    throw std::runtime_error("Failed to find supported format: " + std::to_string(P_Candidates.size()) + " candidates");
+    throw std::runtime_error("Failed to find supported format: " + std::to_string(p_Candidates.size()) + " candidates");
 }
 
 VkPhysicalDevice VulkanGPU::operator*() const
