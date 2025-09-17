@@ -21,7 +21,7 @@ VulkanAccelerationStructureExtension::VulkanAccelerationStructureExtension(const
 
 VkBaseInStructure* VulkanAccelerationStructureExtension::getExtensionStruct() const
 {
-    auto l_Struct = TRANS_ALLOC(VkPhysicalDeviceAccelerationStructureFeaturesKHR){};
+    VkPhysicalDeviceAccelerationStructureFeaturesKHR* l_Struct = TRANS_ALLOC(VkPhysicalDeviceAccelerationStructureFeaturesKHR){};
     l_Struct->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
     l_Struct->pNext = nullptr;
     l_Struct->accelerationStructure = m_EnableStructure;

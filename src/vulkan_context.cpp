@@ -208,7 +208,7 @@ uint32_t VulkanContext::createDevice(const VulkanGPU p_GPU, const QueueFamilySel
     const void* l_PNext = l_DeviceCreateInfo.pNext;
     while (l_PNext != nullptr)
     {
-        auto l_Struct = static_cast<const VkBaseInStructure*>(l_PNext);
+        const VkBaseInStructure* l_Struct = static_cast<const VkBaseInStructure*>(l_PNext);
         l_PNext = l_Struct->pNext;
     }
 

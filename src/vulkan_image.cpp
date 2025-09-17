@@ -129,7 +129,7 @@ ResourceID VulkanImage::createImageView(const VkFormat p_Format, const VkImageAs
         throw std::runtime_error(std::string("Failed to create image view, error: ") + string_VkResult(l_Ret));
     }
 
-    auto l_ImageViewObj = ARENA_ALLOC(VulkanImageView)(getDeviceID(), l_ImageView);
+    VulkanImageView* l_ImageViewObj = ARENA_ALLOC(VulkanImageView)(getDeviceID(), l_ImageView);
     m_ImageViews.emplace(l_ImageViewObj->getID(), l_ImageViewObj);
     Logger::print(Logger::DEBUG, "Created image view ", l_ImageViewObj->getID(), " for image ", m_ID);
     return l_ImageViewObj->getID();
@@ -225,7 +225,7 @@ ResourceID VulkanImage::createSampler(const VkFilter p_Filter, const VkSamplerAd
         throw std::runtime_error(std::string("Failed to create sampler, error: ") + string_VkResult(l_Ret));
     }
 
-    auto l_SamplerObj = ARENA_ALLOC(VulkanImageSampler)(getDeviceID(), l_Sampler);
+    VulkanImageSampler* l_SamplerObj = ARENA_ALLOC(VulkanImageSampler)(getDeviceID(), l_Sampler);
     m_Samplers.emplace(l_SamplerObj->getID(), l_SamplerObj);
     return l_SamplerObj->getID();
 }
@@ -280,14 +280,14 @@ void VulkanImage::free()
 {
     VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
 
-    for (const auto& l_ImageView : m_ImageViews | std::views::values)
+    for (VulkanImageView* l_ImageView : m_ImageViews | std::views::values)
     {
         l_ImageView->free();
         ARENA_FREE(l_ImageView, sizeof(VulkanImageView));
     }
     m_ImageViews.clear();
 
-    for (const auto& l_Sampler : m_Samplers | std::views::values)
+    for (VulkanImageSampler* l_Sampler : m_Samplers | std::views::values)
     {
         l_Sampler->free();
         ARENA_FREE(l_Sampler, sizeof(VulkanImageSampler));

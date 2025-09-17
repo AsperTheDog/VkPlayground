@@ -284,7 +284,7 @@ inline ShaderReflectionData::FieldData ShaderReflectionData::createField(slang::
     const slang::TypeReflection::Kind l_Kind = l_Type->getKind();
     if (l_Kind == slang::TypeReflection::Kind::Struct)
     {
-        const auto l_Struct = std::make_shared<Struct>();
+        const StructPtr l_Struct = std::make_shared<Struct>();
         for (uint32_t i = 0; i < l_Type->getFieldCount(); i++)
         {
             FieldData l_FieldData = createField(l_Type->getFieldByIndex(i), p_BindingOffset + p_Variable->getBindingIndex());
@@ -300,7 +300,7 @@ inline ShaderReflectionData::FieldData ShaderReflectionData::createField(slang::
     }
     else if (l_Kind == slang::TypeReflection::Kind::Resource)
     {
-        const auto l_Resource = std::make_shared<Resource>();
+        const ResourcePtr l_Resource = std::make_shared<Resource>();
 
         l_Resource->type = getType(l_Type->getType());
         if (l_Resource->type == UNKNOWN)
@@ -327,7 +327,7 @@ inline ShaderReflectionData::FieldData ShaderReflectionData::createField(slang::
     }
     else
     {
-        const auto l_Variable = std::make_shared<Variable>();
+        const VariablePtr l_Variable = std::make_shared<Variable>();
         l_Variable->data = getTypeData(l_Type);
         l_Variable->binding = p_Variable->getBindingIndex() + p_BindingOffset;
 

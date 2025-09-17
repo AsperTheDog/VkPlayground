@@ -8,7 +8,7 @@ public:
 
     ~CallOnDestroyList()
     {
-        for (auto& l_Func : m_Functions)
+        for (std::function<void()>& l_Func : m_Functions)
         {
             l_Func();
         }

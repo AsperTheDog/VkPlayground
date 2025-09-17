@@ -60,7 +60,7 @@ ResourceID VulkanSwapchainExtension::createSwapchain(const VkSurfaceKHR p_Surfac
         freeSwapchain(p_OldSwapchain);
     }
 
-    auto l_NewRes = ARENA_ALLOC(VulkanSwapchain){getDeviceID(), l_SwapchainHandle, p_Extent, l_SelectedFormat, l_CreateInfo.minImageCount};
+    VulkanSwapchain* l_NewRes = ARENA_ALLOC(VulkanSwapchain){getDeviceID(), l_SwapchainHandle, p_Extent, l_SelectedFormat, l_CreateInfo.minImageCount};
     m_Swapchains[l_NewRes->getID()] = l_NewRes;
     LOG_DEBUG("Created swapchain (ID: ", l_NewRes->getID(), ")");
     return l_NewRes->getID();
@@ -96,7 +96,7 @@ bool VulkanSwapchainExtension::freeSwapchain(const VulkanSwapchain& p_Swapchain)
 
 void VulkanSwapchainExtension::free()
 {
-    for (const auto& l_Swapchain : m_Swapchains | std::views::values)
+    for (VulkanSwapchain* l_Swapchain : m_Swapchains | std::views::values)
     {
         l_Swapchain->free();
         ARENA_FREE(l_Swapchain, sizeof(VulkanSwapchain));

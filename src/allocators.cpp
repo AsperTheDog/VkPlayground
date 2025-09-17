@@ -95,7 +95,7 @@ std::string TransientAllocator::getVisualization(const size_t p_BarSize) const
     float l_Offset = 0.f;
     while (static_cast<size_t>(l_Offset) < l_StackSize)
     {
-        const size_t l_IntOffset = l_Offset;
+        const size_t l_IntOffset = static_cast<size_t>(l_Offset);
         if (m_StackBegin + l_IntOffset <= m_StackPtr)
         {
             l_Visualization += "#";
@@ -146,7 +146,7 @@ std::string ArenaAllocator::getVisualization(const size_t p_BarSize) const
             float l_Offset = 0.f;
             while (static_cast<size_t>(l_Offset) < m_BlockSize)
             {
-                const size_t l_IntOffset = l_Offset;
+                const size_t l_IntOffset = static_cast<size_t>(l_Offset);
                 FreeHeader* l_FreeHeader = l_Block.firstFree;
                 bool l_Allocated = true;
                 while (l_FreeHeader != nullptr)
@@ -214,7 +214,7 @@ void* ArenaAllocator::allocateInFreeChunk(Block& p_Block, FreeHeader* p_PrevHead
 
     p_FreeHeader->size = l_NewSize;
     uint8_t* l_Ptr = reinterpret_cast<uint8_t*>(p_FreeHeader) + p_FreeHeader->size;
-    auto l_AllocHeader = reinterpret_cast<AllocHeader*>(l_Ptr);
+    AllocHeader* l_AllocHeader = reinterpret_cast<AllocHeader*>(l_Ptr);
     l_AllocHeader->size = l_NeededSize;
     return l_Ptr + ALIGNMENT;
 }
@@ -283,8 +283,8 @@ void ArenaAllocator::deallocate(void* p_Ptr, const size_t p_SizeInBytes)
         return;
     }
 
-    auto l_AllocHeader = reinterpret_cast<AllocHeader*>(static_cast<uint8_t*>(p_Ptr) - ALIGNMENT);
-    auto l_BeginPtr = reinterpret_cast<uint8_t*>(l_AllocHeader);
+    AllocHeader* l_AllocHeader = reinterpret_cast<AllocHeader*>(static_cast<uint8_t*>(p_Ptr) - ALIGNMENT);
+    uint8_t* l_BeginPtr = reinterpret_cast<uint8_t*>(l_AllocHeader);
     const uint8_t* l_EndPtr = static_cast<uint8_t*>(p_Ptr) + l_AllocHeader->size;
     FreeHeader* l_PrevHeader = nullptr;
     FreeHeader* l_FreeHeader = l_Container->firstFree;
@@ -314,7 +314,7 @@ void ArenaAllocator::deallocate(void* p_Ptr, const size_t p_SizeInBytes)
         }
         if (l_FreeHeadPtr == l_EndPtr)
         {
-            auto l_CreatedHeader = reinterpret_cast<FreeHeader*>(l_BeginPtr);
+            FreeHeader* l_CreatedHeader = reinterpret_cast<FreeHeader*>(l_BeginPtr);
             l_CreatedHeader->next = l_FreeHeader->next;
             l_CreatedHeader->size = l_AllocHeader->size + l_FreeHeader->size;
 
@@ -333,7 +333,7 @@ void ArenaAllocator::deallocate(void* p_Ptr, const size_t p_SizeInBytes)
         l_FreeHeader = l_FreeHeader->next;
     }
 
-    auto l_CreatedHeader = reinterpret_cast<FreeHeader*>(l_BeginPtr);
+    FreeHeader* l_CreatedHeader = reinterpret_cast<FreeHeader*>(l_BeginPtr);
     l_CreatedHeader->size = l_AllocHeader->size;
     l_CreatedHeader->next = l_FreeHeader;
     if (l_PrevHeader)
