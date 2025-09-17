@@ -10,7 +10,8 @@
 // == Trans Allocator ==
 // =====================
 
-class TransientAllocator {
+class TransientAllocator
+{
 public:
     using value_type = uint8_t;
 
@@ -30,7 +31,7 @@ public:
     [[nodiscard]] bool isInitialized() const { return m_StackBegin != nullptr; }
     [[nodiscard]] size_t getAllocatedSize() const { return m_StackPtr - m_StackBegin; }
     [[nodiscard]] size_t getRemainingSize() const { return m_StackEnd - m_StackPtr; }
- 
+
     [[nodiscard]] std::string getVisualization(size_t p_BarSize) const;
 
 private:
@@ -50,7 +51,8 @@ static constexpr size_t alignUp(const size_t p_Value, const size_t p_Alignment)
     return (p_Value + (p_Alignment - 1)) & ~(p_Alignment - 1);
 }
 
-class ArenaAllocator {
+class ArenaAllocator
+{
     struct FreeHeader
     {
         FreeHeader* next = nullptr;
@@ -67,12 +69,13 @@ class ArenaAllocator {
         uint8_t* data = nullptr;
         FreeHeader* firstFree = nullptr;
     };
+
 public:
     static constexpr size_t c_BlockCount = 10;
     static constexpr size_t c_MinFreeBlockSize = 32;
     static constexpr size_t c_Alignment = alignof(std::max_align_t);
     static_assert(c_Alignment % 8 == 0 && c_Alignment >= sizeof(AllocHeader) && "Alignment must be a multiple of 8 bytes and cannot be smaller than the size of AllocHeader");
-    static_assert(c_MinFreeBlockSize% c_Alignment == 0 && "Minimum free block size must be a multiple of alignment");
+    static_assert(c_MinFreeBlockSize % c_Alignment == 0 && "Minimum free block size must be a multiple of alignment");
 
     ArenaAllocator() = default;
     explicit ArenaAllocator(size_t p_BlockSize);
@@ -99,7 +102,8 @@ private:
 };
 
 template <typename Alloc, typename T>
-class AllocHolder {
+class AllocHolder
+{
 public:
     using value_type = std::remove_const_t<T>;
 
@@ -116,7 +120,7 @@ public:
         return static_cast<T*>(m_Pool->allocate(p_Size * sizeof(T)));
     }
 
-    void deallocate(T* p_Ptr, const size_t p_Size) 
+    void deallocate(T* p_Ptr, const size_t p_Size)
     {
         m_Pool->deallocate(reinterpret_cast<void*>(p_Ptr), p_Size * sizeof(T));
     }
@@ -124,7 +128,7 @@ public:
     template <typename U, typename... Args>
     void construct(U* p_Ptr, Args&&... p_Args)
     {
-        new (p_Ptr) U(std::forward<Args>(p_Args)...);
+        new(p_Ptr) U(std::forward<Args>(p_Args)...);
     }
 
     template <typename U>
@@ -155,13 +159,13 @@ private:
     friend class AllocHolder;
 };
 
-template<typename T>
+template <typename T>
 using ArenaAlloc = AllocHolder<ArenaAllocator, T>;
 
 template <typename T>
 using TransAlloc = AllocHolder<TransientAllocator, T>;
 
-template<typename T, typename Q>
+template <typename T, typename Q>
 using arena_umap = std::unordered_map<T, Q, std::hash<T>, std::equal_to<>, ArenaAlloc<std::pair<const T, Q>>>;
 
 template <typename T>
@@ -170,7 +174,7 @@ using arena_uset = std::unordered_set<T, std::hash<T>, std::equal_to<>, ArenaAll
 template <typename T>
 using arena_vector = std::vector<T, ArenaAlloc<T>>;
 
-template<typename T, typename Q>
+template <typename T, typename Q>
 using trans_umap = std::unordered_map<T, Q, std::hash<T>, std::equal_to<>, TransAlloc<std::pair<const T, Q>>>;
 
 template <typename T>

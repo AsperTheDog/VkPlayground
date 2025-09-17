@@ -37,38 +37,37 @@ private:
 class VulkanSwapchain final : public VulkanDeviceSubresource
 {
 public:
-	VkSwapchainKHR operator*() const;
+    VkSwapchainKHR operator*() const;
 
-	[[nodiscard]] uint32_t getMinImageCount() const;
-	[[nodiscard]] uint32_t getImageCount() const;
-	[[nodiscard]] VkExtent2D getExtent() const;
-	[[nodiscard]] VkSurfaceFormatKHR getFormat() const;
+    [[nodiscard]] uint32_t getMinImageCount() const;
+    [[nodiscard]] uint32_t getImageCount() const;
+    [[nodiscard]] VkExtent2D getExtent() const;
+    [[nodiscard]] VkSurfaceFormatKHR getFormat() const;
 
-	uint32_t acquireNextImage(ResourceID p_Fence = UINT32_MAX);
-	[[nodiscard]] VulkanImage& getImage(uint32_t p_Index);
-	[[nodiscard]] ResourceID getImageView(uint32_t p_Index) const;
-	[[nodiscard]] uint32_t getNextImage() const;
-	[[nodiscard]] uint32_t getImgSemaphore() const;
+    uint32_t acquireNextImage(ResourceID p_Fence = UINT32_MAX);
+    [[nodiscard]] VulkanImage& getImage(uint32_t p_Index);
+    [[nodiscard]] ResourceID getImageView(uint32_t p_Index) const;
+    [[nodiscard]] uint32_t getNextImage() const;
+    [[nodiscard]] uint32_t getImgSemaphore() const;
 
-	bool present(QueueSelection p_Queue, std::span<const ResourceID> p_Semaphores);
+    bool present(QueueSelection p_Queue, std::span<const ResourceID> p_Semaphores);
 
 private:
-	void free() override;
+    void free() override;
 
-	VulkanSwapchain(ResourceID p_Device, VkSwapchainKHR p_Handle, VkExtent2D p_Extent, VkSurfaceFormatKHR p_Format, uint32_t p_MinImageCount);
-	
-	VkExtent2D m_Extent;
-	VkSurfaceFormatKHR m_Format;
-	std::vector<VulkanImage> m_Images;
-	std::vector<ResourceID> m_ImageViews;
-	uint32_t m_MinImageCount = 0;
+    VulkanSwapchain(ResourceID p_Device, VkSwapchainKHR p_Handle, VkExtent2D p_Extent, VkSurfaceFormatKHR p_Format, uint32_t p_MinImageCount);
 
-	uint32_t m_NextImage = 0;
-	uint32_t m_ImageAvailableSemaphore = UINT32_MAX;
-	bool m_WasAcquired = false;
+    VkExtent2D m_Extent;
+    VkSurfaceFormatKHR m_Format;
+    std::vector<VulkanImage> m_Images;
+    std::vector<ResourceID> m_ImageViews;
+    uint32_t m_MinImageCount = 0;
 
-	VkSwapchainKHR m_VkHandle = VK_NULL_HANDLE;
+    uint32_t m_NextImage = 0;
+    uint32_t m_ImageAvailableSemaphore = UINT32_MAX;
+    bool m_WasAcquired = false;
+
+    VkSwapchainKHR m_VkHandle = VK_NULL_HANDLE;
 
     friend class VulkanSwapchainExtension;
 };
-

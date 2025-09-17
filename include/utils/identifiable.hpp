@@ -2,8 +2,8 @@
 
 #include <cstdint>
 
-typedef uint32_t ResourceID;
-typedef uint32_t ThreadID;
+using ResourceID = uint32_t;
+using ThreadID = uint32_t;
 
 class Identifiable
 {
@@ -14,10 +14,10 @@ public:
 protected:
     Identifiable() : m_ID(s_IDcounter++) {}
 
-	ResourceID m_ID = 0;
+    ResourceID m_ID = 0;
 
 private:
-	inline static ResourceID s_IDcounter = 0;
+    inline static ResourceID s_IDcounter = 0;
 };
 
 
@@ -33,5 +33,5 @@ private:
 
     uint32_t m_Device;
 
-	friend class VulkanDevice;
+    friend class VulkanDevice;
 };

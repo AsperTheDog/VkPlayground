@@ -13,10 +13,7 @@ VulkanRayTracingPipelineExtension* VulkanRayTracingPipelineExtension::get(Resour
 }
 
 VulkanRayTracingPipelineExtension::VulkanRayTracingPipelineExtension(const ResourceID p_DeviceID, const bool p_EnablePipeline, const bool p_EnableReplay, const bool p_EnableReplayMixed, const bool p_EnableIndirect, const bool p_EnableCulling)
-    : VulkanDeviceExtension(p_DeviceID), m_EnablePipeline(p_EnablePipeline), m_EnableReplay(p_EnableReplay), m_EnableReplayMixed(p_EnableReplayMixed), m_EnableIndirect(p_EnableIndirect), m_EnableCulling(p_EnableCulling)
-{
-    
-}
+    : VulkanDeviceExtension(p_DeviceID), m_EnablePipeline(p_EnablePipeline), m_EnableReplay(p_EnableReplay), m_EnableReplayMixed(p_EnableReplayMixed), m_EnableIndirect(p_EnableIndirect), m_EnableCulling(p_EnableCulling) {}
 
 VkBaseInStructure* VulkanRayTracingPipelineExtension::getExtensionStruct() const
 {

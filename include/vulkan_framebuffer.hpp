@@ -7,17 +7,16 @@ class VulkanDevice;
 class VulkanFramebuffer final : public VulkanDeviceSubresource
 {
 public:
-	VkFramebuffer operator*() const;
+    VkFramebuffer operator*() const;
 
 private:
-	void free() override;
+    void free() override;
 
-	VulkanFramebuffer(ResourceID p_Device, VkFramebuffer p_Handle);
+    VulkanFramebuffer(ResourceID p_Device, VkFramebuffer p_Handle);
 
 private:
     VkFramebuffer m_VkHandle = VK_NULL_HANDLE;
 
-	friend class VulkanDevice;
-	friend class VulkanCommandBuffer;
+    friend class VulkanDevice;
+    friend class VulkanCommandBuffer;
 };
-

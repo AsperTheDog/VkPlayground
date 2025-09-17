@@ -31,7 +31,7 @@ private:
     friend class VulkanDeviceExtensionManager;
 };
 
-typedef uint32_t ExtensionID;
+using ExtensionID = uint32_t;
 
 class VulkanDeviceExtension
 {
@@ -53,7 +53,6 @@ protected:
     explicit VulkanDeviceExtension(const ResourceID p_DeviceID) : m_DeviceID(p_DeviceID) {}
 
 private:
-
     ResourceID m_DeviceID;
     ExtensionID m_ExtensionID = s_ExtensionCounter++;
 
@@ -100,14 +99,12 @@ private:
 };
 
 
-
-
 template <typename T>
 VulkanExtensionChain& VulkanExtensionChain::addExtension(const T& p_Extension)
 {
     static_assert(std::is_trivially_destructible_v<T>, "T must have a trivial or no destructor!");
-    
-    T* pNext = new (allocFromContext(sizeof(T))) T(p_Extension);
+
+    T* pNext = new(allocFromContext(sizeof(T))) T(p_Extension);
     m_Next.push_back(reinterpret_cast<VkBaseInStructure*>(pNext));
     return *this;
 }

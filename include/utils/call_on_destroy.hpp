@@ -5,11 +5,15 @@ class CallOnDestroyList
 {
 public:
     CallOnDestroyList() = default;
+
     ~CallOnDestroyList()
     {
         for (auto& func : m_Functions)
+        {
             func();
+        }
     }
+
     void add(std::function<void()> func)
     {
         m_Functions.push_back(std::move(func));
@@ -31,7 +35,9 @@ public:
     ~CallOnDestroy()
     {
         if (m_Function)
+        {
             m_Function();
+        }
     }
 
     void cancel()

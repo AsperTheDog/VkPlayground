@@ -20,13 +20,13 @@ public:
         std::string value;
     };
 
-	struct Result
-	{
+    struct Result
+    {
         enum Status : uint8_t { NOT_READY, FAILED, COMPILED };
 
-		Status status = NOT_READY;
-		std::string error;
-	};
+        Status status = NOT_READY;
+        std::string error;
+    };
 
     static void reset(VulkanShader& p_Shader);
     static void reinit(VulkanShader& p_Shader, ThreadID p_CompilationThread, bool p_Optimize = true, std::span<const MacroDef> p_Macros = {});
@@ -65,7 +65,7 @@ private:
     std::unordered_set<std::string> m_SearchPaths;
 
     Result m_Result;
-    
+
     inline static std::unordered_map<ThreadID, slang::IGlobalSession*> s_SlangSessions;
 
     slang::ISession* m_SlangSession = nullptr;
@@ -79,21 +79,19 @@ private:
 class VulkanShaderModule final : public VulkanDeviceSubresource
 {
 public:
-
-	VkShaderModule operator*() const;
+    VkShaderModule operator*() const;
 
     [[nodiscard]] VkShaderStageFlagBits getStage() const { return m_Stage; }
 
 private:
-	void free() override;
+    void free() override;
 
-	VulkanShaderModule(ResourceID p_Device, VkShaderModule p_Handle, VkShaderStageFlagBits p_Stage);
+    VulkanShaderModule(ResourceID p_Device, VkShaderModule p_Handle, VkShaderStageFlagBits p_Stage);
 
-	VkShaderModule m_VkHandle = VK_NULL_HANDLE;
-	VkShaderStageFlagBits m_Stage = VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
+    VkShaderModule m_VkHandle = VK_NULL_HANDLE;
+    VkShaderStageFlagBits m_Stage = VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
 
-	friend class VulkanDevice;
-	friend class VulkanPipeline;
-	friend struct VulkanPipelineBuilder;
+    friend class VulkanDevice;
+    friend class VulkanPipeline;
+    friend struct VulkanPipelineBuilder;
 };
-

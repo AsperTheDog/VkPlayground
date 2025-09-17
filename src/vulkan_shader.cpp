@@ -22,20 +22,17 @@ void printBlob(slang::IBlob* p_Blob)
 void VulkanShader::reset(VulkanShader& p_Shader)
 {
     p_Shader.~VulkanShader();
-    new (&p_Shader) VulkanShader{};
+    new(&p_Shader) VulkanShader{};
 }
 
 void VulkanShader::reinit(VulkanShader& p_Shader, const ThreadID p_CompilationThread, const bool p_Optimize, const std::span<const MacroDef> p_Macros)
 {
     p_Shader.~VulkanShader();
-    new (&p_Shader) VulkanShader{ p_CompilationThread, p_Optimize, p_Macros };
+    new(&p_Shader) VulkanShader{p_CompilationThread, p_Optimize, p_Macros};
 }
 
 VulkanShader::VulkanShader(const ThreadID p_CompilationThread, const bool p_Optimize, const std::span<const MacroDef> p_Macros)
-    : m_CompilationThread(p_CompilationThread), m_Optimize(p_Optimize), m_Macros(p_Macros.begin(), p_Macros.end())
-{
-
-}
+    : m_CompilationThread(p_CompilationThread), m_Optimize(p_Optimize), m_Macros(p_Macros.begin(), p_Macros.end()) {}
 
 VulkanShader::~VulkanShader()
 {
@@ -91,7 +88,9 @@ void VulkanShader::loadModule(const std::string_view p_Filename, const std::stri
 void VulkanShader::loadModuleString(const std::string_view p_Source, const std::string_view p_ModuleName)
 {
     if (!m_SlangSession)
+    {
         buildSession();
+    }
 
     slang::IBlob* l_DiagnosticsBlob = nullptr;
     slang::IModule* l_Module = m_SlangSession->loadModuleFromSourceString(p_ModuleName.data(), p_ModuleName.data(), p_Source.data(), &l_DiagnosticsBlob);
@@ -235,7 +234,9 @@ VkShaderModule VulkanShaderModule::operator*() const
 slang::ProgramLayout* VulkanShader::getLayout() const
 {
     if (m_Result.status != Result::COMPILED)
+    {
         throw std::runtime_error("Could not obtain shader layout, compilation not finished");
+    }
 
     return m_SlangProgram->getLayout(0, nullptr);
 }
@@ -260,7 +261,6 @@ SlangStage VulkanShader::getSlangStageFromVkStage(const VkShaderStageFlagBits p_
     default:
         throw std::runtime_error("Unsupported shader stage");
     }
-
 }
 
 VkShaderStageFlagBits VulkanShader::getVkStageFromSlangStage(const SlangStage p_Stage)
@@ -309,9 +309,9 @@ bool VulkanShader::buildSession()
     sessionDesc.targets = &targetDesc;
 
     std::array<slang::CompilerOptionEntry, 3> options;
-    options[0] = { slang::CompilerOptionName::EmitSpirvDirectly, {slang::CompilerOptionValueKind::Int, 1, 0, nullptr, nullptr} };
-    options[1] = { slang::CompilerOptionName::Optimization, {slang::CompilerOptionValueKind::Int, static_cast<int>(m_Optimize ? SLANG_OPTIMIZATION_LEVEL_HIGH : SLANG_OPTIMIZATION_LEVEL_NONE), 0, nullptr, nullptr} };
-    options[2] = { slang::CompilerOptionName::DebugInformation, {slang::CompilerOptionValueKind::Int, static_cast<int>(m_Optimize ? SLANG_DEBUG_INFO_LEVEL_NONE : SLANG_DEBUG_INFO_LEVEL_MAXIMAL), 0, nullptr, nullptr} };
+    options[0] = {slang::CompilerOptionName::EmitSpirvDirectly, {slang::CompilerOptionValueKind::Int, 1, 0, nullptr, nullptr}};
+    options[1] = {slang::CompilerOptionName::Optimization, {slang::CompilerOptionValueKind::Int, static_cast<int>(m_Optimize ? SLANG_OPTIMIZATION_LEVEL_HIGH : SLANG_OPTIMIZATION_LEVEL_NONE), 0, nullptr, nullptr}};
+    options[2] = {slang::CompilerOptionName::DebugInformation, {slang::CompilerOptionValueKind::Int, static_cast<int>(m_Optimize ? SLANG_DEBUG_INFO_LEVEL_NONE : SLANG_DEBUG_INFO_LEVEL_MAXIMAL), 0, nullptr, nullptr}};
 
     sessionDesc.compilerOptionEntryCount = static_cast<uint32_t>(options.size());
     sessionDesc.compilerOptionEntries = options.data();
@@ -319,7 +319,9 @@ bool VulkanShader::buildSession()
     std::vector<const char*> l_SearchPaths;
     l_SearchPaths.reserve(m_SearchPaths.size());
     for (const std::string& l_Path : m_SearchPaths)
+    {
         l_SearchPaths.push_back(l_Path.c_str());
+    }
 
     sessionDesc.searchPathCount = static_cast<uint32_t>(l_SearchPaths.size());
     sessionDesc.searchPaths = l_SearchPaths.data();
@@ -352,13 +354,11 @@ void VulkanShaderModule::free()
     {
         const VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
 
-	    l_Device.getTable().vkDestroyShaderModule(l_Device.m_VkHandle, m_VkHandle, nullptr);
+        l_Device.getTable().vkDestroyShaderModule(l_Device.m_VkHandle, m_VkHandle, nullptr);
         LOG_DEBUG("Freed shader module (ID: ", m_ID, ")");
         m_VkHandle = VK_NULL_HANDLE;
     }
 }
 
 VulkanShaderModule::VulkanShaderModule(const ResourceID p_Device, const VkShaderModule p_Handle, const VkShaderStageFlagBits p_Stage)
-    : VulkanDeviceSubresource(p_Device), m_VkHandle(p_Handle), m_Stage(p_Stage)
-{
-}
+    : VulkanDeviceSubresource(p_Device), m_VkHandle(p_Handle), m_Stage(p_Stage) {}

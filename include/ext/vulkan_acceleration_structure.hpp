@@ -10,7 +10,6 @@ class VulkanAccelerationStructure;
 class VulkanAccelerationStructureExtension final : public VulkanDeviceExtension
 {
 public:
-
     struct ModelData
     {
         struct VertexData
@@ -25,6 +24,7 @@ public:
             ResourceID buffer;
             VkIndexType format;
         };
+
         VertexData vertexBuffer;
         VkDeviceSize vertexOffset = 0;
         IndexData indexBuffer;
@@ -33,18 +33,18 @@ public:
         ResourceID transformBuffer = UINT32_MAX;
     };
 
-public:
     static VulkanAccelerationStructureExtension* get(const VulkanDevice& p_Device);
     static VulkanAccelerationStructureExtension* get(ResourceID p_DeviceID);
 
     VulkanAccelerationStructureExtension(ResourceID p_DeviceID, bool p_EnableStructure, bool p_EnableIndirectBuild, bool p_EnableCaptureReplay, bool p_EnableHostCommands, bool p_EnableUpdateAfterBuild);
-    
+
     [[nodiscard]] VkBaseInStructure* getExtensionStruct() const override;
     [[nodiscard]] VkStructureType getExtensionStructType() const override { return VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR; }
 
     ResourceID createBLASFromModels(std::span<const ModelData> p_Models, uint32_t p_BufferQueueFamilyIndex);
 
     void free() override {}
+
     std::string getMainExtensionName() override { return "VK_KHR_acceleration_structure"; }
 
 private:
@@ -61,9 +61,9 @@ class VulkanAccelerationStructure final : public VulkanDeviceSubresource
 {
 public:
     VkAccelerationStructureKHR operator*() const { return m_VkHandle; }
-    
-	void allocateFromIndex(uint32_t p_MemoryIndex) const;
-	void allocateFromFlags(VulkanMemoryAllocator::MemoryPropertyPreferences p_MemoryProperties) const;
+
+    void allocateFromIndex(uint32_t p_MemoryIndex) const;
+    void allocateFromFlags(VulkanMemoryAllocator::MemoryPropertyPreferences p_MemoryProperties) const;
 
 private:
     void free() override;
@@ -72,7 +72,7 @@ private:
 
     VkAccelerationStructureKHR m_VkHandle = VK_NULL_HANDLE;
     ResourceID m_Buffer;
-	MemoryChunk::MemoryBlock m_MemoryRegion;
+    MemoryChunk::MemoryBlock m_MemoryRegion;
 
     friend class VulkanAccelerationStructureExtension;
 };

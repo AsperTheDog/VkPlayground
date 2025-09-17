@@ -14,9 +14,7 @@ VulkanShaderClockExtension* VulkanShaderClockExtension::get(const ResourceID p_D
 }
 
 VulkanShaderClockExtension::VulkanShaderClockExtension(const ResourceID p_DeviceID, const bool p_EnableDeviceClock, const bool p_EnableSubgroupClock)
-    : VulkanDeviceExtension(p_DeviceID), m_EnableDeviceClock(p_EnableDeviceClock), m_EnableSubgroupClock(p_EnableSubgroupClock)
-{
-}
+    : VulkanDeviceExtension(p_DeviceID), m_EnableDeviceClock(p_EnableDeviceClock), m_EnableSubgroupClock(p_EnableSubgroupClock) {}
 
 VkBaseInStructure* VulkanShaderClockExtension::getExtensionStruct() const
 {

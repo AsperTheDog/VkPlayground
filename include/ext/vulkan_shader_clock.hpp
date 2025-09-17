@@ -19,4 +19,3 @@ private:
     bool m_EnableDeviceClock;
     bool m_EnableSubgroupClock;
 };
-

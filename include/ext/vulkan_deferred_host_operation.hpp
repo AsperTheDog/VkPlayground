@@ -16,4 +16,3 @@ public:
 
     std::string getMainExtensionName() override { return "VK_KHR_deferred_host_operations"; }
 };
-
