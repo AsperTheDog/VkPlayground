@@ -60,7 +60,7 @@ ResourceID VulkanExternalMemoryExtension::createExternalImage(const VkImageType 
 	return l_NewRes->getID();
 }
 
-void VulkanExternalMemoryExtension::allocateExport(ResourceID p_Resource, VulkanMemoryAllocatorVMA::MemoryPreferences p_MemoryProperties) const
+void VulkanExternalMemoryExtension::allocateExport(ResourceID p_Resource, VulkanMemoryAllocator::MemoryPreferences p_MemoryProperties) const
 {
     VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
     VulkanMemArray* l_MemArray = dynamic_cast<VulkanMemArray*>(VulkanContext::getDevice(getDeviceID()).getSubresource(p_Resource));
@@ -80,7 +80,7 @@ void VulkanExternalMemoryExtension::allocateExport(ResourceID p_Resource, Vulkan
 
     const VkMemoryRequirements l_Requirements = l_MemArray->getMemoryRequirements();
     const uint32_t l_MemType = l_Device.getMemoryAllocator().findMemoryType(l_Requirements, p_MemoryProperties);
-    const VulkanMemoryAllocatorVMA::PoolPreferences l_PoolPrefs{
+    const VulkanMemoryAllocator::PoolPreferences l_PoolPrefs{
         .memoryTypeIndex = l_MemType,
         .pNext = &l_ExportAlloc,
         .pNextIdentifier = std::hash<std::string>{}(string_VkExternalMemoryHandleTypeFlags(l_ExportAlloc.handleTypes))

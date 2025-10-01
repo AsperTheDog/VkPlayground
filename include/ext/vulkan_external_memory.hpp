@@ -24,7 +24,7 @@ public:
 
     [[nodiscard]] ResourceID createExternalImage(VkImageType p_Type, VkFormat p_Format, VkExtent3D p_Extent, VkImageUsageFlags p_Usage, VkImageCreateFlags p_Flags, VkImageTiling p_Tiling = VK_IMAGE_TILING_OPTIMAL) const;
 
-    void allocateExport(ResourceID p_Resource, VulkanMemoryAllocatorVMA::MemoryPreferences p_MemoryProperties) const;
+    void allocateExport(ResourceID p_Resource, VulkanMemoryAllocator::MemoryPreferences p_MemoryProperties) const;
 
     [[nodiscard]] HANDLE getResourceOpaqueHandle(ResourceID p_Resource) const;
 

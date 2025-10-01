@@ -7,7 +7,7 @@ class VulkanDevice;
 class VulkanMemArray : public VulkanDeviceSubresource
 {
 public:
-    using MemoryPreferences = VulkanMemoryAllocatorVMA::MemoryPreferences;
+    using MemoryPreferences = VulkanMemoryAllocator::MemoryPreferences;
 
     [[nodiscard]] virtual VkMemoryRequirements getMemoryRequirements() const = 0;
 
@@ -48,7 +48,7 @@ public:
         uint32_t ownerQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     };
 
-    using MemoryPreferences = VulkanMemoryAllocatorVMA::MemoryPreferences;
+    using MemoryPreferences = VulkanMemoryAllocator::MemoryPreferences;
 
     [[nodiscard]] VkMemoryRequirements getMemoryRequirements() const override;
 

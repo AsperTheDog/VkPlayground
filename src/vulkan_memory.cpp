@@ -11,7 +11,7 @@
 #include "vulkan_device.hpp"
 #include "utils/vulkan_base.hpp"
 
-std::string VulkanMemoryAllocatorVMA::compactBytes(const VkDeviceSize p_Bytes)
+std::string VulkanMemoryAllocator::compactBytes(const VkDeviceSize p_Bytes)
 {
     const char* l_Units[] = {"B", "KB", "MB", "GB", "TB"};
     uint32_t l_Unit = 0;
@@ -37,7 +37,7 @@ std::string MemoryStructure::toString() const
     for (uint32_t l_MemoryHeapIdx = 0; l_MemoryHeapIdx < l_MemoryProperties.memoryHeapCount; l_MemoryHeapIdx++)
     {
         l_Str += "Memory Heap " + std::to_string(l_MemoryHeapIdx) + ":\n";
-        l_Str += " - Size: " + VulkanMemoryAllocatorVMA::compactBytes(l_MemoryProperties.memoryHeaps[l_MemoryHeapIdx].size) + "\n";
+        l_Str += " - Size: " + VulkanMemoryAllocator::compactBytes(l_MemoryProperties.memoryHeaps[l_MemoryHeapIdx].size) + "\n";
         l_Str += " - Flags: " + string_VkMemoryHeapFlags(l_MemoryProperties.memoryHeaps[l_MemoryHeapIdx].flags) + "\n";
         l_Str += " - Memory Types:\n";
         for (uint32_t l_MemoryTypeIdx = 0; l_MemoryTypeIdx < l_MemoryProperties.memoryTypeCount; l_MemoryTypeIdx++)
@@ -108,12 +108,12 @@ MemoryStructure::MemoryStructure(const VulkanGPU p_GPU) : m_GPU(p_GPU)
     vkGetPhysicalDeviceMemoryProperties(*m_GPU, &m_MemoryProperties);
 }
 
-VulkanMemoryAllocatorVMA::MemoryPreferences VulkanMemoryAllocatorVMA::MemoryPreferences::fromUsage(const VmaMemoryUsage p_Usage, const VmaAllocationCreateFlags p_Flags)
+VulkanMemoryAllocator::MemoryPreferences VulkanMemoryAllocator::MemoryPreferences::fromUsage(const VmaMemoryUsage p_Usage, const VmaAllocationCreateFlags p_Flags)
 {
     return { .usage = p_Usage, .vmaFlags = p_Flags };
 }
 
-bool VulkanMemoryAllocatorVMA::PoolPreferences::operator==(const PoolPreferences& p_Other) const
+bool VulkanMemoryAllocator::PoolPreferences::operator==(const PoolPreferences& p_Other) const
 {
     const bool l_Equal = memoryTypeIndex == p_Other.memoryTypeIndex
         && flags == p_Other.flags
@@ -130,17 +130,17 @@ bool VulkanMemoryAllocatorVMA::PoolPreferences::operator==(const PoolPreferences
     return l_Equal && pNextIdentifier == p_Other.pNextIdentifier;
 }
 
-uint32_t VulkanMemoryAllocatorVMA::findMemoryType(const MemoryPreferences& p_Preferences) const
+uint32_t VulkanMemoryAllocator::findMemoryType(const MemoryPreferences& p_Preferences) const
 {
     return findMemoryType(p_Preferences, UINT32_MAX);
 }
 
-uint32_t VulkanMemoryAllocatorVMA::findMemoryType(const VkMemoryRequirements& p_Reqs, const MemoryPreferences& p_Preferences) const
+uint32_t VulkanMemoryAllocator::findMemoryType(const VkMemoryRequirements& p_Reqs, const MemoryPreferences& p_Preferences) const
 {
     return findMemoryType(p_Preferences, p_Reqs.memoryTypeBits);
 }
 
-uint32_t VulkanMemoryAllocatorVMA::findMemoryType(const MemoryPreferences& p_Preferences, const uint32_t p_StartingFilter) const
+uint32_t VulkanMemoryAllocator::findMemoryType(const MemoryPreferences& p_Preferences, const uint32_t p_StartingFilter) const
 {
     const VkPhysicalDeviceMemoryProperties& l_MemProps = m_MemoryStructure.getMemoryProperties();
 
@@ -160,7 +160,7 @@ uint32_t VulkanMemoryAllocatorVMA::findMemoryType(const MemoryPreferences& p_Pre
     return UINT32_MAX;
 }
 
-VmaAllocation VulkanMemoryAllocatorVMA::allocateMemArray(ResourceID p_MemArray, const MemoryPreferences& p_Preferences) const
+VmaAllocation VulkanMemoryAllocator::allocateMemArray(ResourceID p_MemArray, const MemoryPreferences& p_Preferences) const
 {
     VulkanDeviceSubresource* l_MemArray = VulkanContext::getDevice(m_Device).getSubresource(p_MemArray);
     if (dynamic_cast<VulkanBuffer*>(l_MemArray))
@@ -175,7 +175,7 @@ VmaAllocation VulkanMemoryAllocatorVMA::allocateMemArray(ResourceID p_MemArray, 
     return {};
 }
 
-VmaAllocation VulkanMemoryAllocatorVMA::allocateBuffer(const ResourceID p_Buffer, const MemoryPreferences& p_Preferences) const
+VmaAllocation VulkanMemoryAllocator::allocateBuffer(const ResourceID p_Buffer, const MemoryPreferences& p_Preferences) const
 {
     VulkanDevice& l_Device = VulkanContext::getDevice(m_Device);
     const VulkanBuffer& l_Buffer = l_Device.getBuffer(p_Buffer);
@@ -203,7 +203,7 @@ VmaAllocation VulkanMemoryAllocatorVMA::allocateBuffer(const ResourceID p_Buffer
     return l_Alloc;
 }
 
-VmaAllocation VulkanMemoryAllocatorVMA::allocateImage(const ResourceID p_Image, const MemoryPreferences& p_Preferences) const
+VmaAllocation VulkanMemoryAllocator::allocateImage(const ResourceID p_Image, const MemoryPreferences& p_Preferences) const
 {
     VulkanDevice& l_Device = VulkanContext::getDevice(m_Device);
     const VulkanImage& l_Image = l_Device.getImage(p_Image);
@@ -232,7 +232,7 @@ VmaAllocation VulkanMemoryAllocatorVMA::allocateImage(const ResourceID p_Image, 
     return l_Alloc;
 }
 
-uint32_t VulkanMemoryAllocatorVMA::getOrCreatePool(const PoolPreferences& p_Prefs)
+uint32_t VulkanMemoryAllocator::getOrCreatePool(const PoolPreferences& p_Prefs)
 {
     for (const PoolData& l_Pool : m_Pools)
     {
@@ -244,7 +244,7 @@ uint32_t VulkanMemoryAllocatorVMA::getOrCreatePool(const PoolPreferences& p_Pref
     return createPool(p_Prefs);
 }
 
-uint32_t VulkanMemoryAllocatorVMA::createPool(const PoolPreferences& p_Prefs)
+uint32_t VulkanMemoryAllocator::createPool(const PoolPreferences& p_Prefs)
 {
     static uint32_t l_NewID = 0;
 
@@ -267,36 +267,36 @@ uint32_t VulkanMemoryAllocatorVMA::createPool(const PoolPreferences& p_Prefs)
     return m_Pools.back().id;
 }
 
-void* VulkanMemoryAllocatorVMA::map(const VmaAllocation p_Alloc) const
+void* VulkanMemoryAllocator::map(const VmaAllocation p_Alloc) const
 {
     void* l_Data = nullptr;
     VULKAN_TRY(vmaMapMemory(m_Allocator, p_Alloc, &l_Data));
     return l_Data;
 }
 
-void VulkanMemoryAllocatorVMA::unmap(const VmaAllocation p_Alloc) const
+void VulkanMemoryAllocator::unmap(const VmaAllocation p_Alloc) const
 {
     vmaUnmapMemory(m_Allocator, p_Alloc);
 }
 
-void VulkanMemoryAllocatorVMA::deallocate(const VmaAllocation p_Alloc) const
+void VulkanMemoryAllocator::deallocate(const VmaAllocation p_Alloc) const
 {
     vmaFreeMemory(m_Allocator, p_Alloc);
 }
 
-const MemoryStructure& VulkanMemoryAllocatorVMA::getMemoryStructure() const
+const MemoryStructure& VulkanMemoryAllocator::getMemoryStructure() const
 {
     return m_MemoryStructure;
 }
 
-VmaAllocationInfo VulkanMemoryAllocatorVMA::getAllocationInfo(const VmaAllocation p_Allocation) const
+VmaAllocationInfo VulkanMemoryAllocator::getAllocationInfo(const VmaAllocation p_Allocation) const
 {
     VmaAllocationInfo l_Info{};
     vmaGetAllocationInfo(m_Allocator, p_Allocation, &l_Info);
     return l_Info;
 }
 
-VulkanMemoryAllocatorVMA::VulkanMemoryAllocatorVMA(const VulkanDevice& p_Device)
+VulkanMemoryAllocator::VulkanMemoryAllocator(const VulkanDevice& p_Device)
     : m_MemoryStructure(p_Device.getGPU()), m_Device(p_Device.getID())
 {
     VmaVulkanFunctions l_Funcs{};
@@ -313,29 +313,29 @@ VulkanMemoryAllocatorVMA::VulkanMemoryAllocatorVMA(const VulkanDevice& p_Device)
     VULKAN_TRY(vmaCreateAllocator(&l_AllocInfo, &m_Allocator));
 }
 
-VulkanMemoryAllocatorVMA::AllocationReturn VulkanMemoryAllocatorVMA::createBuffer(const VkBufferCreateInfo& p_Info, const MemoryPreferences& p_Preferences) const
+VulkanMemoryAllocator::AllocationReturn VulkanMemoryAllocator::createBuffer(const VkBufferCreateInfo& p_Info, const MemoryPreferences& p_Preferences) const
 {
     const VmaAllocationCreateInfo l_Aci = toVmaAllocCI(p_Preferences, 0);
     VkBuffer l_Buffer;
     VmaAllocation l_Alloc;
     VmaAllocationInfo l_Info;
     VULKAN_TRY(vmaCreateBuffer(m_Allocator, &p_Info, &l_Aci, &l_Buffer, &l_Alloc, &l_Info));
-    LOG_DEBUG("Created buffer with size ", VulkanMemoryAllocatorVMA::compactBytes(l_Info.size), " at memory type ", l_Info.memoryType, " with offset ", l_Info.offset, ". Handle ", reinterpret_cast<void*>(l_Alloc));
+    LOG_DEBUG("Created buffer with size ", VulkanMemoryAllocator::compactBytes(l_Info.size), " at memory type ", l_Info.memoryType, " with offset ", l_Info.offset, ". Handle ", reinterpret_cast<void*>(l_Alloc));
     return { reinterpret_cast<uintptr_t>(l_Buffer), l_Alloc };
 }
 
-VulkanMemoryAllocatorVMA::AllocationReturn VulkanMemoryAllocatorVMA::createImage(const VkImageCreateInfo& p_Info, const MemoryPreferences& p_Preferences) const
+VulkanMemoryAllocator::AllocationReturn VulkanMemoryAllocator::createImage(const VkImageCreateInfo& p_Info, const MemoryPreferences& p_Preferences) const
 {
     const VmaAllocationCreateInfo l_Aci = toVmaAllocCI(p_Preferences, 0);
     VkImage l_Image;
     VmaAllocation l_Alloc;
     VmaAllocationInfo l_Info;
     VULKAN_TRY(vmaCreateImage(m_Allocator, &p_Info, &l_Aci, &l_Image, &l_Alloc, &l_Info));
-    LOG_DEBUG("Created image with size ", VulkanMemoryAllocatorVMA::compactBytes(l_Info.size), " at memory type ", l_Info.memoryType, " with offset ", l_Info.offset, ". Handle ", reinterpret_cast<void*>(l_Alloc));
+    LOG_DEBUG("Created image with size ", VulkanMemoryAllocator::compactBytes(l_Info.size), " at memory type ", l_Info.memoryType, " with offset ", l_Info.offset, ". Handle ", reinterpret_cast<void*>(l_Alloc));
     return { reinterpret_cast<uintptr_t>(l_Image), l_Alloc };
 }
 
-VmaAllocationCreateInfo VulkanMemoryAllocatorVMA::toVmaAllocCI(const MemoryPreferences& p_Preferences, const uint32_t p_MemoryTypeBits) const
+VmaAllocationCreateInfo VulkanMemoryAllocator::toVmaAllocCI(const MemoryPreferences& p_Preferences, const uint32_t p_MemoryTypeBits) const
 {
     VmaAllocationCreateInfo l_Aci{};
     l_Aci.usage = p_Preferences.usage;
@@ -351,7 +351,7 @@ VmaAllocationCreateInfo VulkanMemoryAllocatorVMA::toVmaAllocCI(const MemoryPrefe
     return l_Aci;
 }
 
-VmaPool VulkanMemoryAllocatorVMA::getPool(const uint32_t p_Id) const
+VmaPool VulkanMemoryAllocator::getPool(const uint32_t p_Id) const
 {
     for (const PoolData& l_Pool : m_Pools)
     {
