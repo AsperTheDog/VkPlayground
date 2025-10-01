@@ -15,6 +15,7 @@
 #include "vulkan_queues.hpp"
 #include "vulkan_render_pass.hpp"
 #include "utils/logger.hpp"
+#include "utils/vulkan_base.hpp"
 
 std::map<VkImageLayout, VulkanMemoryBarrierBuilder::AccessData> VulkanMemoryBarrierBuilder::s_TransitionMapping = {
     {VK_IMAGE_LAYOUT_UNDEFINED,
@@ -507,21 +508,14 @@ void VulkanCommandBuffer::submit(const VulkanQueue& p_Queue, const std::span<con
     l_SubmitInfo.signalSemaphoreCount = static_cast<uint32_t>(l_SignalSemaphoresVk.size());
     l_SubmitInfo.pSignalSemaphores = l_SignalSemaphoresVk.data();
 
-    const VkResult l_Ret = l_Device.getTable().vkQueueSubmit(p_Queue.m_VkHandle, 1, &l_SubmitInfo, p_Fence != UINT32_MAX ? l_Device.getFence(p_Fence).m_VkHandle : VK_NULL_HANDLE);
-    if (l_Ret != VK_SUCCESS)
-    {
-        throw std::runtime_error("Failed to submit command buffer (ID:" + std::to_string(m_ID) + "), error: " + string_VkResult(l_Ret));
-    }
+    VULKAN_TRY(l_Device.getTable().vkQueueSubmit(p_Queue.m_VkHandle, 1, &l_SubmitInfo, p_Fence != UINT32_MAX ? l_Device.getFence(p_Fence).m_VkHandle : VK_NULL_HANDLE));
 
     m_HasSubmitted = true;
 }
 
 void VulkanCommandBuffer::reset() const
 {
-    if (const VkResult l_Ret = VulkanContext::getDevice(getDeviceID()).getTable().vkResetCommandBuffer(m_VkHandle, 0); l_Ret != VK_SUCCESS)
-    {
-        throw std::runtime_error("Failed to reset command buffer (ID:" + std::to_string(m_ID) + "), error: " + string_VkResult(l_Ret));
-    }
+    VULKAN_TRY(VulkanContext::getDevice(getDeviceID()).getTable().vkResetCommandBuffer(m_VkHandle, 0));
 }
 
 void VulkanCommandBuffer::cmdBeginRenderPass(const ResourceID p_RenderPass, const ResourceID p_FrameBuffer, const VkExtent2D p_Extent, const std::span<VkClearValue> p_ClearValues) const

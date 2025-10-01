@@ -61,20 +61,19 @@ public:
     bool freeFramebuffer(const ResourceID p_ID) { return freeSubresource<VulkanFramebuffer>(p_ID); }
     bool freeFramebuffer(const VulkanFramebuffer& p_Framebuffer) { return freeSubresource<VulkanFramebuffer>(p_Framebuffer.getID()); }
 
-	ResourceID createBuffer(VkDeviceSize p_Size, VkBufferUsageFlags p_Usage, uint32_t p_OwnerQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED);
+    ResourceID createAndAllocateBuffer(const VulkanMemoryAllocator::MemoryPreferences& p_MemoryPreferences, const VulkanBuffer::Config& p_Config);
+	ResourceID createBuffer(const VulkanBuffer::Config& p_Config);
     VulkanBuffer& getBuffer(const ResourceID p_ID) { return *getSubresource<VulkanBuffer>(p_ID); }
     [[nodiscard]] const VulkanBuffer& getBuffer(const ResourceID p_ID) const { return *getSubresource<VulkanBuffer>(p_ID); }
     bool freeBuffer(const ResourceID p_ID) { return freeSubresource<VulkanBuffer>(p_ID); }
     bool freeBuffer(const VulkanBuffer& p_Buffer) { return freeSubresource<VulkanBuffer>(p_Buffer.getID()); }
 
-    ResourceID createImage(VkImageType p_Type, VkFormat p_Format, VkExtent3D p_Extent, VkImageUsageFlags p_Usage, VkImageCreateFlags p_Flags, VkImageTiling p_Tiling = VK_IMAGE_TILING_OPTIMAL);
+    ResourceID createAndAllocateImage(const VulkanMemoryAllocator::MemoryPreferences& p_MemoryPreferences, const VulkanImage::Config& p_Config);
+    ResourceID createImage(const VulkanImage::Config& p_Config);
     VulkanImage& getImage(const ResourceID p_ID) { return *getSubresource<VulkanImage>(p_ID); }
     [[nodiscard]] const VulkanImage& getImage(const ResourceID p_ID) const { return *getSubresource<VulkanImage>(p_ID); }
     bool freeImage(const ResourceID p_ID) { return freeSubresource<VulkanImage>(p_ID); }
     bool freeImage(const VulkanImage& p_Image) { return freeSubresource<VulkanImage>(p_Image.getID()); }
-
-	void disallowMemoryType(uint32_t p_Type);
-	void allowMemoryType(uint32_t p_Type);
 
 	ResourceID createRenderPass(const VulkanRenderPassBuilder& p_Builder, VkRenderPassCreateFlags p_Flags);
     VulkanRenderPass& getRenderPass(const ResourceID p_ID) { return *getSubresource<VulkanRenderPass>(p_ID); }
@@ -151,13 +150,15 @@ public:
 
 	[[nodiscard]] VulkanQueue getQueue(const QueueSelection& p_QueueSelection) const;
     [[nodiscard]] VulkanGPU getGPU() const { return m_PhysicalDevice; }
+
     [[nodiscard]] const VulkanMemoryAllocator& getMemoryAllocator() const { return m_MemoryAllocator; }
+    VulkanMemoryAllocator& getMemoryAllocator() { return m_MemoryAllocator; }
 
     VkDevice operator*() const { return m_VkHandle; }
 
-    VulkanMemoryAllocator& getMemoryAllocator() { return m_MemoryAllocator; }
-	[[nodiscard]] VkDeviceMemory getMemoryHandle(uint32_t p_ChunkID) const;
     [[nodiscard]] const VolkDeviceTable& getTable() const { return m_VolkDeviceTable; }
+
+    [[nodiscard]] bool isExtensionEnabled(std::string_view p_Extension) const;
 
 private:
 	bool free();
@@ -188,8 +189,8 @@ private:
     ARENA_UMAP(m_ThreadCommandInfos, ThreadID, ThreadCommandInfo);
     ARENA_UMAP(m_CommandBuffers, ThreadID, ThreadCmdBuffers);
     ARENA_UMAP(m_Subresources, ResourceID, VulkanDeviceSubresource*);
+    VulkanMemoryAllocator m_MemoryAllocator{};
 
-	VulkanMemoryAllocator m_MemoryAllocator;
 	QueueSelection m_OneTimeQueue{UINT32_MAX, UINT32_MAX};
 
     VulkanDeviceExtensionManager* m_ExtensionManager = nullptr;
@@ -201,6 +202,7 @@ private:
 	friend class VulkanGPU;
 
 	friend class VulkanResource;
+	friend class VulkanMemoryAllocator;
 	friend class VulkanMemoryAllocator;
 	friend class VulkanBuffer;
     friend class VulkanCommandBuffer;

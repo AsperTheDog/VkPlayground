@@ -43,10 +43,21 @@ private:
 class VulkanImage final : public VulkanMemArray
 {
 public:
+    struct Config
+    {
+        VkImageType type;
+        VkFormat format;
+        VkExtent3D extent;
+        VkImageUsageFlags usage;
+        VkImageCreateFlags flags = 0;
+        VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL;
+    };
+
+    using MemoryPreferences = VulkanMemoryAllocator::MemoryPreferences;
+
     [[nodiscard]] VkMemoryRequirements getMemoryRequirements() const override;
 
-    void allocateFromIndex(uint32_t p_MemoryIndex) override;
-    void allocateFromFlags(VulkanMemoryAllocator::MemoryPropertyPreferences p_MemoryProperties) override;
+    void allocate(MemoryPreferences p_Preferences) override;
 
     ResourceID createImageView(VkFormat p_Format, VkImageAspectFlags p_AspectFlags);
     VulkanImageView& getImageView(ResourceID p_ImageView);
@@ -79,7 +90,7 @@ private:
 
     VulkanImage(ResourceID p_Device, VkImage p_VkHandle, VkExtent3D p_Size, VkImageType p_Type, VkImageLayout p_Layout);
 
-    void setBoundMemory(const MemoryChunk::MemoryBlock& p_MemoryRegion) override;
+    void setBoundMemory(VmaAllocation p_Allocation) override;
 
     VkExtent3D m_Size{};
     VkImageType m_Type;

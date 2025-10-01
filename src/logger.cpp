@@ -51,7 +51,7 @@ void Logger::printStream(const std::stringstream& p_Message, const LevelBits p_L
     default:
         l_LevelStr = "UNKNOWN";
     }
-
+    
     std::stringstream l_Context;
     if (!s_Contexts.empty())
     {

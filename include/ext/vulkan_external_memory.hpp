@@ -24,10 +24,9 @@ public:
 
     [[nodiscard]] ResourceID createExternalImage(VkImageType p_Type, VkFormat p_Format, VkExtent3D p_Extent, VkImageUsageFlags p_Usage, VkImageCreateFlags p_Flags, VkImageTiling p_Tiling = VK_IMAGE_TILING_OPTIMAL) const;
 
-    void allocateExportFromIndex(ResourceID p_Resource, uint32_t p_MemoryIndex) const;
-    void allocateExportFromFlags(ResourceID p_Resource, VulkanMemoryAllocator::MemoryPropertyPreferences p_MemoryProperties) const;
+    void allocateExport(ResourceID p_Resource, VulkanMemoryAllocatorVMA::MemoryPreferences p_MemoryProperties) const;
 
-    HANDLE getResourceOpaqueHandle(ResourceID p_Resource) const;
+    [[nodiscard]] HANDLE getResourceOpaqueHandle(ResourceID p_Resource) const;
 
     std::string getMainExtensionName() override { return VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME; }
     std::vector<std::string> getExtraExtensionNames() override;

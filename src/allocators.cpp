@@ -3,7 +3,6 @@
 #include <stdexcept>
 #include <utility>
 
-
 TransientAllocator::TransientAllocator(const size_t p_Size)
 {
     if (p_Size > 0)

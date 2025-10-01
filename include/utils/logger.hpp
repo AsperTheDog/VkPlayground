@@ -5,10 +5,17 @@
 
 using LoggerLevels = uint8_t;
 
-#define LOG_DEBUG(...) if (Logger::isLevelActive(Logger::DEBUG)) Logger::print(Logger::DEBUG, __VA_ARGS__)
-#define LOG_INFO(...) if (Logger::isLevelActive(Logger::INFO)) Logger::print(Logger::INFO, __VA_ARGS__)
-#define LOG_WARN(...) if (Logger::isLevelActive(Logger::WARN)) Logger::print(Logger::WARN, __VA_ARGS__)
-#define LOG_ERR(...) if (Logger::isLevelActive(Logger::ERR)) Logger::print(Logger::ERR, __VA_ARGS__)
+#ifdef VULKAN_NO_LOG
+    #define LOG_DEBUG(...)
+    #define LOG_INFO(...)
+    #define LOG_WARN(...)
+    #define LOG_ERR(...)
+#else
+    #define LOG_DEBUG(...) if (Logger::isLevelActive(Logger::DEBUG)) Logger::print(Logger::DEBUG, __VA_ARGS__)
+    #define LOG_INFO(...) if (Logger::isLevelActive(Logger::INFO)) Logger::print(Logger::INFO, __VA_ARGS__)
+    #define LOG_WARN(...) if (Logger::isLevelActive(Logger::WARN)) Logger::print(Logger::WARN, __VA_ARGS__)
+    #define LOG_ERR(...) if (Logger::isLevelActive(Logger::ERR)) Logger::print(Logger::ERR, __VA_ARGS__)
+#endif
 
 class Logger
 {

@@ -60,10 +60,11 @@ private:
 class VulkanAccelerationStructure final : public VulkanDeviceSubresource
 {
 public:
+    using MemoryPreferences = VulkanMemoryAllocator::MemoryPreferences;
+
     VkAccelerationStructureKHR operator*() const { return m_VkHandle; }
 
-    void allocateFromIndex(uint32_t p_MemoryIndex) const;
-    void allocateFromFlags(VulkanMemoryAllocator::MemoryPropertyPreferences p_MemoryProperties) const;
+    void allocate(const MemoryPreferences& p_Preferences) const;
 
 private:
     void free() override;
@@ -72,7 +73,8 @@ private:
 
     VkAccelerationStructureKHR m_VkHandle = VK_NULL_HANDLE;
     ResourceID m_Buffer;
-    MemoryChunk::MemoryBlock m_MemoryRegion;
+
+    VmaAllocation m_Allocation = VK_NULL_HANDLE;
 
     friend class VulkanAccelerationStructureExtension;
 };

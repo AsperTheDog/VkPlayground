@@ -13,6 +13,8 @@
 #include "vulkan_queues.hpp"
 #include "ext/vulkan_extension_management.hpp"
 #include "utils/logger.hpp"
+#include "utils/vulkan_base.hpp"
+#include "utils/vulkan_base.hpp"
 
 std::array<const char*, 1> g_ValidationLayers = {"VK_LAYER_KHRONOS_validation"};
 
@@ -56,7 +58,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(const VkDebugUtilsMessageSeverityFl
     return VK_FALSE;
 }
 
-void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& p_CreateInfo)
+static void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& p_CreateInfo)
 {
     p_CreateInfo = {};
     p_CreateInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
@@ -75,20 +77,13 @@ void VulkanContext::setupDebugMessenger()
     VkDebugUtilsMessengerCreateInfoEXT l_CreateInfo;
     populateDebugMessengerCreateInfo(l_CreateInfo);
 
-    if (const VkResult l_Ret = createDebugUtilsMessengerEXT(s_VkHandle, &l_CreateInfo, nullptr, &s_DebugMessenger); l_Ret != VK_SUCCESS)
-    {
-        throw std::runtime_error(std::string("Failed to set up debug messenger, error: ") + string_VkResult(l_Ret));
-    }
+    VULKAN_TRY(createDebugUtilsMessengerEXT(s_VkHandle, &l_CreateInfo, nullptr, &s_DebugMessenger));
     LOG_DEBUG("Created debug messenger for vulkan context");
 }
 
 void VulkanContext::init(const uint32_t p_VulkanApiVersion, const bool p_EnableValidationLayers, const bool p_AssertOnError, const std::span<const char*> p_Extensions)
 {
-    const VkResult l_Ret = volkInitialize();
-    if (l_Ret != VK_SUCCESS)
-    {
-        throw std::runtime_error("Failed to initialize volk");
-    }
+    VULKAN_TRY(volkInitialize());
 
     g_AssertOnError = p_AssertOnError;
     s_ValidationLayersEnabled = p_EnableValidationLayers;
@@ -140,10 +135,7 @@ void VulkanContext::init(const uint32_t p_VulkanApiVersion, const bool p_EnableV
     l_InstanceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(l_Extensions.size());
     l_InstanceCreateInfo.ppEnabledExtensionNames = l_Extensions.data();
 
-    if (const VkResult l_Ret = vkCreateInstance(&l_InstanceCreateInfo, nullptr, &s_VkHandle); l_Ret != VK_SUCCESS)
-    {
-        throw std::runtime_error(std::string("Failed to create Vulkan instance, error:") + string_VkResult(l_Ret));
-    }
+    VULKAN_TRY(vkCreateInstance(&l_InstanceCreateInfo, nullptr, &s_VkHandle));
 
     LOG_DEBUG("Created vulkan context");
 
@@ -256,10 +248,7 @@ uint32_t VulkanContext::createDevice(const VulkanGPU p_GPU, const QueueFamilySel
     l_DeviceCreateInfo.pEnabledFeatures = &p_Features;
 
     VkDevice l_Device;
-    if (const VkResult l_Ret = vkCreateDevice(p_GPU.m_VkHandle, &l_DeviceCreateInfo, nullptr, &l_Device); l_Ret != VK_SUCCESS)
-    {
-        throw std::runtime_error(std::string("Failed to create logical device, error: ") + string_VkResult(l_Ret));
-    }
+    VULKAN_TRY(vkCreateDevice(p_GPU.m_VkHandle, &l_DeviceCreateInfo, nullptr, &l_Device));
     VulkanDeviceExtensionManager* l_ExtManager = nullptr;
     if (p_Extensions != nullptr)
     {

@@ -7,6 +7,7 @@
 #include "vulkan_context.hpp"
 #include "ext/vulkan_extension_management.hpp"
 #include "utils/logger.hpp"
+#include "utils/vulkan_base.hpp"
 
 VulkanQueue VulkanDevice::getQueue(const QueueSelection& p_QueueSelection) const
 {
@@ -59,10 +60,7 @@ void VulkanDevice::initializeOneTimeCommandPool(const uint32_t p_ThreadID)
     l_PoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     l_PoolInfo.queueFamilyIndex = m_OneTimeQueue.familyIndex;
     l_PoolInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
-    if (const VkResult l_Ret = getTable().vkCreateCommandPool(m_VkHandle, &l_PoolInfo, nullptr, &l_ThreadInfo.oneTimePool); l_Ret != VK_SUCCESS)
-    {
-        throw std::runtime_error(std::string("Failed to create command pool, error: ") + string_VkResult(l_Ret));
-    }
+    VULKAN_TRY(getTable().vkCreateCommandPool(m_VkHandle, &l_PoolInfo, nullptr, &l_ThreadInfo.oneTimePool));
 }
 
 void VulkanDevice::initializeCommandPool(const QueueFamily& p_Family, const ThreadID p_ThreadID, const bool p_AllowBufferReset)
@@ -80,10 +78,7 @@ void VulkanDevice::initializeCommandPool(const QueueFamily& p_Family, const Thre
         l_PoolInfo.queueFamilyIndex = p_Family.index;
         l_PoolInfo.flags = p_AllowBufferReset ? VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT : 0;
 
-        if (const VkResult l_Ret = getTable().vkCreateCommandPool(m_VkHandle, &l_PoolInfo, nullptr, &l_ThreadInfo.commandPools[p_Family.index]); l_Ret != VK_SUCCESS)
-        {
-            throw std::runtime_error(std::string("Failed to create main command pool for thread " + std::to_string(p_ThreadID) + ", error: ") + string_VkResult(l_Ret));
-        }
+        VULKAN_TRY(getTable().vkCreateCommandPool(m_VkHandle, &l_PoolInfo, nullptr, &l_ThreadInfo.commandPools[p_Family.index]));
         LOG_DEBUG("Created main command pool for thread ", p_ThreadID, " and family ", p_Family.index);
     }
 }
@@ -108,10 +103,7 @@ ResourceID VulkanDevice::createCommandBuffer(const QueueFamily& p_Family, const 
     l_AllocInfo.commandBufferCount = 1;
 
     VkCommandBuffer l_CommandBuffer;
-    if (const VkResult l_Ret = getTable().vkAllocateCommandBuffers(m_VkHandle, &l_AllocInfo, &l_CommandBuffer); l_Ret != VK_SUCCESS)
-    {
-        throw std::runtime_error(std::string("Failed to allocate command buffer in thread + " + std::to_string(p_ThreadID) + ", error:") + string_VkResult(l_Ret));
-    }
+    VULKAN_TRY(getTable().vkAllocateCommandBuffers(m_VkHandle, &l_AllocInfo, &l_CommandBuffer));
     LOG_DEBUG("Allocated command buffer for thread ", p_ThreadID, " and family ", p_Family.index);
 
     if (!m_CommandBuffers.contains(p_ThreadID))
@@ -134,10 +126,7 @@ ResourceID VulkanDevice::createOneTimeCommandBuffer(ThreadID p_ThreadID)
     l_AllocInfo.commandBufferCount = 1;
 
     VkCommandBuffer l_CommandBuffer;
-    if (const VkResult l_Ret = getTable().vkAllocateCommandBuffers(m_VkHandle, &l_AllocInfo, &l_CommandBuffer); l_Ret != VK_SUCCESS)
-    {
-        throw std::runtime_error(std::string("Failed to allocate one time command buffer in thread + " + std::to_string(p_ThreadID) + ", error:") + string_VkResult(l_Ret));
-    }
+    VULKAN_TRY(getTable().vkAllocateCommandBuffers(m_VkHandle, &l_AllocInfo, &l_CommandBuffer));
     LOG_DEBUG("Allocated one time command buffer for thread ", p_ThreadID);
 
     if (!m_CommandBuffers.contains(p_ThreadID))
@@ -238,10 +227,7 @@ ResourceID VulkanDevice::createFramebuffer(const VkExtent3D p_Size, const Resour
     l_FramebufferInfo.layers = p_Size.depth;
 
     VkFramebuffer l_Framebuffer;
-    if (const VkResult l_Ret = getTable().vkCreateFramebuffer(m_VkHandle, &l_FramebufferInfo, nullptr, &l_Framebuffer); l_Ret != VK_SUCCESS)
-    {
-        throw std::runtime_error(std::string("Failed to create framebuffer, error: ") + string_VkResult(l_Ret));
-    }
+    VULKAN_TRY(getTable().vkCreateFramebuffer(m_VkHandle, &l_FramebufferInfo, nullptr, &l_Framebuffer));
 
     VulkanFramebuffer* l_NewRes = ARENA_ALLOC(VulkanFramebuffer){m_ID, l_Framebuffer};
     m_Subresources[l_NewRes->getID()] = l_NewRes;
@@ -249,57 +235,101 @@ ResourceID VulkanDevice::createFramebuffer(const VkExtent3D p_Size, const Resour
     return l_NewRes->getID();
 }
 
-ResourceID VulkanDevice::createBuffer(const VkDeviceSize p_Size, const VkBufferUsageFlags p_Usage, const uint32_t p_OwnerQueueFamilyIndex)
+ResourceID VulkanDevice::createAndAllocateBuffer(const VulkanMemoryAllocator::MemoryPreferences& p_MemoryPreferences, const VulkanBuffer::Config& p_Config)
 {
     VkBufferCreateInfo l_BufferInfo{};
     l_BufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    l_BufferInfo.size = p_Size;
-    l_BufferInfo.usage = p_Usage;
+    l_BufferInfo.size = p_Config.size;
+    l_BufferInfo.usage = p_Config.usage;
     l_BufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     l_BufferInfo.flags = 0;
-    if (p_OwnerQueueFamilyIndex != VK_QUEUE_FAMILY_IGNORED)
+    if (p_Config.ownerQueueFamilyIndex != VK_QUEUE_FAMILY_IGNORED)
     {
         l_BufferInfo.queueFamilyIndexCount = 1;
-        l_BufferInfo.pQueueFamilyIndices = &p_OwnerQueueFamilyIndex;
+        l_BufferInfo.pQueueFamilyIndices = &p_Config.ownerQueueFamilyIndex;
+    }
+
+    const VulkanMemoryAllocator::AllocationReturn l_Ret = m_MemoryAllocator.createBuffer(l_BufferInfo, p_MemoryPreferences);
+
+    VulkanBuffer* l_NewRes = ARENA_ALLOC(VulkanBuffer){m_ID, l_Ret.as<VkBuffer>(), p_Config.size};
+    m_Subresources[l_NewRes->getID()] = l_NewRes;
+    l_NewRes->setBoundMemory(l_Ret.allocation);
+    LOG_DEBUG("Created and allocated buffer (ID:", l_NewRes->getID(), ") with size ", VulkanMemoryAllocator::compactBytes(l_NewRes->getSize()));
+    return l_NewRes->getID();
+}
+
+ResourceID VulkanDevice::createBuffer(const VulkanBuffer::Config& p_Config)
+{
+    VkBufferCreateInfo l_BufferInfo{};
+    l_BufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    l_BufferInfo.size = p_Config.size;
+    l_BufferInfo.usage = p_Config.usage;
+    l_BufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    l_BufferInfo.flags = 0;
+    if (p_Config.ownerQueueFamilyIndex != VK_QUEUE_FAMILY_IGNORED)
+    {
+        l_BufferInfo.queueFamilyIndexCount = 1;
+        l_BufferInfo.pQueueFamilyIndices = &p_Config.ownerQueueFamilyIndex;
     }
 
     VkBuffer l_Buffer;
-    if (const VkResult l_Ret = getTable().vkCreateBuffer(m_VkHandle, &l_BufferInfo, nullptr, &l_Buffer); l_Ret != VK_SUCCESS)
-    {
-        throw std::runtime_error(std::string("Failed to create buffer, error: ") + string_VkResult(l_Ret));
-    }
+    VULKAN_TRY(getTable().vkCreateBuffer(m_VkHandle, &l_BufferInfo, nullptr, &l_Buffer));
 
-    VulkanBuffer* l_NewRes = ARENA_ALLOC(VulkanBuffer){m_ID, l_Buffer, p_Size};
+    VulkanBuffer* l_NewRes = ARENA_ALLOC(VulkanBuffer){m_ID, l_Buffer, p_Config.size};
     m_Subresources[l_NewRes->getID()] = l_NewRes;
     LOG_DEBUG("Created buffer (ID:", l_NewRes->getID(), ") with size ", VulkanMemoryAllocator::compactBytes(l_NewRes->getSize()));
     return l_NewRes->getID();
 }
 
-ResourceID VulkanDevice::createImage(VkImageType p_Type, VkFormat p_Format, VkExtent3D p_Extent, VkImageUsageFlags p_Usage, VkImageCreateFlags p_Flags, VkImageTiling p_Tiling)
+ResourceID VulkanDevice::createAndAllocateImage(const VulkanMemoryAllocator::MemoryPreferences& p_MemoryPreferences, const VulkanImage::Config& p_Config)
 {
     VkImageCreateInfo l_ImageInfo{};
     l_ImageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    l_ImageInfo.imageType = p_Type;
-    l_ImageInfo.format = p_Format;
-    l_ImageInfo.extent = p_Extent;
+    l_ImageInfo.imageType = p_Config.type;
+    l_ImageInfo.format = p_Config.format;
+    l_ImageInfo.extent = p_Config.extent;
     l_ImageInfo.mipLevels = 1;
     l_ImageInfo.arrayLayers = 1;
     l_ImageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-    l_ImageInfo.tiling = p_Tiling;
-    l_ImageInfo.usage = p_Usage;
-    l_ImageInfo.flags = p_Flags;
+    l_ImageInfo.tiling = p_Config.tiling;
+    l_ImageInfo.usage = p_Config.usage;
+    l_ImageInfo.flags = p_Config.flags;
+    l_ImageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    l_ImageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    l_ImageInfo.queueFamilyIndexCount = 0;
+    l_ImageInfo.pQueueFamilyIndices = nullptr;
+
+    const VulkanMemoryAllocator::AllocationReturn l_Ret = m_MemoryAllocator.createImage(l_ImageInfo, p_MemoryPreferences);
+
+    VulkanImage* l_NewRes = ARENA_ALLOC(VulkanImage) { m_ID, l_Ret.as<VkImage>(), p_Config.extent, p_Config.type, VK_IMAGE_LAYOUT_UNDEFINED };
+    m_Subresources[l_NewRes->getID()] = l_NewRes;
+    l_NewRes->setBoundMemory(l_Ret.allocation);
+    LOG_DEBUG("Created and allocated image (ID:", l_NewRes->getID(), ")");
+    return l_NewRes->getID();
+}
+
+ResourceID VulkanDevice::createImage(const VulkanImage::Config& p_Config)
+{
+    VkImageCreateInfo l_ImageInfo{};
+    l_ImageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    l_ImageInfo.imageType = p_Config.type;
+    l_ImageInfo.format = p_Config.format;
+    l_ImageInfo.extent = p_Config.extent;
+    l_ImageInfo.mipLevels = 1;
+    l_ImageInfo.arrayLayers = 1;
+    l_ImageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+    l_ImageInfo.tiling = p_Config.tiling;
+    l_ImageInfo.usage = p_Config.usage;
+    l_ImageInfo.flags = p_Config.flags;
     l_ImageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     l_ImageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     l_ImageInfo.queueFamilyIndexCount = 0;
     l_ImageInfo.pQueueFamilyIndices = nullptr;
 
     VkImage l_Image;
-    if (const VkResult l_Ret = getTable().vkCreateImage(m_VkHandle, &l_ImageInfo, nullptr, &l_Image); l_Ret != VK_SUCCESS)
-    {
-        throw std::runtime_error(std::string("Failed to create image, error: ") + string_VkResult(l_Ret));
-    }
+    VULKAN_TRY(getTable().vkCreateImage(m_VkHandle, &l_ImageInfo, nullptr, &l_Image));
 
-    VulkanImage* l_NewRes = ARENA_ALLOC(VulkanImage){m_ID, l_Image, p_Extent, p_Type, VK_IMAGE_LAYOUT_UNDEFINED};
+    VulkanImage* l_NewRes = ARENA_ALLOC(VulkanImage){m_ID, l_Image, p_Config.extent, p_Config.type, VK_IMAGE_LAYOUT_UNDEFINED};
     m_Subresources[l_NewRes->getID()] = l_NewRes;
     LOG_DEBUG("Created image (ID:", l_NewRes->getID(), ")");
 
@@ -312,43 +342,14 @@ void VulkanDevice::configureStagingBuffer(const VkDeviceSize p_Size, const Queue
     {
         freeStagingBuffer();
     }
-    m_StagingBufferInfo.stagingBuffer = createBuffer(p_Size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, p_Queue.familyIndex);
+    constexpr VulkanMemoryAllocator::MemoryPreferences PREFS{
+        .usage = VMA_MEMORY_USAGE_AUTO,
+        .vmaFlags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
+        .preferredProperties = VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+    };
 
+    m_StagingBufferInfo.stagingBuffer = createAndAllocateBuffer(PREFS, {p_Size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, p_Queue.familyIndex});
     m_StagingBufferInfo.queue = p_Queue;
-
-    VulkanBuffer& l_StagingBuffer = getBuffer(m_StagingBufferInfo.stagingBuffer);
-    const VkMemoryRequirements l_MemRequirements = l_StagingBuffer.getMemoryRequirements();
-    const std::optional<uint32_t> l_MemoryType = m_MemoryAllocator.getMemoryStructure().getStagingMemoryType(l_MemRequirements.memoryTypeBits);
-    if (l_MemoryType.has_value() && !m_MemoryAllocator.isMemoryTypeHidden(l_MemoryType.value()))
-    {
-        const uint32_t l_HeapIndex = m_PhysicalDevice.getMemoryProperties().memoryTypes[l_MemoryType.value()].heapIndex;
-        const VkDeviceSize l_HeapSize = m_PhysicalDevice.getMemoryProperties().memoryHeaps[l_HeapIndex].size;
-        if (static_cast<double>(l_HeapSize) < static_cast<double>(p_Size) * 0.8)
-        {
-            LOG_WARN("Staging buffer size is ", VulkanMemoryAllocator::compactBytes(p_Size), ", but special staging memory heap size is ", VulkanMemoryAllocator::compactBytes(l_HeapSize), " for memory type ", l_MemoryType.value(), ", allocating in host memory");
-            l_StagingBuffer.allocateFromFlags({VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VK_MEMORY_PROPERTY_HOST_CACHED_BIT, true});
-            return;
-        }
-        LOG_DEBUG("Staging buffer size is ", VulkanMemoryAllocator::compactBytes(p_Size), ", allocating in special staging memory type ", l_MemoryType.value());
-        try
-        {
-            l_StagingBuffer.allocateFromIndex(l_MemoryType.value());
-            if (!p_ForceAllowStagingMemory)
-            {
-                m_MemoryAllocator.hideMemoryType(l_MemoryType.value());
-            }
-        }
-        catch (const std::runtime_error&)
-        {
-            LOG_WARN("Failed to allocate staging buffer in special memory type ", l_MemoryType.value(), ", allocating in host memory");
-            l_StagingBuffer.allocateFromFlags({VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VK_MEMORY_PROPERTY_HOST_CACHED_BIT, true});
-        }
-    }
-    else
-    {
-        LOG_WARN("Staging buffer size is " + VulkanMemoryAllocator::compactBytes(p_Size) + ", but no suitable special staging memory type found, allocating in host memory");
-        l_StagingBuffer.allocateFromFlags({VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VK_MEMORY_PROPERTY_HOST_CACHED_BIT, true});
-    }
 }
 
 VkDeviceSize VulkanDevice::getStagingBufferSize() const
@@ -366,10 +367,6 @@ bool VulkanDevice::freeStagingBuffer()
     {
         {
             VulkanBuffer& l_StagingBuffer = getBuffer(m_StagingBufferInfo.stagingBuffer);
-            if (l_StagingBuffer.isMemoryBound())
-            {
-                m_MemoryAllocator.unhideMemoryType(l_StagingBuffer.getBoundMemoryType());
-            }
             l_StagingBuffer.free();
         }
         m_StagingBufferInfo.stagingBuffer = UINT32_MAX;
@@ -391,16 +388,6 @@ void VulkanDevice::unmapStagingBuffer()
 VulkanDevice::StagingBufferInfo VulkanDevice::getStagingBufferData() const
 {
     return m_StagingBufferInfo;
-}
-
-void VulkanDevice::disallowMemoryType(const uint32_t p_Type)
-{
-    m_MemoryAllocator.hideMemoryType(p_Type);
-}
-
-void VulkanDevice::allowMemoryType(const uint32_t p_Type)
-{
-    m_MemoryAllocator.unhideMemoryType(p_Type);
 }
 
 ResourceID VulkanDevice::createRenderPass(const VulkanRenderPassBuilder& p_Builder, const VkRenderPassCreateFlags p_Flags)
@@ -433,10 +420,7 @@ ResourceID VulkanDevice::createRenderPass(const VulkanRenderPassBuilder& p_Build
     l_RenderPassInfo.flags = p_Flags;
 
     VkRenderPass l_RenderPass;
-    if (const VkResult l_Ret = getTable().vkCreateRenderPass(m_VkHandle, &l_RenderPassInfo, nullptr, &l_RenderPass); l_Ret != VK_SUCCESS)
-    {
-        throw std::runtime_error(std::string("Failed to create render pass, error: ") + string_VkResult(l_Ret));
-    }
+    VULKAN_TRY(getTable().vkCreateRenderPass(m_VkHandle, &l_RenderPassInfo, nullptr, &l_RenderPass));
 
     VulkanRenderPass* l_NewRes = ARENA_ALLOC(VulkanRenderPass){m_ID, l_RenderPass};
     m_Subresources[l_NewRes->getID()] = l_NewRes;
@@ -462,10 +446,7 @@ ResourceID VulkanDevice::createPipelineLayout(const std::span<const ResourceID> 
     l_PipelineLayoutInfo.pPushConstantRanges = p_PushConstantRanges.data();
 
     VkPipelineLayout l_Layout;
-    if (const VkResult l_Ret = getTable().vkCreatePipelineLayout(m_VkHandle, &l_PipelineLayoutInfo, nullptr, &l_Layout); l_Ret != VK_SUCCESS)
-    {
-        throw std::runtime_error(std::string("Failed to create pipeline layout, error: ") + string_VkResult(l_Ret));
-    }
+    VULKAN_TRY(getTable().vkCreatePipelineLayout(m_VkHandle, &l_PipelineLayoutInfo, nullptr, &l_Layout));
 
     VulkanPipelineLayout* l_NewRes = ARENA_ALLOC(VulkanPipelineLayout){m_ID, l_Layout};
     m_Subresources[l_NewRes->getID()] = l_NewRes;
@@ -483,10 +464,7 @@ ResourceID VulkanDevice::createDescriptorPool(const std::span<const VkDescriptor
     l_PoolInfo.maxSets = p_MaxSets;
 
     VkDescriptorPool l_DescriptorPool;
-    if (const VkResult l_Ret = getTable().vkCreateDescriptorPool(m_VkHandle, &l_PoolInfo, nullptr, &l_DescriptorPool); l_Ret != VK_SUCCESS)
-    {
-        throw std::runtime_error(std::string("Failed to create descriptor pool, error: ") + string_VkResult(l_Ret));
-    }
+    VULKAN_TRY(getTable().vkCreateDescriptorPool(m_VkHandle, &l_PoolInfo, nullptr, &l_DescriptorPool));
 
     VulkanDescriptorPool* l_NewRes = ARENA_ALLOC(VulkanDescriptorPool){m_ID, l_DescriptorPool, p_Flags};
     m_Subresources[l_NewRes->getID()] = l_NewRes;
@@ -503,10 +481,7 @@ ResourceID VulkanDevice::createDescriptorSetLayout(const std::span<const VkDescr
     l_LayoutInfo.pBindings = p_Bindings.data();
 
     VkDescriptorSetLayout l_DescriptorSetLayout;
-    if (const VkResult l_Ret = getTable().vkCreateDescriptorSetLayout(m_VkHandle, &l_LayoutInfo, nullptr, &l_DescriptorSetLayout); l_Ret != VK_SUCCESS)
-    {
-        throw std::runtime_error(std::string("Failed to create descriptor set layout, error: ") + string_VkResult(l_Ret));
-    }
+    VULKAN_TRY(getTable().vkCreateDescriptorSetLayout(m_VkHandle, &l_LayoutInfo, nullptr, &l_DescriptorSetLayout));
 
     VulkanDescriptorSetLayout* l_NewRes = ARENA_ALLOC(VulkanDescriptorSetLayout){m_ID, l_DescriptorSetLayout};
     m_Subresources[l_NewRes->getID()] = l_NewRes;
@@ -526,10 +501,7 @@ ResourceID VulkanDevice::createDescriptorSet(ResourceID p_Pool, ResourceID p_Lay
     l_AllocInfo.pSetLayouts = &l_DescriptorSetLayout;
 
     VkDescriptorSet l_DescriptorSet;
-    if (const VkResult l_Ret = getTable().vkAllocateDescriptorSets(m_VkHandle, &l_AllocInfo, &l_DescriptorSet); l_Ret != VK_SUCCESS)
-    {
-        throw std::runtime_error(std::string("Failed to allocate descriptor set, error: ") + string_VkResult(l_Ret));
-    }
+    VULKAN_TRY(getTable().vkAllocateDescriptorSets(m_VkHandle, &l_AllocInfo, &l_DescriptorSet));
 
     VulkanDescriptorSet* l_NewRes = ARENA_ALLOC(VulkanDescriptorSet){m_ID, p_Pool, l_DescriptorSet};
     m_Subresources[l_NewRes->getID()] = l_NewRes;
@@ -549,10 +521,7 @@ void VulkanDevice::createDescriptorSets(ResourceID p_Pool, ResourceID p_Layout, 
     l_AllocInfo.pSetLayouts = &l_DescriptorSetLayout;
 
     TRANS_VECTOR(l_DescriptorSets, VkDescriptorSet);
-    if (const VkResult l_Ret = getTable().vkAllocateDescriptorSets(m_VkHandle, &l_AllocInfo, l_DescriptorSets.data()); l_Ret != VK_SUCCESS)
-    {
-        throw std::runtime_error(std::string("Failed to allocate descriptor sets, error: ") + string_VkResult(l_Ret));
-    }
+    VULKAN_TRY(getTable().vkAllocateDescriptorSets(m_VkHandle, &l_AllocInfo, l_DescriptorSets.data()));
 
     for (uint32_t i = 0; i < p_Count; i++)
     {
@@ -584,10 +553,7 @@ ResourceID VulkanDevice::createShaderModule(VulkanShader& p_ShaderCode, const Vk
     l_CreateInfo.pCode = l_Code.data();
 
     VkShaderModule l_Shader;
-    if (getTable().vkCreateShaderModule(m_VkHandle, &l_CreateInfo, nullptr, &l_Shader) != VK_SUCCESS)
-    {
-        throw std::runtime_error("failed to create shader module!");
-    }
+    VULKAN_TRY(getTable().vkCreateShaderModule(m_VkHandle, &l_CreateInfo, nullptr, &l_Shader));
 
     VulkanShaderModule* l_NewRes = ARENA_ALLOC(VulkanShaderModule){m_ID, l_Shader, p_Stage};
     m_Subresources[l_NewRes->getID()] = l_NewRes;
@@ -616,10 +582,7 @@ ResourceID VulkanDevice::createSemaphore()
     l_SemaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
     VkSemaphore l_Semaphore;
-    if (const VkResult l_Ret = getTable().vkCreateSemaphore(m_VkHandle, &l_SemaphoreInfo, nullptr, &l_Semaphore); l_Ret != VK_SUCCESS)
-    {
-        throw std::runtime_error(std::string("Failed to create semaphore, error: ") + string_VkResult(l_Ret));
-    }
+    VULKAN_TRY(getTable().vkCreateSemaphore(m_VkHandle, &l_SemaphoreInfo, nullptr, &l_Semaphore));
 
     VulkanSemaphore* l_NewRes = ARENA_ALLOC(VulkanSemaphore){m_ID, l_Semaphore};
     m_Subresources[l_NewRes->getID()] = l_NewRes;
@@ -634,10 +597,7 @@ ResourceID VulkanDevice::createFence(const bool p_Signaled)
     l_FenceInfo.flags = p_Signaled ? VK_FENCE_CREATE_SIGNALED_BIT : 0;
 
     VkFence l_Fence;
-    if (const VkResult l_Ret = getTable().vkCreateFence(m_VkHandle, &l_FenceInfo, nullptr, &l_Fence); l_Ret != VK_SUCCESS)
-    {
-        throw std::runtime_error(std::string("Failed to create fence, error: ") + string_VkResult(l_Ret));
-    }
+    VULKAN_TRY(getTable().vkCreateFence(m_VkHandle, &l_FenceInfo, nullptr, &l_Fence));
 
     VulkanFence* l_NewRes = ARENA_ALLOC(VulkanFence){m_ID, l_Fence, p_Signaled};
     m_Subresources[l_NewRes->getID()] = l_NewRes;
@@ -684,10 +644,7 @@ ResourceID VulkanDevice::createPipeline(const VulkanPipelineBuilder& p_Builder, 
     l_PipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
     VkPipeline l_Pipeline;
-    if (const VkResult l_Ret = getTable().vkCreateGraphicsPipelines(m_VkHandle, VK_NULL_HANDLE, 1, &l_PipelineInfo, nullptr, &l_Pipeline); l_Ret != VK_SUCCESS)
-    {
-        throw std::runtime_error(std::string("Failed to create graphics pipeline, error: ") + string_VkResult(l_Ret));
-    }
+    VULKAN_TRY(getTable().vkCreateGraphicsPipelines(m_VkHandle, VK_NULL_HANDLE, 1, &l_PipelineInfo, nullptr, &l_Pipeline));
 
     VulkanPipeline* l_NewRes = ARENA_ALLOC(VulkanPipeline){m_ID, l_Pipeline, p_PipelineLayout, p_RenderPass, p_Subpass};
     m_Subresources[l_NewRes->getID()] = l_NewRes;
@@ -710,14 +667,20 @@ ResourceID VulkanDevice::createComputePipeline(const ResourceID p_Layout, const 
     l_PipelineInfo.layout = getPipelineLayout(p_Layout).m_VkHandle;
 
     VkPipeline l_Pipeline;
-    if (const VkResult l_Ret = getTable().vkCreateComputePipelines(m_VkHandle, VK_NULL_HANDLE, 1, &l_PipelineInfo, nullptr, &l_Pipeline); l_Ret != VK_SUCCESS)
-    {
-        throw std::runtime_error(std::string("Failed to create compute pipeline, error: ") + string_VkResult(l_Ret));
-    }
+    VULKAN_TRY(getTable().vkCreateComputePipelines(m_VkHandle, VK_NULL_HANDLE, 1, &l_PipelineInfo, nullptr, &l_Pipeline));
     VulkanPipeline* l_NewRes = ARENA_ALLOC(VulkanPipeline){m_ID, l_Pipeline, p_Layout, UINT32_MAX, UINT32_MAX};
     m_Subresources[l_NewRes->getID()] = l_NewRes;
     LOG_DEBUG("Created compute pipeline (ID:", l_NewRes->getID(), ")");
     return l_NewRes->getID();
+}
+
+bool VulkanDevice::isExtensionEnabled(const std::string_view p_Extension) const
+{
+    if (m_ExtensionManager == nullptr)
+    {
+        return false;
+    }
+    return m_ExtensionManager->containsExtension(p_Extension);
 }
 
 bool VulkanDevice::free()
@@ -773,19 +736,6 @@ bool VulkanDevice::free()
     return true;
 }
 
-VkDeviceMemory VulkanDevice::getMemoryHandle(const uint32_t p_ChunkID) const
-{
-    for (const MemoryChunk& l_Chunk : m_MemoryAllocator.m_MemoryChunks)
-    {
-        if (l_Chunk.getID() == p_ChunkID)
-        {
-            return l_Chunk.m_Memory;
-        }
-    }
-    LOG_DEBUG("Memory chunk search failed out of ", m_MemoryAllocator.m_MemoryChunks.size(), " memory chunks");
-    throw std::runtime_error("Memory chunk (ID: " + std::to_string(p_ChunkID) + ") not found");
-}
-
 VkCommandPool VulkanDevice::getCommandPool(const uint32_t p_QueueFamilyIndex, ThreadID p_ThreadID, const VulkanCommandBuffer::TypeFlags p_Flags)
 {
     if ((p_Flags & VulkanCommandBuffer::TypeFlagBits::ONE_TIME) != 0)
@@ -796,10 +746,12 @@ VkCommandPool VulkanDevice::getCommandPool(const uint32_t p_QueueFamilyIndex, Th
 }
 
 VulkanDevice::VulkanDevice(const VulkanGPU p_PhysicalDevice, const VkDevice p_Device, VulkanDeviceExtensionManager* p_ExtensionManager)
-    : m_VkHandle(p_Device), m_PhysicalDevice(p_PhysicalDevice), m_MemoryAllocator(*this), m_ExtensionManager(p_ExtensionManager)
+    : m_VkHandle(p_Device), m_PhysicalDevice(p_PhysicalDevice), m_ExtensionManager(p_ExtensionManager)
 {
     m_ExtensionManager->setDevice(getID());
     volkLoadDeviceTable(&m_VolkDeviceTable, m_VkHandle);
+
+    m_MemoryAllocator = VulkanMemoryAllocator{*this};
 }
 
 void VulkanDevice::insertImage(VulkanImage* p_Image)

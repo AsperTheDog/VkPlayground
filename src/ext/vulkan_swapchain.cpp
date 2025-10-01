@@ -7,6 +7,7 @@
 #include "vulkan_device.hpp"
 #include "vulkan_sync.hpp"
 #include "utils/logger.hpp"
+#include "utils/vulkan_base.hpp"
 
 VulkanSwapchainExtension* VulkanSwapchainExtension::get(const VulkanDevice& p_Device)
 {
@@ -50,10 +51,7 @@ ResourceID VulkanSwapchainExtension::createSwapchain(const VkSurfaceKHR p_Surfac
     }
 
     VkSwapchainKHR l_SwapchainHandle;
-    if (const VkResult l_Ret = l_Device.getTable().vkCreateSwapchainKHR(*l_Device, &l_CreateInfo, nullptr, &l_SwapchainHandle); l_Ret != VK_SUCCESS)
-    {
-        throw std::runtime_error(std::string("failed to create swap chain, error: ") + string_VkResult(l_Ret));
-    }
+    VULKAN_TRY(l_Device.getTable().vkCreateSwapchainKHR(*l_Device, &l_CreateInfo, nullptr, &l_SwapchainHandle));
 
     if (p_OldSwapchain != UINT32_MAX)
     {

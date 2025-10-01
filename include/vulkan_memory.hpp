@@ -1,14 +1,14 @@
 #pragma once
-#include <map>
 #include <optional>
-#include <set>
 #include <string>
 #include <vector>
 
 #include "vulkan_gpu.hpp"
 #include "utils/identifiable.hpp"
 
-class VulkanGPU;
+#include <vma/vk_mem_alloc.h>
+#include <bitset>
+
 class VulkanDevice;
 
 class MemoryStructure
@@ -21,7 +21,7 @@ public:
         VkDeviceSize heapSize;
     };
 
-    [[nodiscard]] VkPhysicalDeviceMemoryProperties getMemoryProperties() const;
+    [[nodiscard]] const VkPhysicalDeviceMemoryProperties& getMemoryProperties() const;
 
     [[nodiscard]] std::string toString() const;
 
@@ -30,100 +30,122 @@ public:
     [[nodiscard]] bool doesMemoryContainProperties(uint32_t p_Type, VkMemoryPropertyFlags p_Property) const;
     [[nodiscard]] MemoryTypeData getTypeData(uint32_t p_MemoryType) const;
     [[nodiscard]] VkMemoryHeap getMemoryTypeHeap(uint32_t p_MemoryType) const;
+    [[nodiscard]] uint32_t getMemoryTypeCount() const;
+    [[nodiscard]] uint32_t getMemoryHeapCount() const;
+
+    VulkanGPU operator*() const { return m_GPU; }
 
 private:
-    explicit MemoryStructure(const VulkanGPU p_GPU) : m_GPU(p_GPU) {}
+    MemoryStructure() = default;
+    explicit MemoryStructure(VulkanGPU p_GPU);
+
+    VkPhysicalDeviceMemoryProperties m_MemoryProperties{};
 
     VulkanGPU m_GPU;
 
     friend class VulkanMemoryAllocator;
 };
 
-class MemoryChunk : public Identifiable
-{
-public:
-    struct MemoryBlock
-    {
-        VkDeviceSize size = 0;
-        VkDeviceSize offset = 0;
-        uint32_t chunk = 0;
-    };
-
-    [[nodiscard]] VkDeviceSize getSize() const;
-    [[nodiscard]] uint32_t getMemoryType() const;
-    [[nodiscard]] bool isEmpty() const;
-    [[nodiscard]] VkDeviceSize getBiggestChunkSize() const;
-    [[nodiscard]] VkDeviceSize getRemainingSize() const;
-
-    MemoryBlock allocate(VkDeviceSize p_NewSize, VkDeviceSize p_Alignment);
-    void deallocate(const MemoryBlock& p_Block);
-
-    VkDeviceMemory operator*() const;
-
-private:
-    MemoryChunk(VkDeviceSize p_Size, uint32_t p_MemoryType, VkDeviceMemory p_VkHandle);
-
-    void defragment();
-
-    VkDeviceSize m_Size;
-    uint32_t m_MemoryType;
-
-    VkDeviceMemory m_Memory;
-
-    std::map<VkDeviceSize, VkDeviceSize> m_UnallocatedData;
-
-    // Metadata
-    VkDeviceSize m_UnallocatedSize;
-    VkDeviceSize m_BiggestChunk = 0;
-
-    friend class VulkanResource;
-    friend class VulkanMemoryAllocator;
-    friend class VulkanDevice;
-};
-
 class VulkanMemoryAllocator
 {
 public:
-    struct MemoryPropertyPreferences
+    struct AllocationResult
     {
-        VkMemoryPropertyFlags desiredProperties;
-        VkMemoryPropertyFlags undesiredProperties;
-        bool allowUndesired;
+        VmaAllocation allocation = VK_NULL_HANDLE;
+        VmaAllocationInfo info{};
     };
 
-    uint32_t search(VkDeviceSize p_Size, VkDeviceSize p_Alignment, MemoryPropertyPreferences p_Properties, uint32_t p_TypeFilter, bool p_IncludeHidden = false);
+    struct MemoryPreferences
+    {
+        VmaMemoryUsage usage = VMA_MEMORY_USAGE_AUTO;
+        VmaAllocationCreateFlags vmaFlags = 0;
+        uint32_t pool = UINT32_MAX;
+        float priority = 1.0f;
 
-    MemoryChunk::MemoryBlock allocate(VkDeviceSize p_Size, VkDeviceSize p_Alignment, uint32_t p_MemoryType);
-    MemoryChunk::MemoryBlock allocateIsolated(VkDeviceSize p_Size, uint32_t p_MemoryType, const void* p_Next);
-    MemoryChunk::MemoryBlock searchAndAllocate(VkDeviceSize p_Size, VkDeviceSize p_Alignment, MemoryPropertyPreferences p_Properties, uint32_t p_TypeFilter, bool p_IncludeHidden = false);
+        uint32_t forceIndex = UINT32_MAX;
 
-    void deallocate(const MemoryChunk::MemoryBlock& p_Block);
+        VkMemoryPropertyFlags desiredProperties = 0;
+        VkMemoryPropertyFlags preferredProperties = 0;
 
-    void hideMemoryType(uint32_t p_Type);
-    void unhideMemoryType(uint32_t p_Type);
+        static MemoryPreferences fromDefault() { return {}; }
+        static MemoryPreferences fromIndex(const uint32_t p_Index) { return { .forceIndex = p_Index }; }
+        static MemoryPreferences fromUsage(VmaMemoryUsage p_Usage, VmaAllocationCreateFlags p_Flags);
+    };
+
+    struct PoolPreferences
+    {
+        uint32_t memoryTypeIndex = UINT32_MAX;
+        VmaPoolCreateFlags flags = 0;
+
+        VkDeviceSize blockSize = 0;
+        uint32_t minBlockCount = 0;
+        uint32_t maxBlockCount = 0;
+
+        float priority = 1.0f;
+
+        size_t customMinAlignment = 0;
+        void* pNext = nullptr;
+        uint64_t pNextIdentifier = 0;
+
+        bool operator==(const PoolPreferences& p_Other) const;
+    };
+
+    [[nodiscard]] uint32_t findMemoryType(const MemoryPreferences& p_Preferences) const;
+    [[nodiscard]] uint32_t findMemoryType(const VkMemoryRequirements& p_Reqs, const MemoryPreferences& p_Preferences) const;
+    [[nodiscard]] uint32_t findMemoryType(const MemoryPreferences& p_Preferences, uint32_t p_StartingFilter) const;
+
+    [[nodiscard]] VmaAllocation allocateMemArray(ResourceID p_MemArray, const MemoryPreferences& p_Preferences) const;
+    [[nodiscard]] VmaAllocation allocateBuffer(ResourceID p_Buffer, const MemoryPreferences& p_Preferences) const;
+    [[nodiscard]] VmaAllocation allocateImage(ResourceID p_Image, const MemoryPreferences& p_Preferences) const;
+
+    uint32_t getOrCreatePool(const PoolPreferences& p_Prefs);
+    uint32_t createPool(const PoolPreferences& p_Prefs);
+
+    void* map(VmaAllocation p_Alloc) const;
+    void unmap(VmaAllocation p_Alloc) const;
+    void deallocate(VmaAllocation p_Alloc) const;
 
     [[nodiscard]] const MemoryStructure& getMemoryStructure() const;
-    [[nodiscard]] VkDeviceSize getRemainingSize(uint32_t p_Heap) const;
-    [[nodiscard]] bool suitableChunkExists(uint32_t p_MemoryType, VkDeviceSize p_Size) const;
-    [[nodiscard]] bool isMemoryTypeHidden(uint32_t p_Value) const;
+    [[nodiscard]] VmaAllocationInfo getAllocationInfo(VmaAllocation p_Allocation) const;
 
-    [[nodiscard]] uint32_t getChunkMemoryType(uint32_t p_Chunk) const;
-    [[nodiscard]] VkDeviceMemory getChunkMemoryHandle(uint32_t p_Chunk) const;
+    VmaAllocator operator*() const { return m_Allocator; }
 
     static std::string compactBytes(VkDeviceSize p_Bytes);
 
 private:
-    void free();
+    struct AllocationReturn
+    {
+        uintptr_t vkObj;
+        VmaAllocation allocation;
 
-    explicit VulkanMemoryAllocator(const VulkanDevice& p_Device, VkDeviceSize p_DefaultChunkSize = 256LL * 1024 * 1024);
+        template <typename T>
+        T as() const { return reinterpret_cast<T>(vkObj); }
+    };
 
-    MemoryStructure m_MemoryStructure;
-    VkDeviceSize m_ChunkSize;
+    struct PoolData
+    {
+        uint32_t id;
 
-    std::vector<MemoryChunk> m_MemoryChunks;
-    std::set<uint32_t> m_HiddenTypes;
+        VmaPool pool;
+        PoolPreferences prefs;
+    };
 
-    uint32_t m_Device;
+    VulkanMemoryAllocator() = default;
+    explicit VulkanMemoryAllocator(const VulkanDevice& p_Device);
+
+    [[nodiscard]] AllocationReturn createBuffer(const VkBufferCreateInfo& p_Info, const MemoryPreferences& p_Preferences) const;
+    [[nodiscard]] AllocationReturn createImage(const VkImageCreateInfo& p_Info, const MemoryPreferences& p_Preferences) const;
+
+    [[nodiscard]] VmaAllocationCreateInfo toVmaAllocCI(const MemoryPreferences& p_Preferences, uint32_t p_MemoryTypeBits) const;
+
+    [[nodiscard]] VmaPool getPool(uint32_t p_Id) const;
+
+    VmaAllocator m_Allocator = VK_NULL_HANDLE;
+    MemoryStructure m_MemoryStructure{};
+
+    std::vector<PoolData> m_Pools{};
+
+    ResourceID m_Device;
 
     friend class VulkanDevice;
 };

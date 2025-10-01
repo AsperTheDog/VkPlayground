@@ -81,7 +81,7 @@ ResourceID VulkanAccelerationStructureExtension::createBLASFromModels(const std:
     l_BuildInfo.geometryCount = static_cast<uint32_t>(l_Geometries.size());
     l_BuildInfo.pGeometries = l_Geometries.data();
 
-    VkAccelerationStructureBuildSizesInfoKHR l_SizeInfo{.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR};
+    VkAccelerationStructureBuildSizesInfoKHR l_SizeInfo{.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR, .pNext = nullptr};
 
     l_Device.getTable().vkGetAccelerationStructureBuildSizesKHR(*l_Device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &l_BuildInfo, l_MaxPrimitiveCounts.data(), &l_SizeInfo);
 
@@ -93,7 +93,7 @@ ResourceID VulkanAccelerationStructureExtension::createBLASFromModels(const std:
     VkAccelerationStructureKHR l_Structure;
     l_Device.getTable().vkCreateAccelerationStructureKHR(*l_Device, &l_CreateInfo, nullptr, &l_Structure);
 
-    ResourceID l_Buffer = l_Device.createBuffer(l_SizeInfo.accelerationStructureSize, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR, p_BufferQueueFamilyIndex);
+    ResourceID l_Buffer = l_Device.createBuffer({l_SizeInfo.accelerationStructureSize, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR, p_BufferQueueFamilyIndex});
 
     VulkanAccelerationStructure* l_NewRes = ARENA_ALLOC(VulkanAccelerationStructure){ l_Device.getID(), l_Structure, l_Buffer };
     m_AccStructures[l_NewRes->getID()] = l_NewRes;
@@ -101,14 +101,9 @@ ResourceID VulkanAccelerationStructureExtension::createBLASFromModels(const std:
     return l_NewRes->getID();
 }
 
-void VulkanAccelerationStructure::allocateFromIndex(const uint32_t p_MemoryIndex) const
+void VulkanAccelerationStructure::allocate(const MemoryPreferences& p_Preferences) const
 {
-    VulkanContext::getDevice(getDeviceID()).getBuffer(m_Buffer).allocateFromIndex(p_MemoryIndex);
-}
-
-void VulkanAccelerationStructure::allocateFromFlags(const VulkanMemoryAllocator::MemoryPropertyPreferences p_MemoryProperties) const
-{
-    VulkanContext::getDevice(getDeviceID()).getBuffer(m_Buffer).allocateFromFlags(p_MemoryProperties);
+    VulkanContext::getDevice(getDeviceID()).getBuffer(m_Buffer).allocate(p_Preferences);
 }
 
 void VulkanAccelerationStructure::free()
@@ -120,10 +115,11 @@ void VulkanAccelerationStructure::free()
         l_Device.getTable().vkDestroyAccelerationStructureKHR(*l_Device, m_VkHandle, nullptr);
         LOG_DEBUG("Freed acceleration structure");
     }
-    if (m_MemoryRegion.size > 0)
+
+    if (m_Allocation != VK_NULL_HANDLE)
     {
-        l_Device.getMemoryAllocator().deallocate(m_MemoryRegion);
-        m_MemoryRegion = {};
+        l_Device.getMemoryAllocator().deallocate(m_Allocation);
+        m_Allocation = VK_NULL_HANDLE;
     }
 }
 

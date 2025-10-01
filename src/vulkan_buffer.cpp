@@ -4,46 +4,41 @@
 #include <vulkan/vk_enum_string_helper.h>
 
 #include "utils/logger.hpp"
+#include "utils/vulkan_base.hpp"
 #include "vulkan_context.hpp"
 #include "vulkan_device.hpp"
 
-void VulkanMemArray::allocateFromIndex(const uint32_t p_MemoryIndex)
+void VulkanMemArray::allocate(MemoryPreferences p_Preferences)
 {
-    const VkMemoryRequirements l_Requirements = getMemoryRequirements();
-    setBoundMemory(VulkanContext::getDevice(getDeviceID()).getMemoryAllocator().allocate(l_Requirements.size, l_Requirements.alignment, p_MemoryIndex));
-}
-
-void VulkanMemArray::allocateFromFlags(const VulkanMemoryAllocator::MemoryPropertyPreferences p_MemoryProperties)
-{
-    const VkMemoryRequirements l_Requirements = getMemoryRequirements();
-    setBoundMemory(VulkanContext::getDevice(getDeviceID()).getMemoryAllocator().searchAndAllocate(l_Requirements.size, l_Requirements.alignment, p_MemoryProperties, l_Requirements.memoryTypeBits));
+    setBoundMemory(VulkanContext::getDevice(getDeviceID()).getMemoryAllocator().allocateMemArray(getID(), p_Preferences));
 }
 
 bool VulkanMemArray::isMemoryBound() const
 {
-    return m_MemoryRegion.size > 0;
+    return m_Allocation != VK_NULL_HANDLE;
 }
 
 uint32_t VulkanMemArray::getBoundMemoryType() const
 {
-    return VulkanContext::getDevice(getDeviceID()).getMemoryAllocator().getChunkMemoryType(m_MemoryRegion.chunk);
+    if (!m_Allocation)
+    {
+        throw std::runtime_error("Buffer (ID:" + std::to_string(m_ID) + ") does not have memory bound to it!");
+    }
+    return VulkanContext::getDevice(getDeviceID()).getMemoryAllocator().getAllocationInfo(m_Allocation).memoryType;
 }
 
 VkDeviceSize VulkanMemArray::getMemorySize() const
 {
-    return m_MemoryRegion.size;
-}
-
-VkDeviceMemory VulkanMemArray::getChunkMemoryHandle() const
-{
-    if (!isMemoryBound())
+    if (!m_Allocation)
     {
         throw std::runtime_error("Buffer (ID:" + std::to_string(m_ID) + ") does not have memory bound to it!");
     }
+    return VulkanContext::getDevice(getDeviceID()).getMemoryAllocator().getAllocationInfo(m_Allocation).size;
+}
 
-    VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
-    const VulkanMemoryAllocator& l_Allocator = l_Device.getMemoryAllocator();
-    return l_Allocator.getChunkMemoryHandle(m_MemoryRegion.chunk);
+VmaAllocation VulkanMemArray::getAllocation() const
+{
+    return m_Allocation;
 }
 
 bool VulkanMemArray::isMemoryMapped() const
@@ -70,12 +65,7 @@ void* VulkanMemArray::map(const VkDeviceSize p_Size, const VkDeviceSize p_Offset
 {
     const VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
 
-    void* l_Data;
-    if (const VkResult l_Ret = l_Device.getTable().vkMapMemory(*l_Device, l_Device.getMemoryHandle(m_MemoryRegion.chunk), m_MemoryRegion.offset + p_Offset, p_Size, 0, &l_Data); l_Ret != VK_SUCCESS)
-    {
-        throw std::runtime_error("Failed to map buffer (ID:" + std::to_string(m_ID) + ") memory! Error code: " + string_VkResult(l_Ret));
-    }
-    m_MappedData = l_Data;
+    void* l_Data = l_Device.getMemoryAllocator().map(m_Allocation);
     LOG_DEBUG("Mapped buffer (ID:", m_ID, ") memory with size ", VulkanMemoryAllocator::compactBytes(p_Size), " and offset ", p_Offset);
     return l_Data;
 }
@@ -89,18 +79,11 @@ VkMemoryRequirements VulkanBuffer::getMemoryRequirements() const
     return l_MemoryRequirements;
 }
 
-void VulkanBuffer::allocateFromIndex(const uint32_t p_MemoryIndex)
+void VulkanBuffer::allocate(const MemoryPreferences p_Preferences)
 {
-    Logger::pushContext("Buffer memory (from index)");
-    VulkanMemArray::allocateFromIndex(p_MemoryIndex);
-    Logger::popContext();
-}
-
-void VulkanBuffer::allocateFromFlags(const VulkanMemoryAllocator::MemoryPropertyPreferences p_MemoryProperties)
-{
-    Logger::pushContext("Buffer memory (from flags)");
-    VulkanMemArray::allocateFromFlags(p_MemoryProperties);
-    m_Size = m_MemoryRegion.size;
+    Logger::pushContext("Buffer memory");
+    VulkanMemArray::allocate(p_Preferences);
+    m_Size = m_Allocation ? VulkanContext::getDevice(getDeviceID()).getMemoryAllocator().getAllocationInfo(m_Allocation).size : 0;
     Logger::popContext();
 }
 
@@ -134,7 +117,7 @@ void VulkanMemArray::unmap()
 
     const VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
 
-    l_Device.getTable().vkUnmapMemory(*l_Device, l_Device.getMemoryHandle(m_MemoryRegion.chunk));
+    l_Device.getMemoryAllocator().unmap(m_Allocation);
     LOG_DEBUG("Unmapped buffer (ID:", m_ID, ") memory");
     m_MappedData = nullptr;
 }
@@ -142,21 +125,9 @@ void VulkanMemArray::unmap()
 VulkanBuffer::VulkanBuffer(const uint32_t p_Device, const VkBuffer p_VkHandle, const VkDeviceSize p_Size)
     : VulkanMemArray(p_Device), m_VkHandle(p_VkHandle), m_Size(p_Size) {}
 
-void VulkanBuffer::setBoundMemory(const MemoryChunk::MemoryBlock& p_MemoryRegion)
+void VulkanBuffer::setBoundMemory(VmaAllocation p_Allocation)
 {
-    if (m_MemoryRegion.size > 0)
-    {
-        throw std::runtime_error("Buffer (ID:" + std::to_string(m_ID) + ") already has memory bound to it!");
-    }
-    m_MemoryRegion = p_MemoryRegion;
-
-    const VulkanDevice& l_Device = VulkanContext::getDevice(getDeviceID());
-
-    LOG_DEBUG("Bound memory region to buffer (ID:", m_ID, ") with size ", m_MemoryRegion.size, " and offset ", m_MemoryRegion.offset, " at chunk ", m_MemoryRegion.chunk);
-    if (const VkResult l_Ret = l_Device.getTable().vkBindBufferMemory(*l_Device, m_VkHandle, l_Device.getMemoryHandle(m_MemoryRegion.chunk), m_MemoryRegion.offset); l_Ret != VK_SUCCESS)
-    {
-        throw std::runtime_error("Failed to bind buffer (ID:" + std::to_string(m_ID) + ") memory! Error code: " + string_VkResult(l_Ret));
-    }
+    m_Allocation = p_Allocation;
 }
 
 void VulkanBuffer::free()
@@ -166,12 +137,12 @@ void VulkanBuffer::free()
     l_Device.getTable().vkDestroyBuffer(*l_Device, m_VkHandle, nullptr);
     LOG_DEBUG("Freed buffer (ID:", m_ID, ")");
     m_VkHandle = VK_NULL_HANDLE;
-
-    if (m_MemoryRegion.size > 0)
+    
+    if (m_Allocation)
     {
         Logger::pushContext("Buffer memory free");
-        l_Device.getMemoryAllocator().deallocate(m_MemoryRegion);
-        m_MemoryRegion = {};
+        l_Device.getMemoryAllocator().deallocate(m_Allocation);
+        m_Allocation = VK_NULL_HANDLE;
         Logger::popContext();
     }
 }

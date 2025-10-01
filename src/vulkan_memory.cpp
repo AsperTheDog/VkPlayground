@@ -9,8 +9,9 @@
 #include "utils/logger.hpp"
 #include "vulkan_context.hpp"
 #include "vulkan_device.hpp"
+#include "utils/vulkan_base.hpp"
 
-std::string VulkanMemoryAllocator::compactBytes(const VkDeviceSize p_Bytes)
+std::string VulkanMemoryAllocatorVMA::compactBytes(const VkDeviceSize p_Bytes)
 {
     const char* l_Units[] = {"B", "KB", "MB", "GB", "TB"};
     uint32_t l_Unit = 0;
@@ -23,11 +24,9 @@ std::string VulkanMemoryAllocator::compactBytes(const VkDeviceSize p_Bytes)
     return std::to_string(l_Exact) + " " + l_Units[l_Unit];
 }
 
-VkPhysicalDeviceMemoryProperties MemoryStructure::getMemoryProperties() const
+const VkPhysicalDeviceMemoryProperties& MemoryStructure::getMemoryProperties() const
 {
-    VkPhysicalDeviceMemoryProperties l_MemoryProperties;
-    vkGetPhysicalDeviceMemoryProperties(m_GPU.getHandle(), &l_MemoryProperties);
-    return l_MemoryProperties;
+    return m_MemoryProperties;
 }
 
 std::string MemoryStructure::toString() const
@@ -38,7 +37,7 @@ std::string MemoryStructure::toString() const
     for (uint32_t l_MemoryHeapIdx = 0; l_MemoryHeapIdx < l_MemoryProperties.memoryHeapCount; l_MemoryHeapIdx++)
     {
         l_Str += "Memory Heap " + std::to_string(l_MemoryHeapIdx) + ":\n";
-        l_Str += " - Size: " + VulkanMemoryAllocator::compactBytes(l_MemoryProperties.memoryHeaps[l_MemoryHeapIdx].size) + "\n";
+        l_Str += " - Size: " + VulkanMemoryAllocatorVMA::compactBytes(l_MemoryProperties.memoryHeaps[l_MemoryHeapIdx].size) + "\n";
         l_Str += " - Flags: " + string_VkMemoryHeapFlags(l_MemoryProperties.memoryHeaps[l_MemoryHeapIdx].flags) + "\n";
         l_Str += " - Memory Types:\n";
         for (uint32_t l_MemoryTypeIdx = 0; l_MemoryTypeIdx < l_MemoryProperties.memoryTypeCount; l_MemoryTypeIdx++)
@@ -94,403 +93,273 @@ VkMemoryHeap MemoryStructure::getMemoryTypeHeap(const uint32_t p_MemoryType) con
     return l_MemoryProperties.memoryHeaps[l_MemoryProperties.memoryTypes[p_MemoryType].heapIndex];
 }
 
-VkDeviceSize MemoryChunk::getSize() const
+uint32_t MemoryStructure::getMemoryTypeCount() const
 {
-    return m_Size;
+    return getMemoryProperties().memoryTypeCount;
 }
 
-uint32_t MemoryChunk::getMemoryType() const
+uint32_t MemoryStructure::getMemoryHeapCount() const
 {
-    return m_MemoryType;
+    return getMemoryProperties().memoryHeapCount;
 }
 
-bool MemoryChunk::isEmpty() const
+MemoryStructure::MemoryStructure(const VulkanGPU p_GPU) : m_GPU(p_GPU)
 {
-    VkDeviceSize l_FreeSize = 0;
-    for (const VkDeviceSize& l_Size : m_UnallocatedData | std::views::values)
+    vkGetPhysicalDeviceMemoryProperties(*m_GPU, &m_MemoryProperties);
+}
+
+VulkanMemoryAllocatorVMA::MemoryPreferences VulkanMemoryAllocatorVMA::MemoryPreferences::fromUsage(const VmaMemoryUsage p_Usage, const VmaAllocationCreateFlags p_Flags)
+{
+    return { .usage = p_Usage, .vmaFlags = p_Flags };
+}
+
+bool VulkanMemoryAllocatorVMA::PoolPreferences::operator==(const PoolPreferences& p_Other) const
+{
+    const bool l_Equal = memoryTypeIndex == p_Other.memoryTypeIndex
+        && flags == p_Other.flags
+        && blockSize == p_Other.blockSize
+        && minBlockCount == p_Other.minBlockCount
+        && maxBlockCount == p_Other.maxBlockCount
+        && priority == p_Other.priority
+        && customMinAlignment == p_Other.customMinAlignment;
+
+    if (pNext == nullptr && p_Other.pNext == nullptr)
+        return l_Equal;
+    if (pNext == nullptr || p_Other.pNext == nullptr)
+        return false;
+    return l_Equal && pNextIdentifier == p_Other.pNextIdentifier;
+}
+
+uint32_t VulkanMemoryAllocatorVMA::findMemoryType(const MemoryPreferences& p_Preferences) const
+{
+    return findMemoryType(p_Preferences, UINT32_MAX);
+}
+
+uint32_t VulkanMemoryAllocatorVMA::findMemoryType(const VkMemoryRequirements& p_Reqs, const MemoryPreferences& p_Preferences) const
+{
+    return findMemoryType(p_Preferences, p_Reqs.memoryTypeBits);
+}
+
+uint32_t VulkanMemoryAllocatorVMA::findMemoryType(const MemoryPreferences& p_Preferences, const uint32_t p_StartingFilter) const
+{
+    const VkPhysicalDeviceMemoryProperties& l_MemProps = m_MemoryStructure.getMemoryProperties();
+
+    const uint32_t l_Count = l_MemProps.memoryTypeCount;
+    const uint32_t l_AllMask = p_StartingFilter & ((1 << l_Count) - 1);
+
+    if (!l_AllMask) 
+        return UINT32_MAX;
+
+    VmaAllocationCreateInfo l_Aci = toVmaAllocCI(p_Preferences, 0);
+    uint32_t l_Idx = UINT32_MAX;
+
+    l_Aci.memoryTypeBits = l_AllMask;
+    if (vmaFindMemoryTypeIndex(m_Allocator, l_AllMask, &l_Aci, &l_Idx) == VK_SUCCESS)
+        return l_Idx;
+
+    return UINT32_MAX;
+}
+
+VmaAllocation VulkanMemoryAllocatorVMA::allocateMemArray(ResourceID p_MemArray, const MemoryPreferences& p_Preferences) const
+{
+    VulkanDeviceSubresource* l_MemArray = VulkanContext::getDevice(m_Device).getSubresource(p_MemArray);
+    if (dynamic_cast<VulkanBuffer*>(l_MemArray))
     {
-        l_FreeSize += l_Size;
+        return allocateBuffer(p_MemArray, p_Preferences);
     }
-    return l_FreeSize == m_Size;
+    if (dynamic_cast<VulkanImage*>(l_MemArray))
+    {
+        return allocateImage(p_MemArray, p_Preferences);
+    }
+    LOG_ERR("Tried to allocate memory for resource", p_MemArray, ": unsupported type");
+    return {};
 }
 
-MemoryChunk::MemoryBlock MemoryChunk::allocate(const VkDeviceSize p_NewSize, const VkDeviceSize p_Alignment)
+VmaAllocation VulkanMemoryAllocatorVMA::allocateBuffer(const ResourceID p_Buffer, const MemoryPreferences& p_Preferences) const
 {
-    VkDeviceSize l_Best = m_Size;
-    VkDeviceSize l_BestAlignOffset = 0;
-    if (p_NewSize > m_UnallocatedData[m_BiggestChunk])
-    {
-        return {.size = 0, .offset = 0, .chunk = m_ID};
-    }
+    VulkanDevice& l_Device = VulkanContext::getDevice(m_Device);
+    const VulkanBuffer& l_Buffer = l_Device.getBuffer(p_Buffer);
 
-    for (const auto& [l_Offset, l_Size] : m_UnallocatedData)
+    const VkMemoryRequirements l_Reqs = l_Buffer.getMemoryRequirements();
+
+    const uint32_t l_ForcedTypeIdx = p_Preferences.forceIndex;
+
+    uint32_t l_Visible = l_Reqs.memoryTypeBits;
+    if (l_ForcedTypeIdx != UINT32_MAX) 
     {
-        if (l_Size < p_NewSize)
+        l_Visible &= (1u << l_ForcedTypeIdx);
+        if (l_Visible == 0)
         {
-            continue;
-        }
-
-        const VkDeviceSize l_OffsetDifference = l_Offset % p_Alignment == 0 ? 0 : p_Alignment - l_Offset % p_Alignment;
-        if (l_Size + l_OffsetDifference < p_NewSize)
-        {
-            continue;
-        }
-
-        if (l_Best == m_Size || m_UnallocatedData[l_Best] > l_Size)
-        {
-            l_Best = l_Offset;
-            l_BestAlignOffset = l_OffsetDifference;
-        }
-    }
-
-    if (l_Best == m_Size)
-    {
-        return {.size = 0, .offset = 0, .chunk = m_ID};
-    }
-
-    const VkDeviceSize l_BestSize = m_UnallocatedData[l_Best];
-    m_UnallocatedData.erase(l_Best);
-    if (l_BestAlignOffset != 0)
-    {
-        m_UnallocatedData[l_Best] = l_BestAlignOffset;
-        l_Best += l_BestAlignOffset;
-    }
-    if (l_BestSize - l_BestAlignOffset != p_NewSize)
-    {
-        m_UnallocatedData[l_Best + p_NewSize] = (l_BestSize - l_BestAlignOffset) - p_NewSize;
-    }
-
-    LOG_DEBUG("Allocated block of size ", VulkanMemoryAllocator::compactBytes(p_NewSize), " at offset ", l_Best, " of memory type ", m_MemoryType, " from chunk ", m_ID);
-
-    for (const auto& [l_Offset, l_Size] : m_UnallocatedData)
-    {
-        if (!m_UnallocatedData.contains(m_BiggestChunk) || l_Size > m_UnallocatedData[m_BiggestChunk])
-        {
-            m_BiggestChunk = l_Offset;
-        }
-    }
-
-    m_UnallocatedSize -= p_NewSize;
-
-    return {.size = p_NewSize, .offset = l_Best, .chunk = m_ID};
-}
-
-void MemoryChunk::deallocate(const MemoryBlock& p_Block)
-{
-    if (p_Block.chunk != m_ID)
-    {
-        throw std::runtime_error("Tried to deallocate block from chunk " + std::to_string(p_Block.chunk) + " in chunk " + std::to_string(m_ID));
-    }
-
-    m_UnallocatedData[p_Block.offset] = p_Block.size;
-    LOG_DEBUG("Deallocated block from chunk ", p_Block.chunk, " of size ", VulkanMemoryAllocator::compactBytes(p_Block.size), " at offset ", p_Block.offset, " of memory type ", m_MemoryType);
-
-    m_UnallocatedSize += p_Block.size;
-
-    defragment();
-}
-
-VkDeviceMemory MemoryChunk::operator*() const
-{
-    return m_Memory;
-}
-
-VkDeviceSize MemoryChunk::getBiggestChunkSize() const
-{
-    return m_UnallocatedData.empty() ? 0 : m_UnallocatedData.at(m_BiggestChunk);
-}
-
-VkDeviceSize MemoryChunk::getRemainingSize() const
-{
-    return m_UnallocatedSize;
-}
-
-MemoryChunk::MemoryChunk(const VkDeviceSize p_Size, const uint32_t p_MemoryType, const VkDeviceMemory p_VkHandle)
-    : m_Size(p_Size), m_MemoryType(p_MemoryType), m_Memory(p_VkHandle), m_UnallocatedSize(p_Size)
-{
-    m_UnallocatedData[0] = p_Size;
-}
-
-void MemoryChunk::defragment()
-{
-    if (m_UnallocatedSize == m_Size)
-    {
-        LOG_DEBUG("No need to defragment empty memory chunk (ID: ", m_ID, ")");
-        return;
-    }
-    Logger::pushContext("Memory defragmentation");
-    LOG_DEBUG("Defragmenting memory chunk (ID: ", m_ID, ")");
-    uint32_t l_MergeCount = 0;
-    for (auto l_It = m_UnallocatedData.begin(); l_It != m_UnallocatedData.end();)
-    {
-        auto l_Next = std::next(l_It);
-        if (l_Next == m_UnallocatedData.end())
-        {
-            break;
-        }
-        if (l_Next != m_UnallocatedData.end() && l_It->first + l_It->second == l_Next->first)
-        {
-            l_It->second += l_Next->second;
-            if (l_Next->first == m_BiggestChunk || l_It->second > m_UnallocatedData[m_BiggestChunk])
-            {
-                m_BiggestChunk = l_It->first;
-            }
-
-            LOG_DEBUG("  Merged blocks at offsets ", l_It->first, " and ", l_Next->first, ", new size: ", VulkanMemoryAllocator::compactBytes(l_It->second));
-            l_MergeCount++;
-
-            m_UnallocatedData.erase(l_Next);
-        }
-        else
-        {
-            ++l_It;
-        }
-    }
-    LOG_DEBUG("  Defragmented ", l_MergeCount, " blocks");
-    Logger::popContext();
-}
-
-VulkanMemoryAllocator::VulkanMemoryAllocator(const VulkanDevice& p_Device, const VkDeviceSize p_DefaultChunkSize)
-    : m_MemoryStructure(p_Device.getGPU()), m_ChunkSize(p_DefaultChunkSize), m_Device(p_Device.getID()) {}
-
-void VulkanMemoryAllocator::free()
-{
-    const VulkanDevice& l_Device = VulkanContext::getDevice(m_Device);
-
-    for (const MemoryChunk& l_MemoryBlock : m_MemoryChunks)
-    {
-        l_Device.getTable().vkFreeMemory(l_Device.m_VkHandle, l_MemoryBlock.m_Memory, nullptr);
-        LOG_DEBUG("Freed memory chunk (ID: ", l_MemoryBlock.getID(), ")");
-    }
-    m_MemoryChunks.clear();
-}
-
-uint32_t VulkanMemoryAllocator::search(const VkDeviceSize p_Size, VkDeviceSize p_Alignment, const MemoryPropertyPreferences p_Properties, const uint32_t p_TypeFilter, const bool p_IncludeHidden)
-{
-    const std::vector<uint32_t> l_MemoryType = m_MemoryStructure.getMemoryTypes(p_Properties.desiredProperties, p_TypeFilter);
-    uint32_t l_BestType = 0;
-    VkDeviceSize l_BestSize = 0;
-    bool l_DoesBestHaveUndesired = false;
-    for (const uint32_t& l_Type : l_MemoryType)
-    {
-        if (!p_IncludeHidden && m_HiddenTypes.contains(l_Type))
-        {
-            continue;
-        }
-
-        const bool l_DoesMemoryHaveUndesired = m_MemoryStructure.doesMemoryContainProperties(l_Type, p_Properties.undesiredProperties);
-        if (!p_Properties.allowUndesired && l_DoesMemoryHaveUndesired)
-        {
-            continue;
-        }
-
-        if (l_BestSize != 0 && !l_DoesBestHaveUndesired && l_DoesMemoryHaveUndesired)
-        {
-            continue;
-        }
-
-        if (suitableChunkExists(l_Type, p_Size))
-        {
-            return l_Type;
-        }
-
-        const VkDeviceSize l_RemainingSize = getRemainingSize(m_MemoryStructure.getMemoryProperties().memoryTypes[l_Type].heapIndex);
-        if (l_RemainingSize >= l_BestSize)
-        {
-            l_BestType = l_Type;
-            l_BestSize = l_RemainingSize;
-            l_DoesBestHaveUndesired = l_DoesMemoryHaveUndesired;
-        }
-    }
-    return l_BestType;
-}
-
-MemoryChunk::MemoryBlock VulkanMemoryAllocator::allocate(const VkDeviceSize p_Size, const VkDeviceSize p_Alignment, const uint32_t p_MemoryType)
-{
-    VkDeviceSize l_ChunkSize = m_ChunkSize;
-    if (p_Size < m_ChunkSize)
-    {
-        for (MemoryChunk& l_MemoryChunk : m_MemoryChunks)
-        {
-            if (l_MemoryChunk.m_MemoryType == p_MemoryType)
-            {
-                const MemoryChunk::MemoryBlock l_Block = l_MemoryChunk.allocate(p_Size, p_Alignment);
-                if (l_Block.size != 0)
-                {
-                    return l_Block;
-                }
-            }
-        }
-    }
-    else
-    {
-        l_ChunkSize = p_Size;
-    }
-
-    const VkDeviceSize l_HeapSize = getMemoryStructure().getMemoryTypeHeap(p_MemoryType).size;
-    const VkDeviceSize l_MaxHeapUsage = static_cast<VkDeviceSize>(static_cast<double>(l_HeapSize) * 0.7);
-    l_ChunkSize = std::min(l_ChunkSize, l_MaxHeapUsage);
-    if (l_ChunkSize < p_Size)
-    {
-        throw std::runtime_error("Allocation of size " + std::to_string(p_Size) + " was requested for memory type " + std::to_string(p_MemoryType) + " but the heap size is only " + std::to_string(l_HeapSize) + " (Cannot allocate more than 80% of heap)");
-    }
-
-    VkMemoryAllocateInfo l_AllocInfo{};
-    l_AllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    l_AllocInfo.allocationSize = l_ChunkSize;
-    l_AllocInfo.memoryTypeIndex = p_MemoryType;
-
-    const VulkanDevice& l_Device = VulkanContext::getDevice(m_Device);
-
-    VkDeviceMemory l_Memory;
-    if (const VkResult l_Ret = l_Device.getTable().vkAllocateMemory(l_Device.m_VkHandle, &l_AllocInfo, nullptr, &l_Memory); l_Ret != VK_SUCCESS)
-    {
-        throw std::runtime_error(std::string("Failed to allocate memory, error: ") + string_VkResult(l_Ret));
-    }
-
-    m_MemoryChunks.push_back(MemoryChunk(l_ChunkSize, p_MemoryType, l_Memory));
-    LOG_DEBUG("Allocated chunk (ID: ", m_MemoryChunks.back().getID(), ") of size ", compactBytes(l_ChunkSize), " of memory type ", p_MemoryType);
-    return m_MemoryChunks.back().allocate(p_Size, p_Alignment);
-}
-
-MemoryChunk::MemoryBlock VulkanMemoryAllocator::allocateIsolated(const VkDeviceSize p_Size, const uint32_t p_MemoryType, const void* p_Next)
-{
-    if (!p_Next)
-    {
-        LOG_WARN("Allocating strictly isolated memory chunk without special properties (p_Next). It is recommended that non special memory is not isolated for better performance");
-    }
-
-    const VkDeviceSize l_HeapSize = getMemoryStructure().getMemoryTypeHeap(p_MemoryType).size;
-    const VkDeviceSize l_MaxHeapUsage = static_cast<VkDeviceSize>(static_cast<double>(l_HeapSize) * 0.7);
-    if (p_Size > l_MaxHeapUsage)
-    {
-        throw std::runtime_error("Allocation of size " + std::to_string(p_Size) + " was requested for memory type " + std::to_string(p_MemoryType) + " but the heap size is only " + std::to_string(l_HeapSize) + " (Cannot allocate more than 80% of heap)");
-    }
-
-    VkMemoryAllocateInfo l_AllocInfo{};
-    l_AllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    l_AllocInfo.pNext = p_Next;
-    l_AllocInfo.allocationSize = p_Size;
-    l_AllocInfo.memoryTypeIndex = p_MemoryType;
-
-    const VulkanDevice& l_Device = VulkanContext::getDevice(m_Device);
-
-    VkDeviceMemory l_Memory;
-    if (const VkResult l_Ret = l_Device.getTable().vkAllocateMemory(l_Device.m_VkHandle, &l_AllocInfo, nullptr, &l_Memory); l_Ret != VK_SUCCESS)
-    {
-        throw std::runtime_error(std::string("Failed to allocate memory, error: ") + string_VkResult(l_Ret));
-    }
-    m_MemoryChunks.push_back(MemoryChunk(p_Size, p_MemoryType, l_Memory));
-    LOG_DEBUG("Allocated isolated chunk (ID: ", m_MemoryChunks.back().getID(), ") of size ", compactBytes(p_Size), " of memory type ", p_MemoryType);
-    return m_MemoryChunks.back().allocate(p_Size, 1);
-}
-
-MemoryChunk::MemoryBlock VulkanMemoryAllocator::searchAndAllocate(const VkDeviceSize p_Size, const VkDeviceSize p_Alignment, const MemoryPropertyPreferences p_Properties, const uint32_t p_TypeFilter, const bool p_IncludeHidden)
-{
-    const uint32_t l_Index = search(p_Size, p_Alignment, p_Properties, p_TypeFilter, p_IncludeHidden);
-    return allocate(p_Size, p_Alignment, l_Index);
-}
-
-void VulkanMemoryAllocator::deallocate(const MemoryChunk::MemoryBlock& p_Block)
-{
-    uint32_t l_ChunkIndex = static_cast<uint32_t>(m_MemoryChunks.size());
-    for (uint32_t l_MemoryChunkIdx = 0; l_MemoryChunkIdx < m_MemoryChunks.size(); l_MemoryChunkIdx++)
-    {
-        if (m_MemoryChunks[l_MemoryChunkIdx].getID() == p_Block.chunk)
-        {
-            l_ChunkIndex = l_MemoryChunkIdx;
-            break;
+            LOG_ERR("Tried to allocate memory for buffer", p_Buffer, ": forced memory type", l_ForcedTypeIdx, "is not compatible with memory type bits", l_Reqs.memoryTypeBits);
+            return VK_NULL_HANDLE;
         }
     }
 
-    if (l_ChunkIndex == m_MemoryChunks.size())
-    {
-        throw std::runtime_error("Tried to deallocate block but owner chunk (ID: " + std::to_string(p_Block.chunk) + ") was not found");
-    }
-
-    m_MemoryChunks[l_ChunkIndex].deallocate(p_Block);
-    if (m_MemoryChunks[l_ChunkIndex].isEmpty())
-    {
-        const VulkanDevice& l_Device = VulkanContext::getDevice(m_Device);
-
-        l_Device.getTable().vkFreeMemory(l_Device.m_VkHandle, m_MemoryChunks[l_ChunkIndex].m_Memory, nullptr);
-        m_MemoryChunks.erase(m_MemoryChunks.begin() + l_ChunkIndex);
-        LOG_DEBUG("Freed empty chunk (ID: ", p_Block.chunk, ")");
-    }
+    VmaAllocation l_Alloc{};
+    VmaAllocationInfo l_Info{};
+    const VmaAllocationCreateInfo l_Aci = toVmaAllocCI(p_Preferences, l_Visible);
+    VULKAN_TRY(vmaAllocateMemoryForBuffer(m_Allocator, *l_Buffer, &l_Aci, &l_Alloc, &l_Info));
+    VULKAN_TRY(vmaBindBufferMemory(m_Allocator, l_Alloc, *l_Buffer));
+    return l_Alloc;
 }
 
-void VulkanMemoryAllocator::hideMemoryType(const uint32_t p_Type)
+VmaAllocation VulkanMemoryAllocatorVMA::allocateImage(const ResourceID p_Image, const MemoryPreferences& p_Preferences) const
 {
-    LOG_DEBUG("Hiding memory type ", p_Type);
-    m_HiddenTypes.insert(p_Type);
+    VulkanDevice& l_Device = VulkanContext::getDevice(m_Device);
+    const VulkanImage& l_Image = l_Device.getImage(p_Image);
+
+    const VkMemoryRequirements l_Reqs = l_Image.getMemoryRequirements();
+
+    const uint32_t l_ForcedTypeIdx = p_Preferences.forceIndex;
+    
+    uint32_t l_Visible;
+    if (l_ForcedTypeIdx != UINT32_MAX) 
+    {
+        l_Visible = (1u << l_ForcedTypeIdx);
+    }
+    else 
+    {
+        const uint32_t l_Idx = findMemoryType(l_Reqs, p_Preferences);
+        if (l_Idx == UINT32_MAX) return {};
+        l_Visible = (1u << l_Idx);
+    }
+    
+    VmaAllocation l_Alloc{};
+    VmaAllocationInfo l_Info{};
+    const VmaAllocationCreateInfo l_Aci = toVmaAllocCI(p_Preferences, l_Visible);
+    VULKAN_TRY(vmaAllocateMemoryForImage(m_Allocator, *l_Image, &l_Aci, &l_Alloc, &l_Info));
+    VULKAN_TRY(vmaBindImageMemory(m_Allocator, l_Alloc, *l_Image));
+    return l_Alloc;
 }
 
-void VulkanMemoryAllocator::unhideMemoryType(const uint32_t p_Type)
+uint32_t VulkanMemoryAllocatorVMA::getOrCreatePool(const PoolPreferences& p_Prefs)
 {
-    LOG_DEBUG("Unhiding memory type ", p_Type);
-    m_HiddenTypes.erase(p_Type);
+    for (const PoolData& l_Pool : m_Pools)
+    {
+        if (l_Pool.prefs == p_Prefs)
+        {
+            return l_Pool.id;
+        }
+    }
+    return createPool(p_Prefs);
 }
 
-const MemoryStructure& VulkanMemoryAllocator::getMemoryStructure() const
+uint32_t VulkanMemoryAllocatorVMA::createPool(const PoolPreferences& p_Prefs)
+{
+    static uint32_t l_NewID = 0;
+
+    const VmaPoolCreateInfo l_Pci{
+        .memoryTypeIndex = p_Prefs.memoryTypeIndex,
+        .flags = p_Prefs.flags,
+        .blockSize = p_Prefs.blockSize,
+        .minBlockCount = p_Prefs.minBlockCount,
+        .maxBlockCount = p_Prefs.maxBlockCount,
+        .priority = p_Prefs.priority,
+        .minAllocationAlignment = p_Prefs.customMinAlignment,
+        .pMemoryAllocateNext = p_Prefs.pNext
+    };
+
+    VmaPool l_Pool;
+    VULKAN_TRY(vmaCreatePool(m_Allocator, &l_Pci, &l_Pool));
+    m_Pools.push_back({l_NewID++, l_Pool, p_Prefs});
+    m_Pools.back().prefs.pNext = m_Pools.back().prefs.pNext == nullptr ? nullptr : reinterpret_cast<void*>(UINT64_MAX);
+    LOG_DEBUG("Created memory pool with ID ", m_Pools.back().id, " for memory type ", p_Prefs.memoryTypeIndex);
+    return m_Pools.back().id;
+}
+
+void* VulkanMemoryAllocatorVMA::map(const VmaAllocation p_Alloc) const
+{
+    void* l_Data = nullptr;
+    VULKAN_TRY(vmaMapMemory(m_Allocator, p_Alloc, &l_Data));
+    return l_Data;
+}
+
+void VulkanMemoryAllocatorVMA::unmap(const VmaAllocation p_Alloc) const
+{
+    vmaUnmapMemory(m_Allocator, p_Alloc);
+}
+
+void VulkanMemoryAllocatorVMA::deallocate(const VmaAllocation p_Alloc) const
+{
+    vmaFreeMemory(m_Allocator, p_Alloc);
+}
+
+const MemoryStructure& VulkanMemoryAllocatorVMA::getMemoryStructure() const
 {
     return m_MemoryStructure;
 }
 
-VkDeviceSize VulkanMemoryAllocator::getRemainingSize(const uint32_t p_Heap) const
+VmaAllocationInfo VulkanMemoryAllocatorVMA::getAllocationInfo(const VmaAllocation p_Allocation) const
 {
-    const VkPhysicalDeviceMemoryProperties l_MemoryProperties = m_MemoryStructure.getMemoryProperties();
-
-    VkDeviceSize l_RemainingSize = l_MemoryProperties.memoryHeaps[p_Heap].size;
-    for (const MemoryChunk& l_Chunk : m_MemoryChunks)
-    {
-        if (l_MemoryProperties.memoryTypes[l_Chunk.m_MemoryType].heapIndex == p_Heap)
-        {
-            l_RemainingSize -= l_Chunk.getSize();
-        }
-    }
-    return l_RemainingSize;
+    VmaAllocationInfo l_Info{};
+    vmaGetAllocationInfo(m_Allocator, p_Allocation, &l_Info);
+    return l_Info;
 }
 
-bool VulkanMemoryAllocator::suitableChunkExists(const uint32_t p_MemoryType, const VkDeviceSize p_Size) const
+VulkanMemoryAllocatorVMA::VulkanMemoryAllocatorVMA(const VulkanDevice& p_Device)
+    : m_MemoryStructure(p_Device.getGPU()), m_Device(p_Device.getID())
 {
-    for (const MemoryChunk& l_Chunk : m_MemoryChunks)
-    {
-        if (l_Chunk.m_MemoryType == p_MemoryType && l_Chunk.getBiggestChunkSize() >= p_Size)
-        {
-            return true;
-        }
-    }
-    return false;
+    VmaVulkanFunctions l_Funcs{};
+    l_Funcs.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
+    l_Funcs.vkGetDeviceProcAddr = vkGetDeviceProcAddr;
+
+    VmaAllocatorCreateInfo l_AllocInfo = {};
+    l_AllocInfo.instance = VulkanContext::getHandle();
+    l_AllocInfo.physicalDevice = **m_MemoryStructure;
+    l_AllocInfo.device = *p_Device;
+    l_AllocInfo.vulkanApiVersion = VK_HEADER_VERSION_COMPLETE;
+    l_AllocInfo.pVulkanFunctions = &l_Funcs;
+
+    VULKAN_TRY(vmaCreateAllocator(&l_AllocInfo, &m_Allocator));
 }
 
-bool VulkanMemoryAllocator::isMemoryTypeHidden(const unsigned p_Value) const
+VulkanMemoryAllocatorVMA::AllocationReturn VulkanMemoryAllocatorVMA::createBuffer(const VkBufferCreateInfo& p_Info, const MemoryPreferences& p_Preferences) const
 {
-    return m_HiddenTypes.contains(p_Value);
+    const VmaAllocationCreateInfo l_Aci = toVmaAllocCI(p_Preferences, 0);
+    VkBuffer l_Buffer;
+    VmaAllocation l_Alloc;
+    VmaAllocationInfo l_Info;
+    VULKAN_TRY(vmaCreateBuffer(m_Allocator, &p_Info, &l_Aci, &l_Buffer, &l_Alloc, &l_Info));
+    LOG_DEBUG("Created buffer with size ", VulkanMemoryAllocatorVMA::compactBytes(l_Info.size), " at memory type ", l_Info.memoryType, " with offset ", l_Info.offset, ". Handle ", reinterpret_cast<void*>(l_Alloc));
+    return { reinterpret_cast<uintptr_t>(l_Buffer), l_Alloc };
 }
 
-uint32_t VulkanMemoryAllocator::getChunkMemoryType(const uint32_t p_Chunk) const
+VulkanMemoryAllocatorVMA::AllocationReturn VulkanMemoryAllocatorVMA::createImage(const VkImageCreateInfo& p_Info, const MemoryPreferences& p_Preferences) const
 {
-    for (const MemoryChunk& l_MemoryChunk : m_MemoryChunks)
-    {
-        if (l_MemoryChunk.getID() == p_Chunk)
-        {
-            return l_MemoryChunk.getMemoryType();
-        }
-    }
-
-    LOG_DEBUG("Chunk search failed out of ", m_MemoryChunks.size(), " chunks");
-    throw std::runtime_error("Chunk (ID:" + std::to_string(p_Chunk) + ") not found");
+    const VmaAllocationCreateInfo l_Aci = toVmaAllocCI(p_Preferences, 0);
+    VkImage l_Image;
+    VmaAllocation l_Alloc;
+    VmaAllocationInfo l_Info;
+    VULKAN_TRY(vmaCreateImage(m_Allocator, &p_Info, &l_Aci, &l_Image, &l_Alloc, &l_Info));
+    LOG_DEBUG("Created image with size ", VulkanMemoryAllocatorVMA::compactBytes(l_Info.size), " at memory type ", l_Info.memoryType, " with offset ", l_Info.offset, ". Handle ", reinterpret_cast<void*>(l_Alloc));
+    return { reinterpret_cast<uintptr_t>(l_Image), l_Alloc };
 }
 
-VkDeviceMemory VulkanMemoryAllocator::getChunkMemoryHandle(const uint32_t p_Chunk) const
+VmaAllocationCreateInfo VulkanMemoryAllocatorVMA::toVmaAllocCI(const MemoryPreferences& p_Preferences, const uint32_t p_MemoryTypeBits) const
 {
-    for (const MemoryChunk& l_MemoryChunk : m_MemoryChunks)
+    VmaAllocationCreateInfo l_Aci{};
+    l_Aci.usage = p_Preferences.usage;
+    l_Aci.requiredFlags = p_Preferences.desiredProperties;
+    l_Aci.preferredFlags = p_Preferences.preferredProperties;
+    l_Aci.memoryTypeBits = p_MemoryTypeBits;
+    l_Aci.pool = p_Preferences.pool < m_Pools.size() ? getPool(p_Preferences.pool) : VK_NULL_HANDLE;
+    l_Aci.flags = p_Preferences.vmaFlags;
+
+    if (VulkanContext::getDevice(m_Device).isExtensionEnabled(VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME))
+        l_Aci.priority = p_Preferences.priority;
+
+    return l_Aci;
+}
+
+VmaPool VulkanMemoryAllocatorVMA::getPool(const uint32_t p_Id) const
+{
+    for (const PoolData& l_Pool : m_Pools)
     {
-        if (l_MemoryChunk.getID() == p_Chunk)
+        if (l_Pool.id == p_Id)
         {
-            return *l_MemoryChunk;
+            return l_Pool.pool;
         }
     }
-    LOG_DEBUG("Chunk search failed out of ", m_MemoryChunks.size(), " chunks");
-    throw std::runtime_error("Chunk (ID:" + std::to_string(p_Chunk) + ") not found");
+    LOG_WARN("Tried to get memory pool with ID ", p_Id, " but it doesn't exist");
+    return VK_NULL_HANDLE;
 }
