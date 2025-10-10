@@ -182,7 +182,7 @@ VmaAllocation VulkanMemoryAllocator::allocateBuffer(const ResourceID p_Buffer, c
 
     const VkMemoryRequirements l_Reqs = l_Buffer.getMemoryRequirements();
 
-    const uint32_t l_ForcedTypeIdx = p_Preferences.forceIndex;
+    const uint32_t l_ForcedTypeIdx = p_Preferences.forceMemoryIndex;
 
     uint32_t l_Visible = l_Reqs.memoryTypeBits;
     if (l_ForcedTypeIdx != UINT32_MAX) 
@@ -210,7 +210,7 @@ VmaAllocation VulkanMemoryAllocator::allocateImage(const ResourceID p_Image, con
 
     const VkMemoryRequirements l_Reqs = l_Image.getMemoryRequirements();
 
-    const uint32_t l_ForcedTypeIdx = p_Preferences.forceIndex;
+    const uint32_t l_ForcedTypeIdx = p_Preferences.forceMemoryIndex;
     
     uint32_t l_Visible;
     if (l_ForcedTypeIdx != UINT32_MAX) 

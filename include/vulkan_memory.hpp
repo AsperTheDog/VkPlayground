@@ -62,13 +62,13 @@ public:
         uint32_t pool = UINT32_MAX;
         float priority = 1.0f;
 
-        uint32_t forceIndex = UINT32_MAX;
+        uint32_t forceMemoryIndex = UINT32_MAX;
 
         VkMemoryPropertyFlags desiredProperties = 0;
         VkMemoryPropertyFlags preferredProperties = 0;
 
         static MemoryPreferences fromDefault() { return {}; }
-        static MemoryPreferences fromIndex(const uint32_t p_Index) { return { .forceIndex = p_Index }; }
+        static MemoryPreferences fromIndex(const uint32_t p_Index) { return { .forceMemoryIndex = p_Index }; }
         static MemoryPreferences fromUsage(VmaMemoryUsage p_Usage, VmaAllocationCreateFlags p_Flags);
     };
 
